@@ -1,0 +1,42 @@
+{
+  "name": "uk-legislation-mcp-server",
+  "version": "0.1.0",
+  "description": "UK statute book — revised and as-enacted legislation for the UK, Scotland, Wales, and Northern Ireland, with point-in-time versions, amendment tracking, and the publication change log.",
+  "author": {
+    "name": "cyanheads",
+    "email": "casey@caseyjhand.com",
+    "url": "https://github.com/cyanheads"
+  },
+  "homepage": "https://github.com/cyanheads/uk-legislation-mcp-server#readme",
+  "repository": "https://github.com/cyanheads/uk-legislation-mcp-server",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "typescript",
+    "bun",
+    "stdio",
+    "streamable-http",
+    "legislation",
+    "uk-legislation",
+    "legislation-gov-uk",
+    "uk-law",
+    "statute-book",
+    "legal-research",
+    "national-archives"
+  ],
+  "mcpServers": "./.codex-plugin/mcp.json",
+  "interface": {
+    "displayName": "uk-legislation-mcp-server",
+    "shortDescription": "UK statute book — revised and as-enacted legislation for the UK, Scotland, Wales, and Northern Ireland, with point-in-time versions, amendment tracking, and the publication change log.",
+    "longDescription": "Search and read legislation.gov.uk, The National Archives' statute book: primary and secondary legislation for the UK, Scotland, Wales, and Northern Ireland, in revised and as-enacted form. Read any provision as it stood on a given date, see which amendments affect it and which are still outstanding, resolve citations to the canonical document, and follow newly published and amended legislation through the publication change log. Keyless; content is published under the Open Government Licence v3.0.",
+    "developerName": "cyanheads",
+    "category": "research",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://github.com/cyanheads/uk-legislation-mcp-server#readme",
+    "defaultPrompt": []
+  }
+}
