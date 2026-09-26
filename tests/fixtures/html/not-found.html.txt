@@ -1,0 +1,30 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML+RDFa 1.0//EN" "http://www.w3.org/MarkUp/DTD/xhtml-rdfa-1.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:dct="http://purl.org/dc/terms/" xml:lang="en">
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><meta name="viewport" content="width=device-width, initial-scale=0.1, user-scalable=1" /><title>Legislation.gov.uk</title><link rel="icon" href="/favicon.ico" /><link rel="stylesheet" href="/styles/screen.css" type="text/css" /><link rel="stylesheet" href="/styles/survey/survey.css" type="text/css" /><!--[if lte IE 6]><link rel="stylesheet" href="/styles/IE/ie6chromeAdditions.css" type="text/css" /><![endif]--><!--[if lte IE 7]><link rel="stylesheet" href="/styles/IE/ie7chromeAdditions.css" type="text/css" /><![endif]--><script type="text/javascript" src="/scripts/jquery-4.0.0.min.js"></script><script type="text/javascript" src="/scripts/CentralConfig.js"></script><script type="text/javascript" src="/scripts/survey/survey.js"></script><script type="text/javascript" src="/scripts/chrome.js"></script><link rel="apple-touch-icon" href="/images/chrome/apple-touch-icons/apple-touch-icon.png" /><link rel="stylesheet" href="/styles/website.css" type="text/css" /><link rel="stylesheet" href="/styles/print.css" type="text/css" media="print" /><link rel="stylesheet" href="/styles/buy-now.css" type="text/css" /><script type="text/javascript" src="/scripts/jquery-cookie-directive/jquery.cookie.js"></script><script type="text/javascript" src="/scripts/jquery-cookie-directive/jquery-cookie-functions.js"></script><script type="text/javascript" src="/scripts/cookie-directive.js"></script><!--Google Tag Manager--><script type="text/javascript">
+			function addGtm(w, d, s, l, i) {
+				// Legislation.gov.uk: Check cookie preferences before running the Google analytics code.
+				if (window.legGlobals.cookiePolicy.userSet &amp;&amp; window.legGlobals.cookiePolicy.analytics) 
+					w[l] = w[l] || [];
+					w[l].push({'gtm.start': new Date().getTime(), event: 'gtm.js'});
+					var and = '&amp;';
+					and = and.charAt(0);
+					var f = d.getElementsByTagName(s)[0], j = d.createElement(s),
+							dl = l != 'dataLayer' ? (and + 'l=' + l) : '';
+					j.async = true;
+					j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+					f.parentNode.insertBefore(j, f);else 
+					$.removeCookie('_ga', path: '/');
+					$.removeCookie('_gid', {path: '/'});
+					$.removeCookie('_gat_UA-2827241-23', {path: '/'});
+					$.removeCookie('_ga', {path: '/', domain: '.legislation.gov.uk'});
+					$.removeCookie('_gid', {path: '/', domain: '.legislation.gov.uk'});
+					$.removeCookie('_gat_UA-2827241-23', {path: '/', domain: '.legislation.gov.uk'});
+			}
+			addGtm(window, document, 'script', 'dataLayer', 'GTM-TWB7339');
+
+			$('body').on('cookie.preferences.saved.banner', () => {
+				addGtm(window, document, 'script', 'dataLayer', 'GTM-TWB7339');
+			});
+		</script><!--End Google Tag Manager--></head><body><h1>Page Not Found</h1></body></html>

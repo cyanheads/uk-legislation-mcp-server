@@ -1,0 +1,240 @@
+<Legislation xmlns="http://www.legislation.gov.uk/namespaces/legislation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12" NumberOfProvisions="1104" xsi:schemaLocation="http://www.legislation.gov.uk/namespaces/legislation http://www.legislation.gov.uk/schema/legislation.xsd" SchemaVersion="1.0"><ukm:Metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dct="http://purl.org/dc/terms/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ukm="http://www.legislation.gov.uk/namespaces/metadata">
+					<dc:identifier>http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted</dc:identifier><dc:title>Data Protection Act 2018</dc:title><dc:language>en</dc:language><dc:publisher>King's Printer of Acts of Parliament</dc:publisher><dc:modified>2024-03-26</dc:modified>
+					
+					<atom:link rel="self" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted/data.xml" type="application/xml"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/resources" href="http://www.legislation.gov.uk/ukpga/2018/12/resources" title="More Resources"/>
+					
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/notes" href="http://www.legislation.gov.uk/ukpga/2018/12/notes" title="Explanatory Notes"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/notes/toc" href="http://www.legislation.gov.uk/ukpga/2018/12/notes/contents" title="Explanatory Notes Table of Contents"/>
+					
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/act" href="http://www.legislation.gov.uk/ukpga/2018/12/enacted" title="whole act"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/introduction" href="http://www.legislation.gov.uk/ukpga/2018/12/introduction/enacted" title="introduction"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/body" href="http://www.legislation.gov.uk/ukpga/2018/12/body/enacted" title="body"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/schedules" href="http://www.legislation.gov.uk/ukpga/2018/12/schedules/enacted" title="schedules"/>
+					
+										
+					
+					
+					
+					<atom:link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted/data.rdf" title="RDF/XML"/><atom:link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted/data.akn" title="AKN"/><atom:link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted/data.xht" title="HTML snippet"/><atom:link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted/data.htm" title="Website (XHTML) Default View"/><atom:link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted/data.csv" title="CSV"/><atom:link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted/data.pdf" title="PDF"/>
+					<atom:link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted/data.html" title="HTML5 snippet"/>
+
+					
+					<atom:link rel="http://purl.org/dc/terms/tableOfContents" hreflang="en" href="http://www.legislation.gov.uk/ukpga/2018/12/contents/enacted" title="Table of Contents"/>
+					
+					<atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2018-05-25" title="2018-05-25"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2020-12-31" title="2020-12-31"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2024-01-01" title="2024-01-01"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2025-09-05" title="2025-09-05"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2026-02-05" title="2026-02-05"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2026-06-19" title="2026-06-19"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/2018/12/section/45" title="current"/>
+					
+					<atom:link rel="up" href="http://www.legislation.gov.uk/ukpga/2018/12/enacted" title="Entire legislation"/><atom:link rel="prev" href="http://www.legislation.gov.uk/ukpga/2018/12/section/44/enacted" title="Provision; Section 44"/><atom:link rel="prevInForce" href="http://www.legislation.gov.uk/ukpga/2018/12/section/44/enacted" title="Provision; Section 44"/><atom:link rel="next" href="http://www.legislation.gov.uk/ukpga/2018/12/section/46/enacted" title="Provision; Section 46"/><atom:link rel="nextInForce" href="http://www.legislation.gov.uk/ukpga/2018/12/section/46/enacted" title="Provision; Section 46"/>
+					<ukm:PrimaryMetadata><ukm:DocumentClassification>
+<ukm:DocumentCategory Value="primary"/>
+<ukm:DocumentMainType Value="UnitedKingdomPublicGeneralAct"/>
+<ukm:DocumentStatus Value="final"/>
+</ukm:DocumentClassification><ukm:Year Value="2018"/><ukm:Number Value="12"/><ukm:EnactmentDate Date="2018-05-23"/><ukm:ISBN Value="9780105700128"/><ukm:UnappliedEffects><ukm:UnappliedEffect Type="word substituted" Modified="2026-09-25T14:19:14Z" Notes="This amendment not applied to legislation.gov.uk. 2025 c. 18, s. 103 was fully brought into force before s. 119 is fully brought into force, see reg. 1(4)." AffectingEffectsExtent="S+A+M+E+A+S+A+F+F+E+C+T+E+D" URI="http://www.legislation.gov.uk/id/effect/key-b8c9701f301613eea48627a77aa1d082" Comments="NB: conditional amendment: if 2025 c 18, s. 103 is fully brought into force before s. 119 is fully brought into force, this amendment has no effect - if so, set to N with Note Editor: please note there are two possible substitutions - for “Commissioner”, and “Commissioner's”, please check for both when applying the amendments" AffectingYear="2026" AffectedClass="UnitedKingdomPublicGeneralAct" AffectingClass="UnitedKingdomStatutoryInstrument" Row="202" AffectingURI="http://www.legislation.gov.uk/id/uksi/2026/386" AffectedProvisions="s. 26(2)(f)(ai)" AffectingNumber="386" AffectedURI="http://www.legislation.gov.uk/id/ukpga/2018/12" AffectedYear="2018" EffectId="key-b8c9701f301613eea48627a77aa1d082" RequiresApplied="false" AffectingProvisions="Sch. 2 para. 23(2)(3)" AffectedNumber="12"><ukm:AffectedTitle>Data Protection Act 2018</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="section-26-2-f" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/26/2/f">s. 26(2)(f)</ukm:Section><ukm:Section Ref="section-26-2-ai" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/26/2/ai" FoundRef="section-26">(ai)</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>The Data (Use and Access) Act 2025 (Consequential Amendments and Transitional Provision) Regulations 2026</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2">Sch. 2 </ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/2">para. 23(2)</ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-3" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/3">(3)</ukm:Section></ukm:AffectingProvisions><ukm:Savings><ukm:Section Ref="regulation-1-4" URI="http://www.legislation.gov.uk/id/uksi/2026/386/regulation/1/4">reg. 1(4)</ukm:Section></ukm:Savings><ukm:CommencementAuthority><ukm:Section Ref="regulation-1-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/regulation/1/2">reg. 1(2)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Prospective="true" Qualification=""/></ukm:InForceDates></ukm:UnappliedEffect><ukm:UnappliedEffect AffectedYear="2018" AffectedClass="UnitedKingdomPublicGeneralAct" EffectId="key-b2f16c7ececa7c327dbbc12f65cf8aa8" AffectingClass="UnitedKingdomStatutoryInstrument" AffectingNumber="386" URI="http://www.legislation.gov.uk/id/effect/key-a4f1a7e3717aa7f884c80a74f473aded" Row="210" AppendedCommentary="S.I. 2026/1015, reg. 2(c)" Type="word substituted" AffectingYear="2026" AffectingURI="http://www.legislation.gov.uk/id/uksi/2026/386" AffectedURI="http://www.legislation.gov.uk/id/ukpga/2018/12" AffectedNumber="12" Modified="2026-09-25T14:19:14Z" RequiresApplied="true" AffectingEffectsExtent="S+A+M+E+A+S+A+F+F+E+C+T+E+D" AffectedProvisions="s. 45(2)(f)" Comments="Editor: please note there are two possible substitutions - for “Commissioner”, and “Commissioner's”, please check for both when applying the amendments" AffectingProvisions="Sch. 2 para. 23(2)(3)"><ukm:AffectedTitle>Data Protection Act 2018</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="section-45-2-f" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/f">s. 45(2)(f)</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>The Data (Use and Access) Act 2025 (Consequential Amendments and Transitional Provision) Regulations 2026</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2">Sch. 2 </ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/2">para. 23(2)</ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-3" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/3">(3)</ukm:Section></ukm:AffectingProvisions><ukm:CommencementAuthority><ukm:Section Ref="regulation-1-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/regulation/1/2">reg. 1(2)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Applied="false" Date="2026-09-30" Qualification="wholly in force"/></ukm:InForceDates></ukm:UnappliedEffect><ukm:UnappliedEffect AffectedURI="http://www.legislation.gov.uk/id/ukpga/2018/12" Type="word substituted" AffectedProvisions="s. 45(5)(c)(d)" AffectedClass="UnitedKingdomPublicGeneralAct" AppendedCommentary="S.I. 2026/1015, reg. 2(c)" AffectedNumber="12" AffectingNumber="386" AffectingYear="2026" AffectingEffectsExtent="S+A+M+E+A+S+A+F+F+E+C+T+E+D" URI="http://www.legislation.gov.uk/id/effect/key-c2acbfbf3a2fc92bc125103de4755432" Modified="2026-09-25T14:19:14Z" EffectId="key-5989afbbf886983bb195cd5ea49e95e0" AffectingProvisions="Sch. 2 para. 23(2)(3)" Comments="Editor: please note there are two possible substitutions - for “Commissioner”, and “Commissioner's”, please check for both when applying the amendments" AffectedYear="2018" Row="211" AffectingClass="UnitedKingdomStatutoryInstrument" AffectingURI="http://www.legislation.gov.uk/id/uksi/2026/386" RequiresApplied="true"><ukm:AffectedTitle>Data Protection Act 2018</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="section-45-5-c" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/5/c">s. 45(5)(c)</ukm:Section><ukm:Section Ref="section-45-5-d" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/5/d">(d)</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>The Data (Use and Access) Act 2025 (Consequential Amendments and Transitional Provision) Regulations 2026</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2">Sch. 2 </ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/2">para. 23(2)</ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-3" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/3">(3)</ukm:Section></ukm:AffectingProvisions><ukm:CommencementAuthority><ukm:Section Ref="regulation-1-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/regulation/1/2">reg. 1(2)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Applied="false" Date="2026-09-30" Qualification="wholly in force"/></ukm:InForceDates></ukm:UnappliedEffect><ukm:UnappliedEffect AppendedCommentary="S.I. 2026/1015, reg. 2(c)" AffectingEffectsExtent="S+A+M+E+A+S+A+F+F+E+C+T+E+D" AffectingURI="http://www.legislation.gov.uk/id/uksi/2026/386" AffectingClass="UnitedKingdomStatutoryInstrument" Row="212" AffectedClass="UnitedKingdomPublicGeneralAct" AffectedNumber="12" Type="word substituted" URI="http://www.legislation.gov.uk/id/effect/key-454e3e34cee3097a8a620a4ebd29eb75" AffectedURI="http://www.legislation.gov.uk/id/ukpga/2018/12" AffectedProvisions="s. 45(7)(b)" AffectingNumber="386" AffectingYear="2026" AffectedYear="2018" Comments="Editor: please note there are two possible substitutions - for “Commissioner”, and “Commissioner's”, please check for both when applying the amendments" Modified="2026-09-25T14:19:14Z" EffectId="key-ba5deca4ac73a683d47c761e05076e5f" AffectingProvisions="Sch. 2 para. 23(2)(3)" RequiresApplied="true"><ukm:AffectedTitle>Data Protection Act 2018</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="section-45-7-b" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/7/b">s. 45(7)(b)</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>The Data (Use and Access) Act 2025 (Consequential Amendments and Transitional Provision) Regulations 2026</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2">Sch. 2 </ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/2">para. 23(2)</ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-3" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/3">(3)</ukm:Section></ukm:AffectingProvisions><ukm:CommencementAuthority><ukm:Section Ref="regulation-1-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/regulation/1/2">reg. 1(2)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Applied="false" Date="2026-09-30" Qualification="wholly in force"/></ukm:InForceDates></ukm:UnappliedEffect><ukm:UnappliedEffect AffectingURI="http://www.legislation.gov.uk/id/uksi/2026/386" AffectingEffectsExtent="S+A+M+E+A+S+A+F+F+E+C+T+E+D" AffectingProvisions="Sch. 2 para. 23(2)(3)" AffectingClass="UnitedKingdomStatutoryInstrument" EffectId="key-a1cdf02d6805d3ee20cde7adc22d4188" AffectingNumber="386" AppendedCommentary="S.I. 2026/1015, reg. 2(c)" AffectedURI="http://www.legislation.gov.uk/id/ukpga/2018/12" AffectingYear="2026" AffectedYear="2018" AffectedClass="UnitedKingdomPublicGeneralAct" AffectedProvisions="s. 160(4)(ab)" Type="word substituted" Comments="Editor: please note there are two possible substitutions - for “Commissioner”, and “Commissioner's”, please check for both when applying the amendments" AffectedNumber="12" Row="359" URI="http://www.legislation.gov.uk/id/effect/key-2046de38b9a3ef83f521628fea9696e1" RequiresApplied="true" Modified="2026-09-25T14:19:14Z"><ukm:AffectedTitle>Data Protection Act 2018</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="section-160-4-ab" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/160/4/ab" FoundRef="section-160">s. 160(4)(ab)</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>The Data (Use and Access) Act 2025 (Consequential Amendments and Transitional Provision) Regulations 2026</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2">Sch. 2 </ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/2">para. 23(2)</ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-3" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/3">(3)</ukm:Section></ukm:AffectingProvisions><ukm:CommencementAuthority><ukm:Section Ref="regulation-1-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/regulation/1/2">reg. 1(2)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Applied="false" Date="2026-09-30" Qualification="wholly in force"/></ukm:InForceDates></ukm:UnappliedEffect><ukm:UnappliedEffect AffectedNumber="12" AffectedProvisions="Sch. 7 para. 51A" AffectingClass="UnitedKingdomStatutoryInstrument" Type="inserted" AffectingProvisions="Sch. 2 para. 23(12)(a)" AffectingYear="2026" AppendedCommentary="S.I. 2026/1015, reg. 2(c)" RequiresApplied="true" Modified="2026-09-25T14:19:14Z" URI="http://www.legislation.gov.uk/id/effect/key-2c7838d614d68db003405dbfb8b1d84f" EffectId="key-3628ff241af6a0c1c138030fe82c4236" AffectingEffectsExtent="S+A+M+E+A+S+A+F+F+E+C+T+E+D" AffectedClass="UnitedKingdomPublicGeneralAct" AffectingNumber="386" Row="467" AffectedURI="http://www.legislation.gov.uk/id/ukpga/2018/12" AffectedYear="2018" AffectingURI="http://www.legislation.gov.uk/id/uksi/2026/386" Comments="comes into force when 2025 c. 18, s. 119 is fully brought into force"><ukm:AffectedTitle>Data Protection Act 2018</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="schedule-7" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/schedule/7">Sch. 7 </ukm:Section><ukm:Section Ref="schedule-7-paragraph-51A" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/schedule/7/paragraph/51A" FoundRef="schedule-7">para. 51A</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>The Data (Use and Access) Act 2025 (Consequential Amendments and Transitional Provision) Regulations 2026</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2">Sch. 2 </ukm:Section><ukm:Section Ref="schedule-2-paragraph-23-12-a" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/2/paragraph/23/12/a">para. 23(12)(a)</ukm:Section></ukm:AffectingProvisions><ukm:CommencementAuthority><ukm:Section Ref="regulation-1-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/regulation/1/2">reg. 1(2)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Applied="false" Date="2026-09-30" Qualification="wholly in force"/></ukm:InForceDates></ukm:UnappliedEffect><ukm:UnappliedEffect AffectedNumber="12" EffectId="key-45b383b20d73517d1742bc35c1da4b61" Type="added" AffectedProvisions="Sch. 3 para. 8(1)(y)" AffectedClass="UnitedKingdomPublicGeneralAct" AffectingURI="http://www.legislation.gov.uk/id/nia/2022/18" AffectingYear="2022" AffectingEffectsExtent="N.I." AffectingProvisions="Sch. 3 para. 78(3)" AffectedYear="2018" Row="1100" AffectingNumber="18" URI="http://www.legislation.gov.uk/id/effect/key-45b383b20d73517d1742bc35c1da4b61" AffectingClass="NorthernIrelandAct" AffectedURI="http://www.legislation.gov.uk/id/ukpga/2018/12" Modified="2026-02-06T16:20:16Z" RequiresApplied="true"><ukm:AffectedTitle>Data Protection Act 2018</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="schedule-3" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/schedule/3">Sch. 3 </ukm:Section><ukm:Section Ref="schedule-3-paragraph-8-1-y" URI="http://www.legislation.gov.uk/id/ukpga/2018/12/schedule/3/paragraph/8/1/y" FoundRef="schedule-3-paragraph-8">para. 8(1)(y)</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>Adoption and Children Act (Northern Ireland) 2022</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-3" URI="http://www.legislation.gov.uk/id/nia/2022/18/schedule/3">Sch. 3 </ukm:Section><ukm:Section Ref="schedule-3-paragraph-78-3" URI="http://www.legislation.gov.uk/id/nia/2022/18/schedule/3/paragraph/78/3">para. 78(3)</ukm:Section></ukm:AffectingProvisions><ukm:CommencementAuthority><ukm:Section Ref="section-160-1" URI="http://www.legislation.gov.uk/id/nia/2022/18/section/160/1">s. 160(1)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Applied="false" Prospective="true" Qualification=""/></ukm:InForceDates></ukm:UnappliedEffect></ukm:UnappliedEffects></ukm:PrimaryMetadata>
+					
+
+                    
+									<ukm:Notes><ukm:Note IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/notes"/><ukm:Alternatives><ukm:Alternative URI="http://www.legislation.gov.uk/ukpga/2018/12/pdfs/ukpgaen_20180012_en.pdf" Date="2022-01-13" Title="Explanatory Note" Size="1240195"/></ukm:Alternatives>       
+								</ukm:Notes> 
+					<ukm:CorrectionSlips><ukm:CorrectionSlip URI="http://www.legislation.gov.uk/ukpga/2018/12/pdfs/ukpgacs_20180012_en_001.pdf" Date="2019-08-19" Title="Correction Slip 1" Size="101314"/></ukm:CorrectionSlips><ukm:Alternatives><ukm:Alternative URI="http://www.legislation.gov.uk/ukpga/2018/12/pdfs/ukpga_20180012_en.pdf" Date="2018-05-24" Size="3060320"/></ukm:Alternatives>
+					
+					<ukm:Statistics>
+									<ukm:TotalParagraphs Value="1105"/>
+									<ukm:BodyParagraphs Value="218"/>
+									<ukm:ScheduleParagraphs Value="887"/>
+									<ukm:AttachmentParagraphs Value="0"/>
+									<ukm:TotalImages Value="0"/>
+								</ukm:Statistics>
+				</ukm:Metadata><Primary><Body DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/body/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/body" NumberOfProvisions="218" NumberFormat="default"><Part DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/part/3/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/part/3" NumberOfProvisions="53" id="part-3"><Number>PART 3</Number><Title>Law enforcement processing</Title><Chapter DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/part/3/chapter/3/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/part/3/chapter/3" NumberOfProvisions="12" id="part-3-chapter-3"><Number>CHAPTER 3</Number><Title>Rights of the data subject</Title><Pblock DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/part/3/chapter/3/crossheading/data-subjects-right-of-access/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/part/3/chapter/3/crossheading/data-subjects-right-of-access" NumberOfProvisions="1" id="part-3-chapter-3-crossheading-data-subjects-right-of-access"><Title>Data subject's right of access</Title><P1group><Title>Right of access by the data subject</Title><P1 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45" id="section-45">
+<Pnumber>45</Pnumber>
+<P1para>
+<P2 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/1/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/1" id="section-45-1">
+<Pnumber>1</Pnumber>
+<P2para>
+<Text>A data subject is entitled to obtain from the controller—</Text>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/1/a/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/1/a" id="section-45-1-a">
+<Pnumber>a</Pnumber>
+<P3para>
+<Text>confirmation as to whether or not personal data concerning him or her is being processed, and</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/1/b/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/1/b" id="section-45-1-b">
+<Pnumber>b</Pnumber>
+<P3para>
+<Text>where that is the case, access to the personal data and the information set out in subsection (2).</Text>
+</P3para>
+</P3>
+</P2para>
+</P2>
+<P2 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2" id="section-45-2">
+<Pnumber>2</Pnumber>
+<P2para>
+<Text>That information is—</Text>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/a/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/a" id="section-45-2-a">
+<Pnumber>a</Pnumber>
+<P3para>
+<Text>the purposes of and legal basis for the processing;</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/b/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/b" id="section-45-2-b">
+<Pnumber>b</Pnumber>
+<P3para>
+<Text>the categories of personal data concerned;</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/c/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/c" id="section-45-2-c">
+<Pnumber>c</Pnumber>
+<P3para>
+<Text>the recipients or categories of recipients to whom the personal data has been disclosed (including recipients or categories of recipients in third countries or international organisations);</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/d/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/d" id="section-45-2-d">
+<Pnumber>d</Pnumber>
+<P3para>
+<Text>the period for which it is envisaged that the personal data will be stored or, where that is not possible, the criteria used to determine that period;</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/e/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/e" id="section-45-2-e">
+<Pnumber>e</Pnumber>
+<P3para>
+<Text>the existence of the data subject’s rights to request from the controller—</Text>
+<P4 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/e/i/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/e/i" id="section-45-2-e-i">
+<Pnumber>i</Pnumber>
+<P4para>
+<Text>rectification of personal data (see section 46), and</Text>
+</P4para>
+</P4>
+<P4 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/e/ii/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/e/ii" id="section-45-2-e-ii">
+<Pnumber>ii</Pnumber>
+<P4para>
+<Text>erasure of personal data or the restriction of its processing (see section 47);</Text>
+</P4para>
+</P4>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/f/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/f" id="section-45-2-f">
+<Pnumber>f</Pnumber>
+<P3para>
+<Text>the existence of the data subject’s right to lodge a complaint with the Commissioner and the contact details of the Commissioner;</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/2/g/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/g" id="section-45-2-g">
+<Pnumber>g</Pnumber>
+<P3para>
+<Text>communication of the personal data undergoing processing and of any available information as to its origin.</Text>
+</P3para>
+</P3>
+</P2para>
+</P2>
+<P2 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/3/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/3" id="section-45-3">
+<Pnumber>3</Pnumber>
+<P2para>
+<Text>Where a data subject makes a request under subsection (1), the information to which the data subject is entitled must be provided in writing —</Text>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/3/a/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/3/a" id="section-45-3-a">
+<Pnumber>a</Pnumber>
+<P3para>
+<Text>without undue delay, and</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/3/b/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/3/b" id="section-45-3-b">
+<Pnumber>b</Pnumber>
+<P3para>
+<Text>in any event, before the end of the applicable time period (as to which see section 54).</Text>
+</P3para>
+</P3>
+</P2para>
+</P2>
+<P2 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/4/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/4" id="section-45-4">
+<Pnumber>4</Pnumber>
+<P2para>
+<Text>The controller may restrict, wholly or partly, the rights conferred by subsection (1) to the extent that and for so long as the restriction is, having regard to the fundamental rights and legitimate interests of the data subject, a necessary and proportionate measure to—</Text>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/4/a/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/4/a" id="section-45-4-a">
+<Pnumber>a</Pnumber>
+<P3para>
+<Text>avoid obstructing an official or legal inquiry, investigation or procedure;</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/4/b/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/4/b" id="section-45-4-b">
+<Pnumber>b</Pnumber>
+<P3para>
+<Text>avoid prejudicing the prevention, detection, investigation or prosecution of criminal offences or the execution of criminal penalties;</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/4/c/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/4/c" id="section-45-4-c">
+<Pnumber>c</Pnumber>
+<P3para>
+<Text>protect public security;</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/4/d/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/4/d" id="section-45-4-d">
+<Pnumber>d</Pnumber>
+<P3para>
+<Text>protect national security;</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/4/e/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/4/e" id="section-45-4-e">
+<Pnumber>e</Pnumber>
+<P3para>
+<Text>protect the rights and freedoms of others.</Text>
+</P3para>
+</P3>
+</P2para>
+</P2>
+<P2 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/5/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/5" id="section-45-5">
+<Pnumber>5</Pnumber>
+<P2para>
+<Text>Where the rights of a data subject under subsection (1) are restricted, wholly or partly, the controller must inform the data subject in writing without undue delay—</Text>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/5/a/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/5/a" id="section-45-5-a">
+<Pnumber>a</Pnumber>
+<P3para>
+<Text>that the rights of the data subject have been restricted,</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/5/b/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/5/b" id="section-45-5-b">
+<Pnumber>b</Pnumber>
+<P3para>
+<Text>of the reasons for the restriction,</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/5/c/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/5/c" id="section-45-5-c">
+<Pnumber>c</Pnumber>
+<P3para>
+<Text>of the data subject’s right to make a request to the Commissioner under section 51,</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/5/d/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/5/d" id="section-45-5-d">
+<Pnumber>d</Pnumber>
+<P3para>
+<Text>of the data subject’s right to lodge a complaint with the Commissioner, and</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/5/e/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/5/e" id="section-45-5-e">
+<Pnumber>e</Pnumber>
+<P3para>
+<Text>of the data subject’s right to apply to a court under section 167.</Text>
+</P3para>
+</P3>
+</P2para>
+</P2>
+<P2 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/6/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/6" id="section-45-6">
+<Pnumber>6</Pnumber>
+<P2para>
+<Text>Subsection (5)(a) and (b) do not apply to the extent that the provision of the information would undermine the purpose of the restriction.</Text>
+</P2para>
+</P2>
+<P2 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/7/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/7" id="section-45-7">
+<Pnumber>7</Pnumber>
+<P2para>
+<Text>The controller must—</Text>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/7/a/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/7/a" id="section-45-7-a">
+<Pnumber>a</Pnumber>
+<P3para>
+<Text>record the reasons for a decision to restrict (whether wholly or partly) the rights of a data subject under subsection (1), and</Text>
+</P3para>
+</P3>
+<P3 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/45/7/b/enacted" IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/7/b" id="section-45-7-b">
+<Pnumber>b</Pnumber>
+<P3para>
+<Text>if requested to do so by the Commissioner, make the record available to the Commissioner.</Text>
+</P3para>
+</P3>
+</P2para>
+</P2>
+</P1para>
+</P1></P1group></Pblock></Chapter></Part></Body></Primary></Legislation>

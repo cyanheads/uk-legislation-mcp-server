@@ -1,0 +1,33 @@
+<Legislation xmlns="http://www.legislation.gov.uk/namespaces/legislation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" DocumentURI="http://www.legislation.gov.uk/uksi/1985/2081/made" IdURI="http://www.legislation.gov.uk/id/uksi/1985/2081" NumberOfProvisions="0" SchemaVersion="1.0" xsi:schemaLocation="http://www.legislation.gov.uk/namespaces/legislation http://www.legislation.gov.uk/schema/legislation.xsd"><ukm:Metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dct="http://purl.org/dc/terms/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ukm="http://www.legislation.gov.uk/namespaces/metadata">
+					<dc:identifier>http://www.legislation.gov.uk/uksi/1985/2081/contents/made</dc:identifier><dc:title>The Clergy Pensions (Amendment) Regulations 1985</dc:title><dc:language>en</dc:language><dc:subject>ECCLESIASTICAL LAW, ENGLAND</dc:subject><dc:publisher>King's Printer of Acts of Parliament</dc:publisher><dc:modified>2023-11-22</dc:modified><dc:source>https://www.legislation.gov.uk/projects/controllers-library#item_226850</dc:source>
+					
+					<atom:link rel="self" href="http://www.legislation.gov.uk/uksi/1985/2081/contents/made/data.xml" type="application/xml"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/resources" href="http://www.legislation.gov.uk/uksi/1985/2081/resources" title="More Resources"/>
+					
+					
+					
+					
+					
+					
+					
+										
+					
+					
+					
+					
+					
+
+					<atom:link rel="alternate" href="http://www.legislation.gov.uk/uksi/1985/2081/pdfs/uksi_19852081_en.pdf" type="application/pdf" title="Original PDF"/>
+					
+					
+					
+					
+					
+					<ukm:SecondaryMetadata><ukm:DocumentClassification><ukm:DocumentCategory Value="secondary"/><ukm:DocumentMainType Value="UnitedKingdomStatutoryInstrument"/><ukm:DocumentStatus Value="final"/></ukm:DocumentClassification><ukm:Year Value="1985"/><ukm:Number Value="2081"/><ukm:Made Date="1985-11-20"/><ukm:Laid Class="UnitedKingdomParliament" Date="1986-01-13"/><ukm:ComingIntoForce><ukm:DateTime Date="1986-04-01"/></ukm:ComingIntoForce><ukm:UnappliedEffects><ukm:UnappliedEffect AffectingClass="UnitedKingdomStatutoryInstrument" Created="2019-10-11T00:00:00" AffectedProvisions="Instrument" AffectingURI="http://www.legislation.gov.uk/id/uksi/1988/2256" Row="18899" URI="http://www.legislation.gov.uk/id/effect/key-4744c81ae4710d372da0028eab8462f4" Modified="2019-10-11T00:00:00" EffectId="key-4744c81ae4710d372da0028eab8462f4" AffectingNumber="2256" AffectedYear="1985" AffectedClass="UnitedKingdomStatutoryInstrument" AffectingYear="1988" RequiresApplied="true" AffectedNumber="2081" AffectedURI="http://www.legislation.gov.uk/id/uksi/1985/2081" Type="revoked" Comments="all"><ukm:AffectedProvisions>Instrument</ukm:AffectedProvisions><ukm:AffectingTitle>The Church of England Pensions Regulations 1988</ukm:AffectingTitle><ukm:InForceDates>         <ukm:InForce Applied="false" Prospective="true" Qualification=""/>      </ukm:InForceDates></ukm:UnappliedEffect></ukm:UnappliedEffects></ukm:SecondaryMetadata>
+					
+
+                    
+									 
+					<ukm:Alternatives><ukm:Alternative Date="2023-11-22" Size="347999" URI="http://www.legislation.gov.uk/uksi/1985/2081/pdfs/uksi_19852081_en.pdf" Print="true"/></ukm:Alternatives>
+					
+					
+				</ukm:Metadata></Legislation>

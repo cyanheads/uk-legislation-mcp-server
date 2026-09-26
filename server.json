@@ -26,6 +26,26 @@
       ],
       "environmentVariables": [
         {
+          "name": "UK_LEGISLATION_CONTACT",
+          "description": "Email or URL appended to the User-Agent so legislation.gov.uk can reach the operator. Optional; set it on hosted deployments.",
+          "format": "string",
+          "isRequired": false
+        },
+        {
+          "name": "UK_LEGISLATION_MIN_REQUEST_GAP_MS",
+          "description": "Minimum gap between legislation.gov.uk request starts, in ms (minimum 250). Replicas sharing one User-Agent divide the fair use limit: use at least 250 ms x replica count.",
+          "format": "number",
+          "isRequired": false,
+          "default": "1000"
+        },
+        {
+          "name": "UK_LEGISLATION_CACHE_MAX_MB",
+          "description": "Response cache size bound, in MB (8-1024).",
+          "format": "number",
+          "isRequired": false,
+          "default": "64"
+        },
+        {
           "name": "MCP_LOG_LEVEL",
           "description": "Sets the minimum log level for output (e.g., 'debug', 'info', 'warn').",
           "format": "string",
@@ -81,6 +101,26 @@
           "format": "string",
           "isRequired": false,
           "default": "none"
+        },
+        {
+          "name": "UK_LEGISLATION_CONTACT",
+          "description": "Email or URL appended to the User-Agent so legislation.gov.uk can reach the operator. Set it on hosted deployments.",
+          "format": "string",
+          "isRequired": false
+        },
+        {
+          "name": "UK_LEGISLATION_MIN_REQUEST_GAP_MS",
+          "description": "Minimum gap between legislation.gov.uk request starts, in ms (minimum 250). Replicas sharing one User-Agent divide the fair use limit: use at least 250 ms x replica count.",
+          "format": "number",
+          "isRequired": false,
+          "default": "1000"
+        },
+        {
+          "name": "UK_LEGISLATION_CACHE_MAX_MB",
+          "description": "Response cache size bound, in MB (8-1024).",
+          "format": "number",
+          "isRequired": false,
+          "default": "64"
         },
         {
           "name": "MCP_LOG_LEVEL",

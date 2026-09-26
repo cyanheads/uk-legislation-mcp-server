@@ -16,7 +16,10 @@
       "env": {
         "MCP_TRANSPORT_TYPE": "stdio",
         "MCP_AUTH_MODE": "none",
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "UK_LEGISLATION_CONTACT": "${user_config.UK_LEGISLATION_CONTACT}",
+        "UK_LEGISLATION_MIN_REQUEST_GAP_MS": "${user_config.UK_LEGISLATION_MIN_REQUEST_GAP_MS}",
+        "UK_LEGISLATION_CACHE_MAX_MB": "${user_config.UK_LEGISLATION_CACHE_MAX_MB}"
       }
     }
   },
@@ -25,5 +28,30 @@
   },
   "tools_generated": true,
   "prompts_generated": true,
-  "user_config": {}
+  "user_config": {
+    "UK_LEGISLATION_CONTACT": {
+      "type": "string",
+      "title": "Contact (optional)",
+      "description": "Email or URL added to the User-Agent so legislation.gov.uk can reach you.",
+      "required": false,
+      "default": ""
+    },
+    "UK_LEGISLATION_MIN_REQUEST_GAP_MS": {
+      "type": "number",
+      "title": "Request gap (ms)",
+      "description": "Minimum gap between legislation.gov.uk request starts, in ms (minimum 250).",
+      "required": false,
+      "default": 1000,
+      "min": 250
+    },
+    "UK_LEGISLATION_CACHE_MAX_MB": {
+      "type": "number",
+      "title": "Cache size (MB)",
+      "description": "Response cache size bound, in MB (8-1024).",
+      "required": false,
+      "default": 64,
+      "min": 8,
+      "max": 1024
+    }
+  }
 }

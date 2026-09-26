@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xmlns:leg="http://www.legislation.gov.uk/namespaces/legislation" xmlns:ukm="http://www.legislation.gov.uk/namespaces/metadata" xmlns:theme="http://www.legislation.gov.uk/namespaces/theme" xmlns:openSearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:parameters="http://a9.com/-/spec/opensearch/extensions/parameters/1.0/">
+			<id>http://www.legislation.gov.uk/anaw/2016/data.feed</id>
+			<link rel="self" type="application/atom+xml" href="http://www.legislation.gov.uk/anaw/2016/data.feed?results-count=3"/>
+			
+			<link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/anaw/2016/data.csv?results-count=3"/>
+			<updated>2026-07-31T23:59:59+01:00</updated>
+			<title>Search Results</title>
+			<openSearch:Query role="request" leg:type="anaw" leg:year="2016"> </openSearch:Query>
+			<openSearch:itemsPerPage>3</openSearch:itemsPerPage>
+			<openSearch:startIndex>1</openSearch:startIndex>
+			<leg:page>1</leg:page>
+			<leg:morePages>2</leg:morePages>
+			<leg:facets>
+								
+								<leg:facetTypes remove="http://www.legislation.gov.uk/2016/data.feed?results-count=3"><leg:facetType type="WelshNationalAssemblyAct" href="http://www.legislation.gov.uk/anaw/2016/data.feed?results-count=3" value="6"/></leg:facetTypes>
+								<leg:facetYears remove="http://www.legislation.gov.uk/anaw/data.feed?results-count=3"><leg:facetYear year="2020" href="http://www.legislation.gov.uk/anaw/2020/data.feed?results-count=3" total="3"/><leg:facetYear year="2019" href="http://www.legislation.gov.uk/anaw/2019/data.feed?results-count=3" total="4"/><leg:facetYear year="2018" href="http://www.legislation.gov.uk/anaw/2018/data.feed?results-count=3" total="5"/><leg:facetYear year="2017" href="http://www.legislation.gov.uk/anaw/2017/data.feed?results-count=3" total="4"/><leg:facetYear year="2016" href="http://www.legislation.gov.uk/anaw/2016/data.feed?results-count=3" total="6" value="6"/><leg:facetYear year="2015" href="http://www.legislation.gov.uk/anaw/2015/data.feed?results-count=3" total="6"/><leg:facetYear year="2014" href="http://www.legislation.gov.uk/anaw/2014/data.feed?results-count=3" total="7"/><leg:facetYear year="2013" href="http://www.legislation.gov.uk/anaw/2013/data.feed?results-count=3" total="7"/><leg:facetYear year="2012" href="http://www.legislation.gov.uk/anaw/2012/data.feed?results-count=3" total="2"/></leg:facetYears>
+								<leg:facetHundreds/>
+								
+							</leg:facets>
+			
+			<openSearch:totalResults>6</openSearch:totalResults>
+			<link rel="first" type="application/atom+xml" href="http://www.legislation.gov.uk/anaw/2016/data.feed?results-count=3"/><link rel="next" type="application/atom+xml" href="http://www.legislation.gov.uk/anaw/2016/data.feed?results-count=3&amp;page=2"/><entry>
+			<id>http://www.legislation.gov.uk/id/anaw/2016/6</id>
+			<title type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">
+						<span xml:lang="en">Tax Collection and Management (Wales) Act 2016</span> / <span xml:lang="cy">Deddf Casglu a Rheoli Trethi (Cymru) 2016</span>
+					</div></title>
+			<link rel="self" href="http://www.legislation.gov.uk/id/anaw/2016/6"/>
+			<link href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19"/>
+			<link rel="alternate" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/data.xml" title="XML"/><link rel="alternate" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/welsh/data.xml" hreflang="cy" title="XML - Cymru"/><link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/data.rdf" title="RDF/XML"/><link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/welsh/data.rdf" hreflang="cy" title="RDF/XML - Cymru"/><link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/data.akn" title="AKN"/><link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/welsh/data.akn" hreflang="cy" title="AKN - Cymru"/><link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/data.xht" title="HTML snippet"/><link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/welsh/data.xht" hreflang="cy" title="HTML snippet - Cymru"/><link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/data.html" title="HTML5"/><link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/welsh/data.html" hreflang="cy" title="HTML5 - Cymru"/><link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/data.htm" title="Website (XHTML) Default View"/><link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/welsh/data.htm" hreflang="cy" title="Website (XHTML) Default View - Cymru"/><link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/data.csv" title="CSV"/><link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/welsh/data.csv" hreflang="cy" title="CSV - Cymru"/><link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/data.pdf" title="PDF"/><link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/anaw/2016/6/2025-09-19/welsh/data.pdf" hreflang="cy" title="PDF - Cymru"/>
+			<link rel="http://purl.org/dc/terms/tableOfContents" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/6/contents" title="Table of Contents"/><link rel="http://purl.org/dc/terms/tableOfContents" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/6/contents/welsh" hreflang="cy" title="Table of Contents - Cymru"/>
+			<author><name/></author>
+			<updated>2026-05-12T16:11:26+01:00</updated>
+			<published>2016-04-26T16:23:46.432+01:00</published>
+			<ukm:DocumentMainType Value="WelshNationalAssemblyAct"/><ukm:Year Value="2016"/><ukm:Number Value="6"/><ukm:ISBN Value="9780348112993"/><ukm:CreationDate Date="2016-04-25"/>
+			
+			
+			
+			<summary type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">
+						<p xml:lang="en">An Act of the National Assembly for Wales to establish the Welsh Revenue Authority; to make provision about the collection and management of devolved taxes; and for connected purposes.</p>
+						<p xml:lang="cy">Deddf Cynulliad Cenedlaethol Cymru i sefydlu Awdurdod Cyllid Cymru; i wneud darpariaeth ynghylch casglu a rheoli trethi datganoledig; ac at ddibenion cysylltiedig.</p>
+					</div></summary>
+		</entry><entry>
+			<id>http://www.legislation.gov.uk/id/anaw/2016/5</id>
+			<title type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">
+						<span xml:lang="en">Nurse Staffing Levels (Wales) Act 2016</span> / <span xml:lang="cy">Deddf Lefelau Staff Nyrsio (Cymru) 2016</span>
+					</div></title>
+			<link rel="self" href="http://www.legislation.gov.uk/id/anaw/2016/5"/>
+			<link href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21"/>
+			<link rel="alternate" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/data.xml" title="XML"/><link rel="alternate" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/welsh/data.xml" hreflang="cy" title="XML - Cymru"/><link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/data.rdf" title="RDF/XML"/><link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/welsh/data.rdf" hreflang="cy" title="RDF/XML - Cymru"/><link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/data.akn" title="AKN"/><link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/welsh/data.akn" hreflang="cy" title="AKN - Cymru"/><link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/data.xht" title="HTML snippet"/><link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/welsh/data.xht" hreflang="cy" title="HTML snippet - Cymru"/><link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/data.html" title="HTML5"/><link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/welsh/data.html" hreflang="cy" title="HTML5 - Cymru"/><link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/data.htm" title="Website (XHTML) Default View"/><link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/welsh/data.htm" hreflang="cy" title="Website (XHTML) Default View - Cymru"/><link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/data.csv" title="CSV"/><link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/welsh/data.csv" hreflang="cy" title="CSV - Cymru"/><link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/data.pdf" title="PDF"/><link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/anaw/2016/5/2021-01-21/welsh/data.pdf" hreflang="cy" title="PDF - Cymru"/>
+			<link rel="http://purl.org/dc/terms/tableOfContents" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/5/contents" title="Table of Contents"/><link rel="http://purl.org/dc/terms/tableOfContents" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/5/contents/welsh" hreflang="cy" title="Table of Contents - Cymru"/>
+			<author><name/></author>
+			<updated>2024-05-05T12:18:18+01:00</updated>
+			<published>2016-03-22T16:37:57.25+01:00</published>
+			<ukm:DocumentMainType Value="WelshNationalAssemblyAct"/><ukm:Year Value="2016"/><ukm:Number Value="5"/><ukm:ISBN Value="9780348112160"/><ukm:CreationDate Date="2016-03-21"/>
+			
+			
+			
+			<summary type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">
+						<p xml:lang="en">An Act of the National Assembly for Wales to make provision about Local Health Boards and NHS Trusts in Wales establishing nurse staffing levels.</p>
+						<p xml:lang="cy">Deddf Cynulliad Cenedlaethol Cymru i wneud darpariaeth ynghylch Byrddau Iechyd Lleol ac Ymddiriedolaethau GIG yng Nghymru yn sefydlu lefelau staff nyrsio.</p>
+					</div></summary>
+		</entry><entry>
+			<id>http://www.legislation.gov.uk/id/anaw/2016/4</id>
+			<title type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">
+						<span xml:lang="en">Historic Environment (Wales) Act 2016 (repealed)</span> / <span xml:lang="cy">Deddf yr Amgylchedd Hanesyddol (Cymru) 2016 (diddymwyd)</span>
+					</div></title>
+			<link rel="self" href="http://www.legislation.gov.uk/id/anaw/2016/4"/>
+			<link href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04"/>
+			<link rel="alternate" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/data.xml" title="XML"/><link rel="alternate" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/welsh/data.xml" hreflang="cy" title="XML - Cymru"/><link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/data.rdf" title="RDF/XML"/><link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/welsh/data.rdf" hreflang="cy" title="RDF/XML - Cymru"/><link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/data.akn" title="AKN"/><link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/welsh/data.akn" hreflang="cy" title="AKN - Cymru"/><link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/data.xht" title="HTML snippet"/><link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/welsh/data.xht" hreflang="cy" title="HTML snippet - Cymru"/><link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/data.html" title="HTML5"/><link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/welsh/data.html" hreflang="cy" title="HTML5 - Cymru"/><link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/data.htm" title="Website (XHTML) Default View"/><link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/welsh/data.htm" hreflang="cy" title="Website (XHTML) Default View - Cymru"/><link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/data.csv" title="CSV"/><link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/welsh/data.csv" hreflang="cy" title="CSV - Cymru"/><link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/data.pdf" title="PDF"/><link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/anaw/2016/4/2024-11-04/welsh/data.pdf" hreflang="cy" title="PDF - Cymru"/>
+			<link rel="http://purl.org/dc/terms/tableOfContents" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/4/contents" title="Table of Contents"/><link rel="http://purl.org/dc/terms/tableOfContents" type="application/xml" href="http://www.legislation.gov.uk/anaw/2016/4/contents/welsh" hreflang="cy" title="Table of Contents - Cymru"/>
+			<author><name/></author>
+			<updated>2024-12-20T13:50:56+01:00</updated>
+			<published>2016-03-22T16:55:51.444+01:00</published>
+			<ukm:DocumentMainType Value="WelshNationalAssemblyAct"/><ukm:Year Value="2016"/><ukm:Number Value="4"/><ukm:ISBN Value="9780348112153"/><ukm:CreationDate Date="2016-03-21"/>
+			
+			
+			
+			<summary type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">
+						<p xml:lang="en">An Act of the National Assembly for Wales to make provision amending certain aspects of the law relating to ancient monuments and listed buildings; to establish a register of historic parks and gardens and a list of historic place names; to establish historic environment records for local authority areas; to establish an Advisory Panel for the Welsh Historic Environment; and for connected purposes.</p>
+						<p xml:lang="cy">Deddf Cynulliad Cenedlaethol Cymru i wneud darpariaeth sy’n diwygio agweddau penodol ar y gyfraith sy’n ymwneud â henebion hynafol ac adeiladau rhestredig; i sefydlu cofrestr o barciau a gerddi hanesyddol a rhestr o enwau lleoedd hanesyddol; i sefydlu cofnodion amgylchedd hanesyddol ar gyfer ardaloedd awdurdod lleol; i sefydlu Panel Cynghori ar Amgylchedd Hanesyddol Cymru; ac at ddibenion cysylltiedig.</p>
+					</div></summary>
+		</entry>
+		</feed>

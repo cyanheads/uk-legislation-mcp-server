@@ -35,8 +35,18 @@
         "@cyanheads/uk-legislation-mcp-server"
       ],
       "env": {
-        "MCP_TRANSPORT_TYPE": "stdio"
+        "MCP_TRANSPORT_TYPE": "stdio",
+        "UK_LEGISLATION_CONTACT": "${user_config.contact}"
       }
+    }
+  },
+  "userConfig": {
+    "contact": {
+      "type": "string",
+      "title": "Contact (optional)",
+      "description": "Email or URL added to the User-Agent so legislation.gov.uk can reach you.",
+      "required": false,
+      "default": ""
     }
   }
 }

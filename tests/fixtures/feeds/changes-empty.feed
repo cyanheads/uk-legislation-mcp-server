@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xmlns:leg="http://www.legislation.gov.uk/namespaces/legislation" xmlns:ukm="http://www.legislation.gov.uk/namespaces/metadata" xmlns:openSearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:parameters="http://a9.com/-/spec/opensearch/extensions/parameters/1.0/">
+			
+			<id>http://www.legislation.gov.uk/changes/unapplied/affected/uksi/1980/2049/data.feed?results-count=50&amp;sort=modified</id>
+			<link rel="self" type="application/atom+xml" href="http://www.legislation.gov.uk/changes/unapplied/affected/uksi/1980/2049/data.feed?results-count=50&amp;sort=modified"/>
+			
+			<link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/changes/unapplied/affected/uksi/1980/2049/data.csv?results-count=50&amp;sort=modified"/>
+			<updated>2026-09-26T14:42:22.829682+01:00</updated>
+			<title>Changes to Legislation</title>
+			<openSearch:itemsPerPage>50</openSearch:itemsPerPage>
+			<openSearch:startIndex>1</openSearch:startIndex>
+			<openSearch:Query role="request" ukm:affected-type="uksi" ukm:affected-year="1980" ukm:affected-number="2049" ukm:applied="unapplied"> </openSearch:Query>
+		<leg:page>1</leg:page><leg:morePages>0</leg:morePages><leg:totalPages>0</leg:totalPages><openSearch:totalResults>0</openSearch:totalResults>
+		</feed>

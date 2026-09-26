@@ -17,6 +17,8 @@ export default mergeConfig(
   defineConfig({
     resolve: { alias },
     test: {
+      /** Blocks the global fetch and outbound sockets in every worker; upstream is reached only through the injected fake. */
+      setupFiles: ['tests/setup/network-tripwire.ts'],
       projects: [
         {
           extends: true,

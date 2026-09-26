@@ -1,0 +1,452 @@
+<Legislation xmlns="http://www.legislation.gov.uk/namespaces/legislation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" DocumentURI="http://www.legislation.gov.uk/eur/2016/679" IdURI="http://www.legislation.gov.uk/id/eur/2016/679" NumberOfProvisions="140" xsi:schemaLocation="http://www.legislation.gov.uk/namespaces/legislation http://www.legislation.gov.uk/schema/legislation.xsd" SchemaVersion="2.0" RestrictExtent="E+W+S+N.I." RestrictStartDate="2026-06-19"><ukm:Metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dct="http://purl.org/dc/terms/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ukm="http://www.legislation.gov.uk/namespaces/metadata">
+					<dc:identifier>http://www.legislation.gov.uk/eur/2016/679/article/28</dc:identifier><dc:title>Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data (United Kingdom General Data Protection Regulation) (Text with EEA relevance)</dc:title><dct:alternative>Regulation (EU) 2016/679 of the European Parliament and of the Council</dct:alternative><dc:description/><dc:publisher>King's Printer of Acts of Parliament</dc:publisher><dc:source>https://webarchive.nationalarchives.gov.uk/eu-exit/https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504</dc:source><dc:type>text</dc:type><dc:format>text/xml</dc:format><dc:language>en</dc:language><dc:modified>2026-06-22</dc:modified><dc:contributor>Expert Participation</dc:contributor><dct:valid>2026-06-19</dct:valid>
+					
+					<atom:link rel="self" href="http://www.legislation.gov.uk/eur/2016/679/article/28/data.xml" type="application/xml"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/resources" href="http://www.legislation.gov.uk/eur/2016/679/resources" title="More Resources"/>
+					
+					
+					
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/act" href="http://www.legislation.gov.uk/eur/2016/679" title="whole act"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/introduction" href="http://www.legislation.gov.uk/eur/2016/679/introduction" title="introduction"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/signature" href="http://www.legislation.gov.uk/eur/2016/679/signature" title="signature"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/body" href="http://www.legislation.gov.uk/eur/2016/679/body" title="body"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/annexes" href="http://www.legislation.gov.uk/eur/2016/679/annexes" title="annexes"/>
+					
+					<atom:link rel="http://www.legislation.gov.uk/def/date/euexitday" href="http://www.legislation.gov.uk/eur/2016/679/article/28/2020-01-31" title="2020-01-31"/><atom:link rel="http://www.legislation.gov.uk/def/date/euexitTransitionEnd" href="http://www.legislation.gov.uk/eur/2016/679/article/28/2020-12-31" title="2020-12-31"/>					
+					
+					<atom:link rel="http://www.legislation.gov.uk/def/legislation/EffectsApplied" href="https://www.legislation.gov.uk/changes/applied/affected/eur/2016/679" title="Amended by UK"/>
+					
+					<atom:link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/eur/2016/679/article/28/data.rdf" title="RDF/XML"/><atom:link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/eur/2016/679/article/28/data.akn" title="AKN"/><atom:link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/eur/2016/679/article/28/data.xht" title="HTML snippet"/><atom:link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/eur/2016/679/article/28/data.htm" title="Website (XHTML) Default View"/><atom:link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/eur/2016/679/article/28/data.csv" title="CSV"/><atom:link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/eur/2016/679/article/28/data.pdf" title="PDF"/>
+					<atom:link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/eur/2016/679/article/28/data.html" title="HTML5 snippet"/>
+
+					
+					<atom:link rel="http://purl.org/dc/terms/tableOfContents" hreflang="en" href="http://www.legislation.gov.uk/eur/2016/679/contents" title="Table of Contents"/>
+					
+					<atom:link rel="http://purl.org/dc/terms/replaces" href="http://www.legislation.gov.uk/eur/2016/679/article/28/2020-12-31" title="2020-12-31"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/eur/2016/679/article/28/adopted" title="adopted"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/eur/2016/679/article/28/2016-04-27" title="2016-04-27"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/eur/2016/679/article/28/2020-12-31" title="2020-12-31"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/eur/2016/679/article/28/2025-08-20" title="2025-08-20"/>
+					
+					<atom:link rel="up" href="http://www.legislation.gov.uk/eur/2016/679" title="Entire legislation"/><atom:link rel="prev" href="http://www.legislation.gov.uk/eur/2016/679/article/27" title="Provision; Article 27"/><atom:link rel="prevInForce" href="http://www.legislation.gov.uk/eur/2016/679/article/27" title="Provision; Article 27"/><atom:link rel="next" href="http://www.legislation.gov.uk/eur/2016/679/article/29" title="Provision; Article 29"/><atom:link rel="nextInForce" href="http://www.legislation.gov.uk/eur/2016/679/article/29" title="Provision; Article 29"/>
+					<ukm:EUMetadata><ukm:DocumentClassification>
+            <ukm:DocumentCategory Value="euretained"/>
+            <ukm:DocumentMainType Value="EuropeanUnionRegulation"/>
+            <ukm:DocumentStatus Value="revised"/>
+         </ukm:DocumentClassification><ukm:Year Value="2016"/><ukm:Number Value="679"/><ukm:EURLexIdentifiers>
+            <ukm:Cellar Value="5f2552c2-cc45-11e6-ad7c-01aa75ed71a1"/>
+            <ukm:CELEX Value="02016R0679-20160504"/>
+            <ukm:ELI Value="reg:2016:679:2016-05-04"/>
+         </ukm:EURLexIdentifiers><ukm:EnactmentDate Date="2016-04-27"/><ukm:EURLexModified Date="2019-04-18T16:51:42Z"/><ukm:EURLexExtracted Date="2019-04-18T19:52:48Z"/><ukm:XMLGenerated Date="2020-12-11T21:55:00Z"/><ukm:XMLImported Date="2020-12-12T06:47:16Z"/><ukm:EURLexMetadata>
+            <WORK xmlns="">
+               <URI>
+                  <VALUE>http://publications.europa.eu/resource/cellar/5f2552c2-cc45-11e6-ad7c-01aa75ed71a1</VALUE>
+                  <IDENTIFIER>5f2552c2-cc45-11e6-ad7c-01aa75ed71a1</IDENTIFIER>
+                  <TYPE>cellar</TYPE>
+               </URI>
+               <SAMEAS>
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/celex/02016R0679-20160504</VALUE>
+                     <IDENTIFIER>02016R0679-20160504</IDENTIFIER>
+                     <TYPE>celex</TYPE>
+                  </URI>
+               </SAMEAS>
+               <SAMEAS>
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/consolidation/2016R0679%2F20160504</VALUE>
+                     <IDENTIFIER>2016R0679/20160504</IDENTIFIER>
+                     <TYPE>consolidation</TYPE>
+                  </URI>
+               </SAMEAS>
+               <SAMEAS>
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/eli/reg/2016/679/2016-05-04</VALUE>
+                     <IDENTIFIER>reg:2016:679:2016-05-04</IDENTIFIER>
+                     <TYPE>eli</TYPE>
+                  </URI>
+               </SAMEAS>
+               <ACT_CONSOLIDATED_BASED_ON_RESOURCE_LEGAL type="link">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/cellar/3e485e15-11bd-11e6-ba9a-01aa75ed71a1</VALUE>
+                     <IDENTIFIER>3e485e15-11bd-11e6-ba9a-01aa75ed71a1</IDENTIFIER>
+                     <TYPE>cellar</TYPE>
+                  </URI>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/celex/32016R0679</VALUE>
+                        <IDENTIFIER>32016R0679</IDENTIFIER>
+                        <TYPE>celex</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/eli/reg/2016/679/oj</VALUE>
+                        <IDENTIFIER>reg:2016:679:oj</IDENTIFIER>
+                        <TYPE>eli</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/oj/JOL_2016_119_R_0001</VALUE>
+                        <IDENTIFIER>JOL_2016_119_R_0001</IDENTIFIER>
+                        <TYPE>oj</TYPE>
+                     </URI>
+                  </SAMEAS>
+               </ACT_CONSOLIDATED_BASED_ON_RESOURCE_LEGAL>
+               <RESOURCE_LEGAL_ID_CELEX type="data">
+                  <VALUE>02016R0679-20160504</VALUE>
+               </RESOURCE_LEGAL_ID_CELEX>
+               <WORK_ID_DOCUMENT type="data">
+                  <VALUE>consolidation:2016R0679/20160504</VALUE>
+               </WORK_ID_DOCUMENT>
+               <ACT_CONSOLIDATED_CONSOLIDATES_RESOURCE_LEGAL type="link">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/cellar/3e485e15-11bd-11e6-ba9a-01aa75ed71a1</VALUE>
+                     <IDENTIFIER>3e485e15-11bd-11e6-ba9a-01aa75ed71a1</IDENTIFIER>
+                     <TYPE>cellar</TYPE>
+                  </URI>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/celex/32016R0679</VALUE>
+                        <IDENTIFIER>32016R0679</IDENTIFIER>
+                        <TYPE>celex</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/eli/reg/2016/679/oj</VALUE>
+                        <IDENTIFIER>reg:2016:679:oj</IDENTIFIER>
+                        <TYPE>eli</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/oj/JOL_2016_119_R_0001</VALUE>
+                        <IDENTIFIER>JOL_2016_119_R_0001</IDENTIFIER>
+                        <TYPE>oj</TYPE>
+                     </URI>
+                  </SAMEAS>
+               </ACT_CONSOLIDATED_CONSOLIDATES_RESOURCE_LEGAL>
+               <IDENTIFIER type="data">
+                  <VALUE>http://data.europa.eu/eli/reg/2016/679/2016-05-04</VALUE>
+               </IDENTIFIER>
+               <ACT_CONSOLIDATED_CONSOLIDATES_RESOURCE_LEGAL type="link">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/cellar/683d5816-5e52-11e8-ab9c-01aa75ed71a1</VALUE>
+                     <IDENTIFIER>683d5816-5e52-11e8-ab9c-01aa75ed71a1</IDENTIFIER>
+                     <TYPE>cellar</TYPE>
+                  </URI>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/oj/JOL_2018_127_R_0003</VALUE>
+                        <IDENTIFIER>JOL_2018_127_R_0003</IDENTIFIER>
+                        <TYPE>oj</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/eli/reg/2016/679/corrigendum/2018-05-23/oj</VALUE>
+                        <IDENTIFIER>reg:2016:679:corrigendum:2018-05-23:oj</IDENTIFIER>
+                        <TYPE>eli</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/celex/32016R0679R%2802%29</VALUE>
+                        <IDENTIFIER>32016R0679R(02)</IDENTIFIER>
+                        <TYPE>celex</TYPE>
+                     </URI>
+                  </SAMEAS>
+               </ACT_CONSOLIDATED_CONSOLIDATES_RESOURCE_LEGAL>
+               <ACT_CONSOLIDATED_DATE type="date">
+                  <VALUE>2016-05-04</VALUE>
+                  <YEAR>2016</YEAR>
+                  <MONTH>05</MONTH>
+                  <DAY>04</DAY>
+               </ACT_CONSOLIDATED_DATE>
+               <RESOURCE_LEGAL_DATE_ENTRY-INTO-FORCE type="date">
+                  <VALUE>2016-05-04</VALUE>
+                  <YEAR>2016</YEAR>
+                  <MONTH>05</MONTH>
+                  <DAY>04</DAY>
+               </RESOURCE_LEGAL_DATE_ENTRY-INTO-FORCE>
+               <CREATIONDATE type="date">
+                  <VALUE>2016-12-27T16:01:41.284+01:00</VALUE>
+                  <YEAR>2016</YEAR>
+                  <MONTH>12</MONTH>
+                  <DAY>27</DAY>
+               </CREATIONDATE>
+               <DATE type="date">
+                  <VALUE>2016-05-04</VALUE>
+                  <YEAR>2016</YEAR>
+                  <MONTH>05</MONTH>
+                  <DAY>04</DAY>
+               </DATE>
+               <DATE type="date">
+                  <VALUE>2016-12-27</VALUE>
+                  <YEAR>2016</YEAR>
+                  <MONTH>12</MONTH>
+                  <DAY>27</DAY>
+               </DATE>
+               <WORK_DATE_DOCUMENT type="date">
+                  <VALUE>2016-05-04</VALUE>
+                  <YEAR>2016</YEAR>
+                  <MONTH>05</MONTH>
+                  <DAY>04</DAY>
+               </WORK_DATE_DOCUMENT>
+               <DATE_CREATION_LEGACY type="date">
+                  <VALUE>2016-12-27</VALUE>
+                  <YEAR>2016</YEAR>
+                  <MONTH>12</MONTH>
+                  <DAY>27</DAY>
+               </DATE_CREATION_LEGACY>
+               <RESOURCE_LEGAL_HAS_TYPE_ACT_CONCEPT_TYPE_ACT type="concept">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/authority/fd_030/VC</VALUE>
+                     <IDENTIFIER>VC</IDENTIFIER>
+                     <TYPE>fd_030</TYPE>
+                  </URI>
+                  <OP-CODE>VC</OP-CODE>
+                  <IDENTIFIER>VC</IDENTIFIER>
+                  <PREFLABEL>Consolidated text</PREFLABEL>
+               </RESOURCE_LEGAL_HAS_TYPE_ACT_CONCEPT_TYPE_ACT>
+               <BASED_ON type="link">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/cellar/3e485e15-11bd-11e6-ba9a-01aa75ed71a1</VALUE>
+                     <IDENTIFIER>3e485e15-11bd-11e6-ba9a-01aa75ed71a1</IDENTIFIER>
+                     <TYPE>cellar</TYPE>
+                  </URI>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/celex/32016R0679</VALUE>
+                        <IDENTIFIER>32016R0679</IDENTIFIER>
+                        <TYPE>celex</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/eli/reg/2016/679/oj</VALUE>
+                        <IDENTIFIER>reg:2016:679:oj</IDENTIFIER>
+                        <TYPE>eli</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/oj/JOL_2016_119_R_0001</VALUE>
+                        <IDENTIFIER>JOL_2016_119_R_0001</IDENTIFIER>
+                        <TYPE>oj</TYPE>
+                     </URI>
+                  </SAMEAS>
+               </BASED_ON>
+               <WORK_ID_DOCUMENT type="data">
+                  <VALUE>celex:02016R0679-20160504</VALUE>
+               </WORK_ID_DOCUMENT>
+               <IDENTIFIER type="data">
+                  <VALUE>celex:02016R0679-20160504</VALUE>
+               </IDENTIFIER>
+               <WORK_HAS_RESOURCE-TYPE type="concept">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/authority/resource-type/CONS_TEXT</VALUE>
+                     <IDENTIFIER>CONS_TEXT</IDENTIFIER>
+                     <TYPE>resource-type</TYPE>
+                  </URI>
+                  <OP-CODE>CONS_TEXT</OP-CODE>
+                  <IDENTIFIER>CONS_TEXT</IDENTIFIER>
+                  <PREFLABEL>Consolidated text</PREFLABEL>
+               </WORK_HAS_RESOURCE-TYPE>
+               <RESOURCE_LEGAL_NUMBER_NATURAL type="data">
+                  <VALUE>679</VALUE>
+               </RESOURCE_LEGAL_NUMBER_NATURAL>
+               <RESOURCE_LEGAL_TYPE type="data">
+                  <VALUE>R</VALUE>
+               </RESOURCE_LEGAL_TYPE>
+               <ID_SECTOR type="data">
+                  <VALUE>0</VALUE>
+               </ID_SECTOR>
+               <DATE_DOCUMENT type="date">
+                  <VALUE>2016-05-04</VALUE>
+                  <YEAR>2016</YEAR>
+                  <MONTH>05</MONTH>
+                  <DAY>04</DAY>
+               </DATE_DOCUMENT>
+               <RESOURCE_LEGAL_NUMBER_NATURAL_CELEX type="data">
+                  <VALUE>0679</VALUE>
+               </RESOURCE_LEGAL_NUMBER_NATURAL_CELEX>
+               <YEAR type="data">
+                  <VALUE>2016</VALUE>
+               </YEAR>
+               <WORK_CREATED_BY_AGENT type="concept_level">
+                  <WORK_CREATED_BY_AGENT_1 type="concept">
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/authority/corporate-body/OP_DATPRO</VALUE>
+                        <IDENTIFIER>OP_DATPRO</IDENTIFIER>
+                        <TYPE>corporate-body</TYPE>
+                     </URI>
+                     <OP-CODE>OP_DATPRO</OP-CODE>
+                     <IDENTIFIER>OP_DATPRO</IDENTIFIER>
+                     <PREFLABEL>Provisional data</PREFLABEL>
+                     <ANNOTATION>
+                        <ERROR_MESSAGE>Data missing</ERROR_MESSAGE>
+                        <QUALITY_ISSUE>DATMIS</QUALITY_ISSUE>
+                        <BUILD_INFO>cdm:CDM_3.2.3  tdm:1523  xslt:3945 saxon:9.0.0.1J JVM:1.6.0_29 metaconvJar:5.16.1 builddate:07/06/2018 16:24:27</BUILD_INFO>
+                     </ANNOTATION>
+                  </WORK_CREATED_BY_AGENT_1>
+               </WORK_CREATED_BY_AGENT>
+               <RESOURCE_LEGAL_ELI type="data">
+                  <VALUE>http://data.europa.eu/eli/reg/2016/679/2016-05-04</VALUE>
+               </RESOURCE_LEGAL_ELI>
+               <LASTMODIFICATIONDATE type="date">
+                  <VALUE>2019-04-18T18:51:42.377+02:00</VALUE>
+                  <YEAR>2019</YEAR>
+                  <MONTH>04</MONTH>
+                  <DAY>18</DAY>
+               </LASTMODIFICATIONDATE>
+               <ACT_CONSOLIDATED_CONSOLIDATES_RESOURCE_LEGAL type="link">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/cellar/c0c14e1e-b043-11e6-aab7-01aa75ed71a1</VALUE>
+                     <IDENTIFIER>c0c14e1e-b043-11e6-aab7-01aa75ed71a1</IDENTIFIER>
+                     <TYPE>cellar</TYPE>
+                  </URI>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/eli/reg/2016/679/corrigendum/2016-11-22/oj</VALUE>
+                        <IDENTIFIER>reg:2016:679:corrigendum:2016-11-22:oj</IDENTIFIER>
+                        <TYPE>eli</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/oj/JOL_2016_314_R_0011</VALUE>
+                        <IDENTIFIER>JOL_2016_314_R_0011</IDENTIFIER>
+                        <TYPE>oj</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/celex/32016R0679R%2801%29</VALUE>
+                        <IDENTIFIER>32016R0679R(01)</IDENTIFIER>
+                        <TYPE>celex</TYPE>
+                     </URI>
+                  </SAMEAS>
+               </ACT_CONSOLIDATED_CONSOLIDATES_RESOURCE_LEGAL>
+               <IDENTIFIER type="data">
+                  <VALUE>consolidation:2016R0679/20160504</VALUE>
+               </IDENTIFIER>
+               <CREATED_BY type="concept">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/authority/corporate-body/OP_DATPRO</VALUE>
+                     <IDENTIFIER>OP_DATPRO</IDENTIFIER>
+                     <TYPE>corporate-body</TYPE>
+                  </URI>
+                  <OP-CODE>OP_DATPRO</OP-CODE>
+                  <IDENTIFIER>OP_DATPRO</IDENTIFIER>
+                  <PREFLABEL>Provisional data</PREFLABEL>
+               </CREATED_BY>
+               <WORK_SUMMARIZED_BY_SUMMARY type="link">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/cellar/e899a0de-be12-405c-84ae-34e8a22d6acd</VALUE>
+                     <IDENTIFIER>e899a0de-be12-405c-84ae-34e8a22d6acd</IDENTIFIER>
+                     <TYPE>cellar</TYPE>
+                  </URI>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/legissum/310401_2</VALUE>
+                        <IDENTIFIER>310401_2</IDENTIFIER>
+                        <TYPE>legissum</TYPE>
+                     </URI>
+                  </SAMEAS>
+                  <SAMEAS>
+                     <URI>
+                        <VALUE>http://publications.europa.eu/resource/uriserv/310401_2</VALUE>
+                        <IDENTIFIER>310401_2</IDENTIFIER>
+                        <TYPE>uriserv</TYPE>
+                     </URI>
+                  </SAMEAS>
+               </WORK_SUMMARIZED_BY_SUMMARY>
+               <IDENTIFIER type="data">
+                  <VALUE>02016R0679-20160504</VALUE>
+               </IDENTIFIER>
+               <ELI type="data">
+                  <VALUE>http://data.europa.eu/eli/reg/2016/679/2016-05-04</VALUE>
+               </ELI>
+               <ID_CELEX type="data">
+                  <VALUE>02016R0679-20160504</VALUE>
+               </ID_CELEX>
+               <RESOURCE_LEGAL_YEAR type="data">
+                  <VALUE>2016</VALUE>
+               </RESOURCE_LEGAL_YEAR>
+               <RESOURCE_LEGAL_INFORMATION_MISCELLANEOUS type="data">
+                  <VALUE>LASTMODIN</VALUE>
+               </RESOURCE_LEGAL_INFORMATION_MISCELLANEOUS>
+               <TYPE>cdm:work</TYPE>
+               <TYPE>cdm:act_consolidated</TYPE>
+               <TYPE>R</TYPE>
+               <TYPE>cdm:resource_legal</TYPE>
+            </WORK>
+            <EXPRESSION xmlns="">
+               <URI>
+                  <VALUE>http://publications.europa.eu/resource/cellar/5f2552c2-cc45-11e6-ad7c-01aa75ed71a1.0022</VALUE>
+                  <IDENTIFIER>5f2552c2-cc45-11e6-ad7c-01aa75ed71a1.0022</IDENTIFIER>
+                  <TYPE>cellar</TYPE>
+               </URI>
+               <SAMEAS>
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/celex/02016R0679-20160504.ENG</VALUE>
+                     <IDENTIFIER>02016R0679-20160504.ENG</IDENTIFIER>
+                     <TYPE>celex</TYPE>
+                  </URI>
+               </SAMEAS>
+               <SAMEAS>
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/consolidation/2016R0679%2F20160504.ENG</VALUE>
+                     <IDENTIFIER>2016R0679/20160504.ENG</IDENTIFIER>
+                     <TYPE>consolidation</TYPE>
+                  </URI>
+               </SAMEAS>
+               <CREATIONDATE type="date">
+                  <VALUE>2018-06-07T16:45:46.855+02:00</VALUE>
+                  <YEAR>2018</YEAR>
+                  <MONTH>06</MONTH>
+                  <DAY>07</DAY>
+               </CREATIONDATE>
+               <EXPRESSION_TITLE type="data">
+                  <VALUE>Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data, and repealing Directive 95/46/EC (General Data Protection Regulation) (Text with EEA relevance) </VALUE>
+               </EXPRESSION_TITLE>
+               <TITLE type="data">
+                  <VALUE>CELEX1</VALUE>
+               </TITLE>
+               <LANG type="data">
+                  <VALUE>eng</VALUE>
+               </LANG>
+               <LASTMODIFICATIONDATE type="date">
+                  <VALUE>2019-04-18T18:51:42.378+02:00</VALUE>
+                  <YEAR>2019</YEAR>
+                  <MONTH>04</MONTH>
+                  <DAY>18</DAY>
+               </LASTMODIFICATIONDATE>
+               <TITLE type="data">
+                  <VALUE>Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data, and repealing Directive 95/46/EC (General Data Protection Regulation) (Text with EEA relevance) </VALUE>
+               </TITLE>
+               <LANG type="data">
+                  <VALUE>en</VALUE>
+               </LANG>
+               <EXPRESSION_USES_LANGUAGE type="concept">
+                  <URI>
+                     <VALUE>http://publications.europa.eu/resource/authority/language/ENG</VALUE>
+                     <IDENTIFIER>ENG</IDENTIFIER>
+                     <TYPE>language</TYPE>
+                  </URI>
+                  <OP-CODE>ENG</OP-CODE>
+                  <IDENTIFIER>ENG</IDENTIFIER>
+                  <PREFLABEL>English</PREFLABEL>
+                  <ALTLABEL>English</ALTLABEL>
+               </EXPRESSION_USES_LANGUAGE>
+            </EXPRESSION>
+         </ukm:EURLexMetadata><ukm:DocumentCurrentStatus><ukm:UKAmended Value="true"/></ukm:DocumentCurrentStatus><ukm:UnappliedEffects><ukm:UnappliedEffect AffectedYear="2016" AffectedNumber="679" Modified="2026-09-25T14:19:14Z" AffectedClass="EuropeanUnionRegulation" Row="744" AffectingProvisions="Sch. 3 para. 41(2)(a)" AffectedProvisions="Art. 4(A2A)" AffectingURI="http://www.legislation.gov.uk/id/uksi/2026/386" AffectingYear="2026" Type="inserted" AffectingClass="UnitedKingdomStatutoryInstrument" AffectingEffectsExtent="S+A+M+E+A+S+A+F+F+E+C+T+E+D" EffectId="key-80aa1d4bfef3c1f1a720fd68af9aa573" AppendedCommentary="S.I. 2026/1015, reg. 2(c)" URI="http://www.legislation.gov.uk/id/effect/key-ba6141118e97064fafddffdfcdae65d3" RequiresApplied="true" AffectedURI="http://www.legislation.gov.uk/id/eur/2016/679" AffectingNumber="386" Comments="comes into force when 2025 c. 18, s. 119 is fully brought into force"><ukm:AffectedTitle>Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data (United Kingdom General Data Protection Regulation) (Text with EEA relevance)</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="article-4-A2A" URI="http://www.legislation.gov.uk/id/eur/2016/679/article/4/A2A" FoundRef="article-4">Art. 4(A2A)</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>The Data (Use and Access) Act 2025 (Consequential Amendments and Transitional Provision) Regulations 2026</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-3" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/3">Sch. 3 </ukm:Section><ukm:Section Ref="schedule-3-paragraph-41-2-a" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/3/paragraph/41/2/a">para. 41(2)(a)</ukm:Section></ukm:AffectingProvisions><ukm:CommencementAuthority><ukm:Section Ref="regulation-1-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/regulation/1/2">reg. 1(2)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Applied="false" Date="2026-09-30" Qualification="wholly in force"/></ukm:InForceDates></ukm:UnappliedEffect><ukm:UnappliedEffect Modified="2026-09-25T14:19:14Z" AffectedClass="EuropeanUnionRegulation" AffectingEffectsExtent="S+A+M+E+A+S+A+F+F+E+C+T+E+D" AffectedNumber="679" Row="752" RequiresApplied="true" Comments="Editor - there are two words to be substituted where they appear word “Commissioner&#34; and “Commissioner's&#34;" Type="word substituted" AffectedURI="http://www.legislation.gov.uk/id/eur/2016/679" AffectedProvisions="Art. 28(8)" AffectingURI="http://www.legislation.gov.uk/id/uksi/2026/386" AffectingProvisions="Sch. 3 para. 41(3)(4)(f)" AffectingYear="2026" URI="http://www.legislation.gov.uk/id/effect/key-c47b19925a52c91fae3e4b3186d3c9f4" AffectingNumber="386" AffectingClass="UnitedKingdomStatutoryInstrument" AffectedYear="2016" AppendedCommentary="S.I. 2026/1015, reg. 2(c)" EffectId="key-755a214d35b3a21a7a8f958d6d012688"><ukm:AffectedTitle>Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data (United Kingdom General Data Protection Regulation) (Text with EEA relevance)</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="article-28-8" URI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/8">Art. 28(8)</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>The Data (Use and Access) Act 2025 (Consequential Amendments and Transitional Provision) Regulations 2026</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-3" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/3">Sch. 3 </ukm:Section><ukm:Section Ref="schedule-3-paragraph-41-3" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/3/paragraph/41/3">para. 41(3)</ukm:Section><ukm:Section Ref="schedule-3-paragraph-41-4-f" URI="http://www.legislation.gov.uk/id/uksi/2026/386/schedule/3/paragraph/41/4/f">para. 41(4)(f)</ukm:Section></ukm:AffectingProvisions><ukm:CommencementAuthority><ukm:Section Ref="regulation-1-2" URI="http://www.legislation.gov.uk/id/uksi/2026/386/regulation/1/2">reg. 1(2)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Applied="false" Date="2026-09-30" Qualification="wholly in force"/></ukm:InForceDates></ukm:UnappliedEffect></ukm:UnappliedEffects></ukm:EUMetadata>
+					
+
+                    
+									 
+					<ukm:Alternatives><ukm:Alternative URI="http://www.legislation.gov.uk/eur/2016/679/pdfs/eur_20160679_adopted_en.pdf" Date="2016-04-27" Size="982296"/><ukm:Alternative URI="http://www.legislation.gov.uk/eur/2016/679/pdfs/eur_20160679_2016-05-04_en.pdf" Date="2016-05-04" Size="623086" Revised="2016-05-04"/> </ukm:Alternatives><ukm:CorrectionSlips><ukm:CorrectionSlip URI="http://www.legislation.gov.uk/eur/2016/679/pdfs/eurcs_20160679_en_001.pdf" Date="2018-05-23" Size="734639"/></ukm:CorrectionSlips>
+					
+					<ukm:Statistics>
+									<ukm:TotalParagraphs Value="140"/>
+									<ukm:BodyParagraphs Value="120"/>
+									<ukm:ScheduleParagraphs Value="20"/>
+									<ukm:AttachmentParagraphs Value="0"/>
+									<ukm:TotalImages Value="0"/>
+								</ukm:Statistics>
+				</ukm:Metadata><EURetained><EUBody DocumentURI="http://www.legislation.gov.uk/eur/2016/679/body" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/body" NumberOfProvisions="120" RestrictExtent="E+W+S+N.I." RestrictStartDate="2026-06-19"><EUChapter DocumentURI="http://www.legislation.gov.uk/eur/2016/679/chapter/IV" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/chapter/IV" NumberOfProvisions="20" id="chapter-IV" RestrictExtent="E+W+S+N.I." RestrictStartDate="2026-02-05"><Number><Emphasis>CHAPTER IV</Emphasis></Number><Title><Strong><Emphasis>Controller and processor</Emphasis></Strong></Title><EUSection DocumentURI="http://www.legislation.gov.uk/eur/2016/679/chapter/IV/section/1" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/chapter/IV/section/1" NumberOfProvisions="8" id="chapter-IV-section-1" RestrictExtent="E+W+S+N.I." RestrictStartDate="2026-02-05"><Number><Expanded>Section 1</Expanded></Number><Title><Strong><Expanded>General obligations</Expanded></Strong></Title><P1group RestrictStartDate="2025-08-20" RestrictExtent="E+W+S+N.I."><Title>Processor</Title><P1 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28" id="article-28"><Pnumber>Article 28</Pnumber><P1para><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/1" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/1" id="article-28-1"><Pnumber PuncBefore="" PuncAfter=".">1</Pnumber><P2para><Text>Where processing is to be carried out on behalf of a controller, the controller shall use only processors providing sufficient guarantees to implement appropriate technical and organisational measures in such a manner that processing will meet the requirements of this Regulation and ensure the protection of the rights of the data subject.</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/2" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/2" id="article-28-2"><Pnumber PuncBefore="" PuncAfter=".">2</Pnumber><P2para><Text>The processor shall not engage another processor without prior specific or general written authorisation of the controller. In the case of general written authorisation, the processor shall inform the controller of any intended changes concerning the addition or replacement of other processors, thereby giving the controller the opportunity to object to such changes.</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/3" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/3" id="article-28-3"><Pnumber PuncBefore="" PuncAfter=".">3</Pnumber><P2para><Text>Processing by a processor shall be governed by a contract or other legal act under  <Substitution ChangeId="key-0f3205bcbc5b837f99d0b5eaf6c9c780-1632836662095" CommentaryRef="key-0f3205bcbc5b837f99d0b5eaf6c9c780">domestic law</Substitution>, that is binding on the processor with regard to the controller and that sets out the subject-matter and duration of the processing, the nature and purpose of the processing, the type of personal data and categories of data subjects and the obligations and rights of the controller. That contract or other legal act shall stipulate, in particular, that the processor:</Text><P3 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/3/a" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/3/a" id="article-28-3-a"><Pnumber PuncBefore="(" PuncAfter=")">a</Pnumber><P3para><Text>processes the personal data only on documented instructions from the controller, including with regard to transfers of personal data to a third country or an international organisation, unless required to do so by  <Substitution ChangeId="key-438423f3dab4266784011e11987bc264-1632836718001" CommentaryRef="key-438423f3dab4266784011e11987bc264">domestic law</Substitution>; in such a case, the processor shall inform the controller of that legal requirement before processing, unless that law prohibits such information on important grounds of public interest;</Text></P3para></P3><P3 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/3/b" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/3/b" id="article-28-3-b"><Pnumber PuncBefore="(" PuncAfter=")">b</Pnumber><P3para><Text>ensures that persons authorised to process the personal data have committed themselves to confidentiality or are under an appropriate statutory obligation of confidentiality;</Text></P3para></P3><P3 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/3/c" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/3/c" id="article-28-3-c"><Pnumber PuncBefore="(" PuncAfter=")">c</Pnumber><P3para><Text>takes all measures required pursuant to Article 32;</Text></P3para></P3><P3 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/3/d" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/3/d" id="article-28-3-d"><Pnumber PuncBefore="(" PuncAfter=")">d</Pnumber><P3para><Text>respects the conditions referred to in paragraphs 2 and 4 for engaging another processor;</Text></P3para></P3><P3 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/3/e" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/3/e" id="article-28-3-e"><Pnumber PuncBefore="(" PuncAfter=")">e</Pnumber><P3para><Text>taking into account the nature of the processing, assists the controller by appropriate technical and organisational measures, insofar as this is possible, for the fulfilment of the controller's obligation to respond to requests for exercising the data subject's rights laid down in Chapter III;</Text></P3para></P3><P3 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/3/f" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/3/f" id="article-28-3-f"><Pnumber PuncBefore="(" PuncAfter=")">f</Pnumber><P3para><Text>assists the controller in ensuring compliance with the obligations pursuant to Articles 32 to 36 taking into account the nature of processing and the information available to the processor;</Text></P3para></P3><P3 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/3/g" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/3/g" id="article-28-3-g"><Pnumber PuncBefore="(" PuncAfter=")">g</Pnumber><P3para><Text>at the choice of the controller, deletes or returns all the personal data to the controller after the end of the provision of services relating to processing, and deletes existing copies unless  <Substitution ChangeId="key-3393a18f33a86af576c41cbd6c7eb5c9-1632836745292" CommentaryRef="key-3393a18f33a86af576c41cbd6c7eb5c9">domestic law</Substitution>  requires storage of the personal data;</Text></P3para></P3><P3 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/3/h" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/3/h" id="article-28-3-h"><Pnumber PuncBefore="(" PuncAfter=")">h</Pnumber><P3para><Text>makes available to the controller all information necessary to demonstrate compliance with the obligations laid down in this Article and allow for and contribute to audits, including inspections, conducted by the controller or another auditor mandated by the controller.</Text></P3para></P3></P2para><P2para><Text>With regard to point (h) of the first subparagraph, the processor shall immediately inform the controller if, in its opinion, an instruction infringes this Regulation or  <Substitution ChangeId="key-2302cdc80afdfc915e373056067c51e5-1632836691772" CommentaryRef="key-2302cdc80afdfc915e373056067c51e5">other domestic law relating to data protection</Substitution>.</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/4" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/4" id="article-28-4"><Pnumber PuncBefore="" PuncAfter=".">4</Pnumber><P2para><Text>Where a processor engages another processor for carrying out specific processing activities on behalf of the controller, the same data protection obligations as set out in the contract or other legal act between the controller and the processor as referred to in paragraph 3 shall be imposed on that other processor by way of a contract or other legal act under  <Substitution ChangeId="key-60c73acdc7fbca1b15e3dc0dcce18cf8-1632836792322" CommentaryRef="key-60c73acdc7fbca1b15e3dc0dcce18cf8">domestic law</Substitution>, in particular providing sufficient guarantees to implement appropriate technical and organisational measures in such a manner that the processing will meet the requirements of this Regulation. Where that other processor fails to fulfil its data protection obligations, the initial processor shall remain fully liable to the controller for the performance of that other processor's obligations.</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/5" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/5" id="article-28-5"><Pnumber PuncBefore="" PuncAfter=".">5</Pnumber><P2para><Text>Adherence of a processor to an approved code of conduct as referred to in Article 40 or an approved certification mechanism as referred to in Article 42 may be used as  <Substitution ChangeId="key-97336f08654cb51930c9faae70364763-1755600118060" CommentaryRef="key-97336f08654cb51930c9faae70364763">a means of demonstrating</Substitution>  sufficient guarantees as referred to in paragraphs 1 and 4 of this Article.</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/6" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/6" id="article-28-6"><Pnumber PuncBefore="" PuncAfter=".">6</Pnumber><P2para><Text>Without prejudice to an individual contract between the controller and the processor, the contract or the other legal act referred to in paragraphs 3 and 4 of this Article may be based, in whole or in part, on standard contractual clauses referred to in  <Substitution ChangeId="key-e5b357fd1486fe91cd5d88eb1e7724e6-1632836813429" CommentaryRef="key-e5b357fd1486fe91cd5d88eb1e7724e6">paragraph 8</Substitution>  of this Article, including when they are part of a certification granted to the controller or processor pursuant to Articles 42 and 43.</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/7" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/7" id="article-28-7"><Pnumber PuncBefore="" PuncAfter="."><CommentaryRef Ref="key-72afd1214d3f82f7be17c72ac0dc0ea7"/>7</Pnumber><P2para><Text>. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/8" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/8" id="article-28-8"><Pnumber PuncBefore="" PuncAfter=".">8</Pnumber><P2para><Text><Substitution ChangeId="key-025711ee4459da574a57b288f2d165be-1632836844914" CommentaryRef="key-025711ee4459da574a57b288f2d165be">The Commissioner</Substitution>  may adopt standard contractual clauses for the matters referred to in paragraph 3 and 4 of this Article <CommentaryRef Ref="key-10aead4078eaf7fc8c32630274574cf6"/>... .</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/9" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/9" id="article-28-9"><Pnumber PuncBefore="" PuncAfter=".">9</Pnumber><P2para><Text>The contract or the other legal act referred to in paragraphs 3 and 4 shall be in writing, including in electronic form.</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/eur/2016/679/article/28/10" IdURI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/10" id="article-28-10"><Pnumber PuncBefore="" PuncAfter=".">10</Pnumber><P2para><Text>Without prejudice to Articles 82, 83 and 84, if a processor infringes this Regulation by determining the purposes and means of processing, the processor shall be considered to be a controller in respect of that processing.</Text></P2para></P2></P1para></P1></P1group></EUSection></EUChapter></EUBody></EURetained><Commentaries><Commentary id="key-025711ee4459da574a57b288f2d165be" Type="F"><Para><Text>Words in Art. 28(8) substituted (31.12.2020) by <Citation URI="http://www.legislation.gov.uk/id/uksi/2019/419" id="cbqfzi1h4-00090" Class="UnitedKingdomStatutoryInstrument" Year="2019" Number="419" Title="The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019">The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019 (S.I. 2019/419)</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00090" id="cbqfzi1h4-00091" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/1/2" SectionRef="regulation-1-2">reg. 1(2)</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00090" id="cbqfzi1h4-00092" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/22/6/a" SectionRef="schedule-1-paragraph-22-6-a" Operative="true">Sch. 1 para. 22(6)(a)</CitationSubRef> (with <CitationSubRef CitationRef="cbqfzi1h4-00090" id="cbqfzi1h4-00093" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/5" SectionRef="regulation-5">reg. 5</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/ukpga/2020/1" id="cbqfzi1h4-00094" Year="2020" Class="UnitedKingdomPublicGeneralAct" Number="1">2020 c. 1</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00094" id="cbqfzi1h4-00095" URI="http://www.legislation.gov.uk/id/ukpga/2020/1/schedule/5/paragraph/1/1" SectionRef="schedule-5-paragraph-1-1">Sch. 5 para. 1(1)</CitationSubRef></Text></Para></Commentary><Commentary id="key-0f3205bcbc5b837f99d0b5eaf6c9c780" Type="F"><Para><Text>Words in Art. 28(3) substituted (31.12.2020) by <Citation URI="http://www.legislation.gov.uk/id/uksi/2019/419" id="cbqfzi1h4-00007" Class="UnitedKingdomStatutoryInstrument" Year="2019" Number="419" Title="The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019">The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019 (S.I. 2019/419)</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00007" id="cbqfzi1h4-00008" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/1/2" SectionRef="regulation-1-2">reg. 1(2)</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00007" id="cbqfzi1h4-00009" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/22/2/a" SectionRef="schedule-1-paragraph-22-2-a" Operative="true">Sch. 1 para. 22(2)(a)</CitationSubRef> (with <CitationSubRef CitationRef="cbqfzi1h4-00007" id="cbqfzi1h4-00010" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/5" SectionRef="regulation-5">reg. 5</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/ukpga/2020/1" id="cbqfzi1h4-00011" Year="2020" Class="UnitedKingdomPublicGeneralAct" Number="1">2020 c. 1</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00011" id="cbqfzi1h4-00012" URI="http://www.legislation.gov.uk/id/ukpga/2020/1/schedule/5/paragraph/1/1" SectionRef="schedule-5-paragraph-1-1">Sch. 5 para. 1(1)</CitationSubRef></Text></Para></Commentary><Commentary id="key-10aead4078eaf7fc8c32630274574cf6" Type="F"><Para><Text>Words in Art. 28(8) omitted (31.12.2020) by virtue of <Citation URI="http://www.legislation.gov.uk/id/uksi/2019/419" id="cbqfzi1h4-00102" Class="UnitedKingdomStatutoryInstrument" Year="2019" Number="419" Title="The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019">The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019 (S.I. 2019/419)</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00102" id="cbqfzi1h4-00103" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/1/2" SectionRef="regulation-1-2">reg. 1(2)</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00102" id="cbqfzi1h4-00104" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/22/6/b" SectionRef="schedule-1-paragraph-22-6-b" Operative="true">Sch. 1 para. 22(6)(b)</CitationSubRef> (with <CitationSubRef CitationRef="cbqfzi1h4-00102" id="cbqfzi1h4-00105" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/5" SectionRef="regulation-5">reg. 5</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00102" id="cbqfzi1h4-00106" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/80" SectionRef="schedule-1-paragraph-80">Sch. 1 para. 80</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/ukpga/2020/1" id="cbqfzi1h4-00107" Year="2020" Class="UnitedKingdomPublicGeneralAct" Number="1">2020 c. 1</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00107" id="cbqfzi1h4-00108" URI="http://www.legislation.gov.uk/id/ukpga/2020/1/schedule/5/paragraph/1/1" SectionRef="schedule-5-paragraph-1-1">Sch. 5 para. 1(1)</CitationSubRef></Text></Para></Commentary><Commentary id="key-2302cdc80afdfc915e373056067c51e5" Type="F"><Para><Text>Words in Art. 28(3) substituted (31.12.2020) by <Citation URI="http://www.legislation.gov.uk/id/uksi/2019/419" id="cbqfzi1h4-00019" Class="UnitedKingdomStatutoryInstrument" Year="2019" Number="419" Title="The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019">The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019 (S.I. 2019/419)</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00019" id="cbqfzi1h4-00020" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/1/2" SectionRef="regulation-1-2">reg. 1(2)</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00019" id="cbqfzi1h4-00021" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/22/2/d" SectionRef="schedule-1-paragraph-22-2-d" Operative="true">Sch. 1 para. 22(2)(d)</CitationSubRef> (with <CitationSubRef CitationRef="cbqfzi1h4-00019" id="cbqfzi1h4-00022" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/5" SectionRef="regulation-5">reg. 5</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/ukpga/2020/1" id="cbqfzi1h4-00023" Year="2020" Class="UnitedKingdomPublicGeneralAct" Number="1">2020 c. 1</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00023" id="cbqfzi1h4-00024" URI="http://www.legislation.gov.uk/id/ukpga/2020/1/schedule/5/paragraph/1/1" SectionRef="schedule-5-paragraph-1-1">Sch. 5 para. 1(1)</CitationSubRef></Text></Para></Commentary><Commentary id="key-3393a18f33a86af576c41cbd6c7eb5c9" Type="F"><Para><Text>Words in Art. 28(3)(g) substituted (31.12.2020) by <Citation URI="http://www.legislation.gov.uk/id/uksi/2019/419" id="cbqfzi1h4-00043" Class="UnitedKingdomStatutoryInstrument" Year="2019" Number="419" Title="The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019">The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019 (S.I. 2019/419)</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00043" id="cbqfzi1h4-00044" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/1/2" SectionRef="regulation-1-2">reg. 1(2)</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00043" id="cbqfzi1h4-00045" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/22/2/c" SectionRef="schedule-1-paragraph-22-2-c" Operative="true">Sch. 1 para. 22(2)(c)</CitationSubRef> (with <CitationSubRef CitationRef="cbqfzi1h4-00043" id="cbqfzi1h4-00046" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/5" SectionRef="regulation-5">reg. 5</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/ukpga/2020/1" id="cbqfzi1h4-00047" Year="2020" Class="UnitedKingdomPublicGeneralAct" Number="1">2020 c. 1</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00047" id="cbqfzi1h4-00048" URI="http://www.legislation.gov.uk/id/ukpga/2020/1/schedule/5/paragraph/1/1" SectionRef="schedule-5-paragraph-1-1">Sch. 5 para. 1(1)</CitationSubRef></Text></Para></Commentary><Commentary id="key-438423f3dab4266784011e11987bc264" Type="F"><Para><Text>Words in Art. 28(3)(a) substituted (31.12.2020) by <Citation URI="http://www.legislation.gov.uk/id/uksi/2019/419" id="cbqfzi1h4-00031" Class="UnitedKingdomStatutoryInstrument" Year="2019" Number="419" Title="The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019">The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019 (S.I. 2019/419)</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00031" id="cbqfzi1h4-00032" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/1/2" SectionRef="regulation-1-2">reg. 1(2)</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00031" id="cbqfzi1h4-00033" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/22/2/b" SectionRef="schedule-1-paragraph-22-2-b" Operative="true">Sch. 1 para. 22(2)(b)</CitationSubRef> (with <CitationSubRef CitationRef="cbqfzi1h4-00031" id="cbqfzi1h4-00034" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/5" SectionRef="regulation-5">reg. 5</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/ukpga/2020/1" id="cbqfzi1h4-00035" Year="2020" Class="UnitedKingdomPublicGeneralAct" Number="1">2020 c. 1</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00035" id="cbqfzi1h4-00036" URI="http://www.legislation.gov.uk/id/ukpga/2020/1/schedule/5/paragraph/1/1" SectionRef="schedule-5-paragraph-1-1">Sch. 5 para. 1(1)</CitationSubRef></Text></Para></Commentary><Commentary id="key-60c73acdc7fbca1b15e3dc0dcce18cf8" Type="F"><Para><Text>Words in Art. 28(4) substituted (31.12.2020) by <Citation URI="http://www.legislation.gov.uk/id/uksi/2019/419" id="cbqfzi1h4-00055" Class="UnitedKingdomStatutoryInstrument" Year="2019" Number="419" Title="The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019">The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019 (S.I. 2019/419)</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00055" id="cbqfzi1h4-00056" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/1/2" SectionRef="regulation-1-2">reg. 1(2)</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00055" id="cbqfzi1h4-00057" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/22/3" SectionRef="schedule-1-paragraph-22-3" Operative="true">Sch. 1 para. 22(3)</CitationSubRef> (with <CitationSubRef CitationRef="cbqfzi1h4-00055" id="cbqfzi1h4-00058" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/5" SectionRef="regulation-5">reg. 5</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/ukpga/2020/1" id="cbqfzi1h4-00059" Year="2020" Class="UnitedKingdomPublicGeneralAct" Number="1">2020 c. 1</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00059" id="cbqfzi1h4-00060" URI="http://www.legislation.gov.uk/id/ukpga/2020/1/schedule/5/paragraph/1/1" SectionRef="schedule-5-paragraph-1-1">Sch. 5 para. 1(1)</CitationSubRef></Text></Para></Commentary><Commentary id="key-72afd1214d3f82f7be17c72ac0dc0ea7" Type="F"><Para><Text>Art. 28(7) omitted (31.12.2020) by virtue of <Citation URI="http://www.legislation.gov.uk/id/uksi/2019/419" id="cbqfzi1h4-00077" Class="UnitedKingdomStatutoryInstrument" Year="2019" Number="419" Title="The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019">The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019 (S.I. 2019/419)</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00077" id="cbqfzi1h4-00078" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/1/2" SectionRef="regulation-1-2">reg. 1(2)</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00077" id="cbqfzi1h4-00079" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/22/5" SectionRef="schedule-1-paragraph-22-5" Operative="true">Sch. 1 para. 22(5)</CitationSubRef> (with <CitationSubRef CitationRef="cbqfzi1h4-00077" id="cbqfzi1h4-00080" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/5" SectionRef="regulation-5">reg. 5</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00077" id="cbqfzi1h4-00081" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/80" SectionRef="schedule-1-paragraph-80">Sch. 1 para. 80</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/ukpga/2020/1" id="cbqfzi1h4-00082" Year="2020" Class="UnitedKingdomPublicGeneralAct" Number="1">2020 c. 1</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00082" id="cbqfzi1h4-00083" URI="http://www.legislation.gov.uk/id/ukpga/2020/1/schedule/5/paragraph/1/1" SectionRef="schedule-5-paragraph-1-1">Sch. 5 para. 1(1)</CitationSubRef></Text></Para></Commentary><Commentary id="key-97336f08654cb51930c9faae70364763" Type="F"><Para><Text>Words in <CitationSubRef id="cw4q7fcm5-00006" SectionRef="article-28-5" URI="http://www.legislation.gov.uk/id/eur/2016/679/article/28/5">Art. 28(5)</CitationSubRef> substituted (20.8.2025) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/2025/18" id="cw4q7fcm5-00007" Class="UnitedKingdomPublicGeneralAct" Year="2025" Number="18" Title="Data (Use and Access) Act 2025">Data (Use and Access) Act 2025 (c. 18)</Citation>, <CitationSubRef CitationRef="cw4q7fcm5-00007" id="cw4q7fcm5-00008" SectionRef="section-142-1" URI="http://www.legislation.gov.uk/id/ukpga/2025/18/section/142/1">s. 142(1)</CitationSubRef>, <CitationSubRef CitationRef="cw4q7fcm5-00007" id="cw4q7fcm5-00009" SectionRef="schedule-11-paragraph-9" URI="http://www.legislation.gov.uk/id/ukpga/2025/18/schedule/11/paragraph/9" Operative="true">Sch. 11 para. 9</CitationSubRef>; <Citation URI="http://www.legislation.gov.uk/id/uksi/2025/904" id="cw4q7fcm5-00010" Class="UnitedKingdomStatutoryInstrument" Year="2025" Number="904" Title="The Data (Use and Access) Act 2025 (Commencement No. 1) Regulations 2025">S.I. 2025/904</Citation>, <CitationSubRef CitationRef="cw4q7fcm5-00010" id="cw4q7fcm5-00011" SectionRef="regulation-2-y" URI="http://www.legislation.gov.uk/id/uksi/2025/904/regulation/2/y">reg. 2(y)</CitationSubRef></Text></Para></Commentary><Commentary id="key-e5b357fd1486fe91cd5d88eb1e7724e6" Type="F"><Para><Text>Words in Art. 28(6) substituted (31.12.2020) by <Citation URI="http://www.legislation.gov.uk/id/uksi/2019/419" id="cbqfzi1h4-00067" Class="UnitedKingdomStatutoryInstrument" Year="2019" Number="419" Title="The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019">The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019 (S.I. 2019/419)</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00067" id="cbqfzi1h4-00068" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/1/2" SectionRef="regulation-1-2">reg. 1(2)</CitationSubRef>, <CitationSubRef CitationRef="cbqfzi1h4-00067" id="cbqfzi1h4-00069" URI="http://www.legislation.gov.uk/id/uksi/2019/419/schedule/1/paragraph/22/4" SectionRef="schedule-1-paragraph-22-4" Operative="true">Sch. 1 para. 22(4)</CitationSubRef> (with <CitationSubRef CitationRef="cbqfzi1h4-00067" id="cbqfzi1h4-00070" URI="http://www.legislation.gov.uk/id/uksi/2019/419/regulation/5" SectionRef="regulation-5">reg. 5</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/ukpga/2020/1" id="cbqfzi1h4-00071" Year="2020" Class="UnitedKingdomPublicGeneralAct" Number="1">2020 c. 1</Citation>, <CitationSubRef CitationRef="cbqfzi1h4-00071" id="cbqfzi1h4-00072" URI="http://www.legislation.gov.uk/id/ukpga/2020/1/schedule/5/paragraph/1/1" SectionRef="schedule-5-paragraph-1-1">Sch. 5 para. 1(1)</CitationSubRef></Text></Para></Commentary></Commentaries></Legislation>

@@ -1,0 +1,46 @@
+<Legislation xmlns="http://www.legislation.gov.uk/namespaces/legislation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" DocumentURI="http://www.legislation.gov.uk/uksi/1986/1078" IdURI="http://www.legislation.gov.uk/id/uksi/1986/1078" NumberOfProvisions="308" xsi:schemaLocation="http://www.legislation.gov.uk/namespaces/legislation http://www.legislation.gov.uk/schema/legislation.xsd" SchemaVersion="1.0" RestrictExtent="E+W+S" RestrictStartDate="2026-06-01"><ukm:Metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dct="http://purl.org/dc/terms/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ukm="http://www.legislation.gov.uk/namespaces/metadata">
+					<dc:identifier>http://www.legislation.gov.uk/uksi/1986/1078/regulation/1</dc:identifier><dc:title>The Road Vehicles (Construction and Use) Regulations 1986</dc:title><dc:publisher>Westlaw</dc:publisher><dc:subject scheme="SIheading">ROAD TRAFFIC</dc:subject><dc:publisher>Statute Law Database</dc:publisher><dc:modified>2026-06-05</dc:modified><dc:contributor>Expert Participation</dc:contributor><dct:valid>2026-06-01</dct:valid>
+					<dc:description/>
+					<atom:link rel="self" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/data.xml" type="application/xml"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/resources" href="http://www.legislation.gov.uk/uksi/1986/1078/resources" title="More Resources"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/impacts" href="http://www.legislation.gov.uk/uksi/1986/1078/impacts" title="Impact Assessments"/>
+					
+					
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/act" href="http://www.legislation.gov.uk/uksi/1986/1078" title="whole act"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/introduction" href="http://www.legislation.gov.uk/uksi/1986/1078/introduction" title="introduction"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/signature" href="http://www.legislation.gov.uk/uksi/1986/1078/signature" title="signature"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/note" href="http://www.legislation.gov.uk/uksi/1986/1078/note" title="note"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/body" href="http://www.legislation.gov.uk/uksi/1986/1078/body" title="body"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/schedules" href="http://www.legislation.gov.uk/uksi/1986/1078/schedules" title="schedules"/>
+					
+										
+					
+					
+					
+					<atom:link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/data.rdf" title="RDF/XML"/><atom:link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/data.akn" title="AKN"/><atom:link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/data.xht" title="HTML snippet"/><atom:link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/data.htm" title="Website (XHTML) Default View"/><atom:link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/data.csv" title="CSV"/><atom:link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/data.pdf" title="PDF"/>
+					<atom:link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/data.html" title="HTML5 snippet"/>
+
+					
+					<atom:link rel="http://purl.org/dc/terms/tableOfContents" hreflang="en" href="http://www.legislation.gov.uk/uksi/1986/1078/contents" title="Table of Contents"/>
+					
+					<atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/made" title="made"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1/1986-08-11" title="1986-08-11"/>
+					
+					<atom:link rel="up" href="http://www.legislation.gov.uk/uksi/1986/1078" title="Entire legislation"/><atom:link rel="prev" href="http://www.legislation.gov.uk/uksi/1986/1078/introduction" title="Introduction; Introduction"/><atom:link rel="prevInForce" href="http://www.legislation.gov.uk/uksi/1986/1078/introduction" title="Introduction; Introduction"/><atom:link rel="next" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/2" title="Provision; Regulation 2"/><atom:link rel="nextInForce" href="http://www.legislation.gov.uk/uksi/1986/1078/regulation/2" title="Provision; Regulation 2"/>
+					<ukm:SecondaryMetadata><ukm:DocumentClassification><ukm:DocumentCategory Value="secondary"/><ukm:DocumentMainType Value="UnitedKingdomStatutoryInstrument"/><ukm:DocumentStatus Value="revised"/><ukm:DocumentMinorType Value="regulation"/></ukm:DocumentClassification><ukm:Year Value="1986"/><ukm:Number Value="1078"/><ukm:Made Date="1986-06-25"/><ukm:Laid Class="UnitedKingdomParliament" Date="1986-07-18"/><ukm:ComingIntoForce>
+            <ukm:DateTime Date="1986-08-11"/>
+         </ukm:ComingIntoForce></ukm:SecondaryMetadata>
+					
+
+                    
+									 
+					<ukm:Alternatives><ukm:Alternative URI="http://www.legislation.gov.uk/uksi/1986/1078/pdfs/uksi_19861078_en.pdf" Date="1986-07-18"/></ukm:Alternatives>
+					<ukm:ImpactAssessments>
+									
+									<ukm:ImpactAssessment URI="http://www.legislation.gov.uk/ukia/2026/109/pdfs/ukia_20260109_en.pdf" Date="2026-06-16" Title="PIR to SI 1988/1478, SI 1986/1078 and SI 1989/1796" Stage="Post Implementation" Department="Department for Transport" Year="2026" Number="109" Size="738051"/>
+								</ukm:ImpactAssessments>
+					<ukm:Statistics>
+									<ukm:TotalParagraphs Value="309"/>
+									<ukm:BodyParagraphs Value="151"/>
+									<ukm:ScheduleParagraphs Value="158"/>
+									<ukm:AttachmentParagraphs Value="0"/>
+									<ukm:TotalImages Value="10"/>
+								</ukm:Statistics>
+				</ukm:Metadata><Secondary><Body DocumentURI="http://www.legislation.gov.uk/uksi/1986/1078/body" IdURI="http://www.legislation.gov.uk/id/uksi/1986/1078/body" NumberOfProvisions="151" RestrictExtent="E+W+S" RestrictStartDate="2026-06-01"><Part DocumentURI="http://www.legislation.gov.uk/uksi/1986/1078/part/I" IdURI="http://www.legislation.gov.uk/id/uksi/1986/1078/part/I" NumberOfProvisions="7" id="part-I" RestrictExtent="E+W+S" RestrictStartDate="2026-06-01"><Number>PART I</Number><Title>PRELIMINARY</Title><P1group RestrictExtent="E+W+S" RestrictStartDate="1986-08-11"><Title>Commencement and citation</Title><P1 DocumentURI="http://www.legislation.gov.uk/uksi/1986/1078/regulation/1" IdURI="http://www.legislation.gov.uk/id/uksi/1986/1078/regulation/1" id="regulation-1"><Pnumber><CommentaryRef Ref="key-acf63e6ec4b3280a98e3999c461810a1"/>1</Pnumber><P1para><Text>These Regulations shall come into operation on 11th August 1986,
+and may be cited as the Road Vehicles (Construction and Use) Regulations 1986.
+</Text></P1para></P1></P1group></Part></Body></Secondary><Commentaries><Commentary id="key-acf63e6ec4b3280a98e3999c461810a1" Type="I"><Para><Text><CitationSubRef id="c5jmzypz5-00007" SectionRef="regulation-1" URI="http://www.legislation.gov.uk/id/uksi/1986/1078/regulation/1">Reg. 1</CitationSubRef> in force at 11.8.1986, see <CitationSubRef id="c5jmzypz5-00008" CitationRef="" SectionRef="regulation-1" URI="http://www.legislation.gov.uk/id/uksi/1986/1078/regulation/1" Operative="true">reg. 1</CitationSubRef></Text></Para></Commentary></Commentaries></Legislation>

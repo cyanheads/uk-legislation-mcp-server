@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xmlns:leg="http://www.legislation.gov.uk/namespaces/legislation" xmlns:ukm="http://www.legislation.gov.uk/namespaces/metadata" xmlns:theme="http://www.legislation.gov.uk/namespaces/theme" xmlns:openSearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:parameters="http://a9.com/-/spec/opensearch/extensions/parameters/1.0/">
+			<id>http://www.legislation.gov.uk/ukpga/2018/=scotland/data.feed</id>
+			<link rel="self" type="application/atom+xml" href="http://www.legislation.gov.uk/ukpga/2018/=scotland/data.feed"/>
+			
+			<link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/ukpga/2018/=scotland/data.csv"/>
+			<updated>2026-09-26T14:33:17.127816+01:00</updated>
+			<title>Search Results</title>
+			<openSearch:Query role="request" leg:type="ukpga" leg:year="2018"> </openSearch:Query>
+			<openSearch:itemsPerPage>20</openSearch:itemsPerPage>
+			<openSearch:startIndex>1</openSearch:startIndex>
+			<leg:page>1</leg:page>
+			<leg:morePages>0</leg:morePages>
+			<leg:facets>
+								
+								<leg:facetTypes remove="http://www.legislation.gov.uk/2018/=scotland/data.feed"/>
+								<leg:facetYears remove="http://www.legislation.gov.uk/ukpga/=scotland/data.feed"><leg:facetYear year="2021" href="http://www.legislation.gov.uk/ukpga/2021/=scotland/data.feed" total="2"/><leg:facetYear year="2020" href="http://www.legislation.gov.uk/ukpga/2020/=scotland/data.feed" total="4"/><leg:facetYear year="2019" href="http://www.legislation.gov.uk/ukpga/2019/=scotland/data.feed" total="2"/><leg:facetYear year="2017" href="http://www.legislation.gov.uk/ukpga/2017/=scotland/data.feed" total="2"/></leg:facetYears>
+								<leg:facetHundreds/>
+								
+							</leg:facets>
+			
+			<openSearch:totalResults>0</openSearch:totalResults>
+			
+		</feed>

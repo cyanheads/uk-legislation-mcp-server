@@ -4,6 +4,7 @@
     "args": ["-y", "@cyanheads/uk-legislation-mcp-server"],
     "env": {
       "MCP_TRANSPORT_TYPE": "stdio"
-    }
+    },
+    "env_vars": ["UK_LEGISLATION_CONTACT"]
   }
 }
