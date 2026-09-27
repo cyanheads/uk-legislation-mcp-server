@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "uk-legislation-mcp-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Search and read UK legislation at any date, resolve citations, list amendments, track changes.",
   "author": {
     "name": "cyanheads",

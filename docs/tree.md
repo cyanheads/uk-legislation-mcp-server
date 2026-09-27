@@ -1,6 +1,6 @@
 # uk-legislation-mcp-server - Directory Structure
 
-Generated on: 2026-09-26 22:10:40
+Generated on: 2026-09-27 00:24:42
 
 ```text
 uk-legislation-mcp-server/
@@ -19,11 +19,13 @@ uk-legislation-mcp-server/
 │   ├── CODE_OF_CONDUCT.md
 │   ├── CONTRIBUTING.md
 │   ├── FUNDING.yml
+│   ├── secret_scanning.yml
 │   └── SECURITY.md
 ├── .vscode/
 │   ├── extensions.json
 │   └── settings.json
 ├── changelog/
+│   ├── 0.1.x/
 │   └── template.md
 ├── docs/
 │   └── design.md
@@ -276,6 +278,7 @@ uk-legislation-mcp-server/
 ├── biome.json
 ├── bun.lock
 ├── bunfig.toml
+├── CHANGELOG.md
 ├── CLAUDE.md
 ├── devcheck.config.json
 ├── Dockerfile
