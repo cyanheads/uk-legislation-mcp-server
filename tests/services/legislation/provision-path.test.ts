@@ -13,6 +13,7 @@ import {
   parseItemInput,
   provisionFromUri,
   provisionLabel,
+  splitLeadingProvision,
   splitProvisionTail,
   versionSegment,
 } from '@/services/legislation/provision-path.js';
@@ -132,6 +133,9 @@ describe('normalizeProvision', () => {
     ['art. 28(3)', 'article/28/3'],
     ['Article 28', 'article/28'],
     ['r. 7', 'rule/7'],
+    ['r. 3.4', 'rule/3.4'],
+    ['rule 3.4(2)(a)', 'rule/3.4/2/a'],
+    ['r. 44.3A', 'rule/44.3A'],
     ['Sch. 2 para. 3(1)', 'schedule/2/paragraph/3/1'],
     ['Sch 2 para 3', 'schedule/2/paragraph/3'],
     ['Pt 3', 'part/3'],
@@ -159,6 +163,10 @@ describe('normalizeProvision', () => {
     'section/schedule/2',
     'introduction/1',
     'para. 3 of Sch. 2',
+    'r. 3.',
+    'r. 3..4',
+    'constructor 1',
+    's. 1 constructor 2',
   ])('rejects %j', (input) => {
     expect(normalizeProvision(input)).toBeUndefined();
   });
@@ -175,6 +183,7 @@ describe('splitProvisionTail', () => {
       'Data Protection Act 2018',
       'schedule/2/paragraph/3/1',
     ],
+    ['Civil Procedure Rules 1998 r. 3.4', 'Civil Procedure Rules 1998', 'rule/3.4'],
   ])('%s', (citation, head, provision) => {
     expect(splitProvisionTail(citation)).toEqual({ head, provision });
   });
@@ -186,6 +195,42 @@ describe('splitProvisionTail', () => {
     'Data Protection Regulations 2018',
   ])('leaves a title without a provision tail untouched: %s', (citation) => {
     expect(splitProvisionTail(citation)).toEqual({ head: citation });
+  });
+
+  it('reads no provision from a tail naming an Object.prototype member', () => {
+    expect(splitProvisionTail('Data Protection Act 2018 s. 1 constructor 2')).toEqual({
+      head: 'Data Protection Act 2018 s. 1 constructor 2',
+    });
+  });
+});
+
+describe('splitLeadingProvision', () => {
+  it.each([
+    ['section 45 of the Data Protection Act 2018', 'Data Protection Act 2018', 'section/45'],
+    ['s. 45(2)(f) of 2018 c. 12', '2018 c. 12', 'section/45/2/f'],
+    ['Article 28 of the UK GDPR', 'UK GDPR', 'article/28'],
+    [
+      'Sch. 2 para. 3 of The Data Protection Act 2018',
+      'Data Protection Act 2018',
+      'schedule/2/paragraph/3',
+    ],
+    [
+      'section 1 of the Representation of the People Act 1983',
+      'Representation of the People Act 1983',
+      'section/1',
+    ],
+  ])('%s', (citation, head, provision) => {
+    expect(splitLeadingProvision(citation)).toEqual({ head, provision });
+  });
+
+  it.each([
+    'Representation of the People Act 1983',
+    'Rules of the Supreme Court 1965',
+    'section 45 of',
+    'Data Protection Act 2018 s. 45',
+    'foo 3 of the Data Protection Act 2018',
+  ])('leaves %j untouched', (citation) => {
+    expect(splitLeadingProvision(citation)).toEqual({ head: citation });
   });
 });
 

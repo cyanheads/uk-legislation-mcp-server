@@ -105,7 +105,7 @@ describe('document URLs', () => {
 });
 
 describe('changesUrl', () => {
-  it('omits the status segment for all and adds the counterpart on the other side', () => {
+  it('omits the status segment for all and leads with the direction when there is no counterpart', () => {
     expect(
       changesUrl({
         item: 'ukpga/2018/12',
@@ -120,12 +120,34 @@ describe('changesUrl', () => {
         item: 'ukpga/2025/18',
         direction: 'affecting',
         status: 'unapplied',
+        limit: 500,
+        page: 2,
+      }),
+    ).toBe('/changes/unapplied/affecting/ukpga/2025/18/data.feed?results-count=500&page=2');
+  });
+
+  it('with a counterpart, puts the affected side first in either direction', () => {
+    expect(
+      changesUrl({
+        item: 'ukpga/2018/12',
+        direction: 'affected',
+        status: 'all',
+        counterpart: 'uksi/2026',
+        limit: 50,
+        page: 1,
+      }),
+    ).toBe('/changes/affected/ukpga/2018/12/affecting/uksi/2026/data.feed?results-count=50');
+    expect(
+      changesUrl({
+        item: 'ukpga/2025/18',
+        direction: 'affecting',
+        status: 'unapplied',
         counterpart: 'ukpga/2018',
         limit: 500,
         page: 2,
       }),
     ).toBe(
-      '/changes/unapplied/affecting/ukpga/2025/18/affected/ukpga/2018/data.feed?results-count=500&page=2',
+      '/changes/unapplied/affected/ukpga/2018/affecting/ukpga/2025/18/data.feed?results-count=500&page=2',
     );
   });
 });

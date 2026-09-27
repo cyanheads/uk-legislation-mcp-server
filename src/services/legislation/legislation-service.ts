@@ -16,7 +16,7 @@ import { extractTitleCandidates, normalizeTitle, type ParsedCitation } from './c
 import { effectTouches, sortOutstandingFirst } from './clml/effects.js';
 import { type DocumentMetadata, readMetadata } from './clml/metadata.js';
 import { fragmentOutline, type OutlineEntry, tocOutline } from './clml/outline.js';
-import { type Annotation, renderNodes } from './clml/render.js';
+import { type Annotation, cutRendered, type RenderResult, renderNodes } from './clml/render.js';
 import type { CursorPosition } from './cursor.js';
 import {
   type CallBudget,
@@ -25,6 +25,7 @@ import {
   type UpstreamResult,
 } from './legislation-client.js';
 import {
+  isCalendarDate,
   isEnactedKeyword,
   parseItemInput,
   provisionLabel,
@@ -57,15 +58,33 @@ import {
   type XmlElement,
 } from './xml.js';
 
-/** Rendered text plus annotations beyond this size return an outline instead. */
-export const TEXT_BUDGET_CHARS = 40_000;
+/** A fragment whose rendered size (`RenderResult.chars`) exceeds this returns an outline instead. */
+export const TEXT_BUDGET_CHARS = 20_000;
+/** A fragment over budget with no smaller child provisions is cut to this rendered size. */
+export const TEXT_CEILING_CHARS = 2 * TEXT_BUDGET_CHARS;
 /** Item-level reads fetch the whole item only when its contents list at most this many leaf provisions. */
 export const WHOLE_ITEM_MAX_LEAVES = 25;
-const OUTLINE_MAX = 300;
-const ITEM_EFFECTS_MAX = 20;
-const SCAN_PAGE_SIZE = 500;
+const OUTLINE_MAX = 100;
+/** Unapplied effects listed on a read, at item or provision level; a notice counts the rest (Design Decision 73). */
+const EFFECTS_LISTED_MAX = 20;
+/** Changes-feed page size a provision scan reads; a scan cursor's offset lies below it. */
+export const SCAN_PAGE_SIZE = 500;
+/** Publication Log page size, fixed upstream; a track cursor's offset lies below it. */
+export const LOG_PAGE_SIZE = 20;
 const SCAN_MAX_PAGES = 3;
 const LOG_MAX_REQUESTS = 4;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** The UK calendar date, read by parts: the order and separators of a formatted date vary by ICU version. */
+const UK_DATE = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+/** An `/id` redirect to `…/contents/made` (or enacted, …) marks an item held only as its original text. */
+const ORIGINAL_ONLY = /\/contents\/(made|enacted|adopted|created)(?:\/|$)/;
+const SIMPLIFIED_TABLE_NOTICE =
+  'Tables with merged cells were simplified; the XML link carries the exact layout.';
 
 // ─── search ───────────────────────────────────────────────────────────────
 
@@ -82,9 +101,13 @@ export interface SearchOutcome {
 
 /** Document request, inputs already validated and normalized. */
 export interface DocumentQuery {
+  /** The date asked for when an item held only as original text is re-read at its enacted keyword. */
+  asOf?: string;
   item: ItemPath;
   language: 'en' | 'cy';
   matchText?: string;
+  /** Index of the first outline entry to return when the read answers with an outline. */
+  outlineOffset: number;
   provision?: string;
   /** `current`, an enacted keyword, or a calendar date. */
   version: string;
@@ -130,7 +153,8 @@ export interface DocumentOutput {
     valid_to?: string;
   };
   text?: string;
-  unapplied_effects: EffectRecord[];
+  /** Absent on an item-level outline, which carries a count notice instead (Design Decision 58). */
+  unapplied_effects?: EffectRecord[];
   version: {
     applied: string;
     available: string[];
@@ -206,6 +230,8 @@ export interface TrackOutcome {
   itemLogTotal?: number;
   mode: 'day_walk' | 'item_log';
   next?: CursorPosition;
+  /** Item-log mode: date of the oldest log event this call examined, in or out of the window (Design Decision 68). */
+  readBackTo?: string;
 }
 
 // ─── lookup_citation ──────────────────────────────────────────────────────
@@ -247,6 +273,16 @@ function dayBefore(date: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * A Publication Log event's date, only when its `updated` starts with a
+ * calendar date: the item log places no other in the window and quotes no
+ * other as read_back_to (Design Decisions 74 and 76).
+ */
+function calendarDateOf(event: PublicationEvent): string | undefined {
+  const date = event.updated.slice(0, 10);
+  return isCalendarDate(date) ? date : undefined;
+}
+
 /** The document body container (`Primary`, `Secondary`, `EURetained`, …). */
 function bodyRoot(root: XmlElement): XmlElement | undefined {
   return elements(root).find(
@@ -255,33 +291,64 @@ function bodyRoot(root: XmlElement): XmlElement | undefined {
   );
 }
 
-/** Builds the fixed caveat sentence for a document's editorial status. */
+/**
+ * Builds the fixed caveat sentence for a document's editorial status. `listed`
+ * is false when the output omits `unapplied_effects` (an item outline), so the
+ * sentence points at the count and uklaw_get_amendments instead.
+ */
 function caveatFor(
   status: string | undefined,
   outstanding: number,
   version: string,
   scope: 'provision' | 'item',
+  listed: boolean,
 ): string {
   const historical =
     version !== 'current'
-      ? ' unapplied_effects describes the outstanding work on the current revised text, not the history of the version shown.'
+      ? ` ${listed ? 'unapplied_effects describes' : 'editorial.outstanding_effects counts'} the outstanding work on the current revised text, not the history of the version shown.`
       : '';
   if (status === 'revised') {
     const count =
       outstanding === 0
         ? `No outstanding effects are recorded against this ${scope}.`
-        : `${outstanding} outstanding effect${outstanding === 1 ? ' is' : 's are'} recorded against this ${scope} but not yet applied (see unapplied_effects).`;
+        : `${outstanding} outstanding effect${outstanding === 1 ? ' is' : 's are'} recorded against this ${scope} but not yet applied (${listed ? 'see unapplied_effects' : 'uklaw_get_amendments lists them'}).`;
     return `Revised text: an editorial consolidation by legislation.gov.uk that can lag behind amendments; it is not the authoritative text. ${count}${historical}`;
   }
   if (status === 'final') {
     const read =
       version === 'current'
-        ? 'No revised version is held for this document, so the original text is served; check unapplied_effects and uklaw_get_amendments for changes made since.'
+        ? `No revised version is held for this document, so the original text is served; check ${listed ? 'unapplied_effects and ' : ''}uklaw_get_amendments for changes made since.`
         : 'Read version current for the revised text.';
     return `Original text as enacted or made: later amendments are not reflected. ${read}${historical}`;
   }
   if (status === 'draft') return `Draft legislation: not made law.${historical}`;
   return `legislation.gov.uk did not report an editorial status for this document; treat the text as unverified.${historical}`;
+}
+
+/**
+ * Places an outline window in the whole outline (Design Decision 59):
+ * `pastEnd` when the window lists nothing of a non-empty outline, else a
+ * `notice` whenever it is not the whole outline, naming the offset that
+ * continues it. `count` opens the notice, e.g. "The outline has 305 entries".
+ */
+function placeWindow(
+  offset: number,
+  listed: number,
+  total: number,
+  count: string,
+): { notice?: string; pastEnd?: string } {
+  if (listed === total) return {};
+  if (listed === 0) {
+    return {
+      pastEnd: `outline_offset ${offset} is past the end of this outline, which has ${total} entries; call again with a lower outline_offset.`,
+    };
+  }
+  const next = offset + listed;
+  const more =
+    next < total
+      ? ` Call again with outline_offset ${next} for the next ${Math.min(total - next, OUTLINE_MAX)}.`
+      : '';
+  return { notice: `${count}; entries ${offset + 1}–${next} are listed.${more}` };
 }
 
 /** Composes the tool calls into upstream requests. */
@@ -294,9 +361,16 @@ export class LegislationService {
     this.now = options.now ?? Date.now;
   }
 
-  /** Current wall-clock time, for window validation. */
+  /**
+   * Today's UK date (Europe/London), YYYY-MM-DD: the Publication Log dates
+   * events in UK local time, so a UTC date runs a day behind from midnight to
+   * 01:00 BST (Design Decision 65).
+   */
   today(): string {
-    return new Date(this.now()).toISOString().slice(0, 10);
+    const { year, month, day } = Object.fromEntries(
+      UK_DATE.formatToParts(this.now()).map((part) => [part.type, part.value]),
+    );
+    return `${year}-${month}-${day}`;
   }
 
   /** Runs a request after the first; undefined when it cannot start. */
@@ -338,19 +412,58 @@ export class LegislationService {
 
   // ─── get_document ────────────────────────────────────────────────────
 
-  /** Checks an item exists via `/id/{item}`: true, false, or undefined when the check cannot start. */
+  /**
+   * Checks an item exists via `/id/{item}`; undefined when the check cannot start.
+   * `original` is the enacted keyword of an item held only as its original text.
+   */
   private async itemExists(
     item: string,
     budget: CallBudget,
     ctx: Context,
-  ): Promise<boolean | undefined> {
+  ): Promise<{ exists: boolean; original?: string } | undefined> {
     const result = await this.later(() => this.client.get(idUrl(item), 'identifier', budget, ctx));
     if (!result) return;
-    return result.kind !== 'not_found';
+    const original =
+      result.kind === 'redirect' ? ORIGINAL_ONLY.exec(result.location)?.[1] : undefined;
+    return { exists: result.kind !== 'not_found', ...(original ? { original } : {}) };
   }
 
-  async getDocument(query: DocumentQuery, ctx: Context): Promise<DocumentOutcome> {
-    const budget = this.client.budget(4);
+  /**
+   * After a 404: a dated read of an item held only as its original text is
+   * re-read at that text's keyword on the same budget (a re-read that cannot
+   * start sheds, since the call holds nothing yet); otherwise the `/id` check
+   * tells a missing item from a missing provision or version.
+   */
+  private async afterNotFound(
+    query: DocumentQuery,
+    which: 'provision' | 'version',
+    budget: CallBudget,
+    ctx: Context,
+  ): Promise<DocumentOutcome> {
+    const check = await this.itemExists(query.item.path, budget, ctx);
+    if (check?.original && ISO_DATE.test(query.version)) {
+      return this.readDocument(
+        { ...query, version: check.original, asOf: query.version },
+        budget,
+        ctx,
+      );
+    }
+    return {
+      kind: 'not_found',
+      which: check?.exists ? which : 'document',
+      checkRan: check !== undefined,
+    };
+  }
+
+  getDocument(query: DocumentQuery, ctx: Context): Promise<DocumentOutcome> {
+    return this.readDocument(query, this.client.budget(4), ctx);
+  }
+
+  private async readDocument(
+    query: DocumentQuery,
+    budget: CallBudget,
+    ctx: Context,
+  ): Promise<DocumentOutcome> {
     const version = versionSegment(query.version, query.item.type);
     const welsh = query.language === 'cy';
     const item = query.item.path;
@@ -362,14 +475,7 @@ export class LegislationService {
         budget,
         ctx,
       );
-      if (result.kind === 'not_found') {
-        const exists = await this.itemExists(item, budget, ctx);
-        return {
-          kind: 'not_found',
-          which: exists ? 'provision' : 'document',
-          checkRan: exists !== undefined,
-        };
-      }
+      if (result.kind === 'not_found') return this.afterNotFound(query, 'provision', budget, ctx);
       return this.provisionDocument(query, parseXml(this.body(result, 'document'), 'a document'));
     }
 
@@ -385,17 +491,14 @@ export class LegislationService {
       ctx,
     );
     if (contents.kind === 'not_found') {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(query.version))
+      if (!ISO_DATE.test(query.version))
         return { kind: 'not_found', which: 'document', checkRan: true };
-      const exists = await this.itemExists(item, budget, ctx);
-      return {
-        kind: 'not_found',
-        which: exists ? 'version' : 'document',
-        checkRan: exists !== undefined,
-      };
+      return this.afterNotFound(query, 'version', budget, ctx);
     }
     const tocRoot = parseXml(this.body(contents, 'table of contents'), 'a table of contents');
     const md = readMetadata(tocRoot);
+    if (query.asOf && md.madeDate && query.asOf < md.madeDate)
+      return { kind: 'not_found', which: 'version', checkRan: true };
     const toc = child(tocRoot, 'Contents');
     const notices: string[] = [];
 
@@ -403,7 +506,12 @@ export class LegislationService {
       return { kind: 'found', notices, output: this.itemOutput(query, md, 'pdf_only', notices) };
     }
     const outline = toc
-      ? tocOutline(toc, item, OUTLINE_MAX, Boolean(query.matchText))
+      ? tocOutline(
+          toc,
+          item,
+          { offset: query.outlineOffset, max: OUTLINE_MAX },
+          Boolean(query.matchText),
+        )
       : { entries: [], leafCount: 0, total: 0 };
 
     if (!query.matchText && outline.leafCount <= WHOLE_ITEM_MAX_LEAVES) {
@@ -425,10 +533,7 @@ export class LegislationService {
         const body = bodyRoot(root);
         const rendered = body ? renderNodes(root, [body]) : undefined;
         if (rendered && rendered.chars <= TEXT_BUDGET_CHARS) {
-          if (rendered.simplifiedTable)
-            notices.push(
-              'Tables with merged cells were simplified; the XML link carries the exact layout.',
-            );
+          if (rendered.simplifiedTable) notices.push(SIMPLIFIED_TABLE_NOTICE);
           const output = this.itemOutput(query, readMetadata(root), 'full', notices);
           return {
             kind: 'found',
@@ -448,33 +553,41 @@ export class LegislationService {
       }
     }
 
+    const window = placeWindow(
+      query.outlineOffset,
+      outline.entries.length,
+      outline.total,
+      query.matchText
+        ? `match_text matched ${outline.total} table-of-contents entries`
+        : `The outline has ${outline.total} entries`,
+    );
+    if (window.notice) notices.push(window.notice);
+    if (query.matchText && outline.total === 0)
+      notices.push(
+        `No provision of ${item} matches "${query.matchText}" at this version. Try another term, or drop match_text to list the item's provisions.`,
+      );
     const output = this.itemOutput(query, md, 'outline', notices);
     const example = outline.entries.find((e) => e.level === 1) ?? outline.entries[0];
-    if (query.matchText) {
-      if (outline.total > OUTLINE_MAX) {
-        notices.push(
-          `match_text matched ${outline.total} table-of-contents entries; the first ${OUTLINE_MAX} are listed. Narrow match_text to see the rest.`,
-        );
-      }
-      if (outline.total === 0)
-        notices.push(
-          `No provision of ${item} matches "${query.matchText}" at this version. Try another term, or drop match_text to list the item's provisions.`,
-        );
-    }
     return {
       kind: 'found',
       notices,
       output: {
         ...output,
         outline: outline.entries,
-        outline_notice: example
-          ? `Read one provision with uklaw_get_document, item ${item} and provision set to a listed path — for example ${example.provision} (${example.label}).`
-          : 'No provisions are listed for this item at this version.',
+        outline_notice:
+          window.pastEnd ??
+          (example
+            ? `Read one provision with uklaw_get_document, item ${item} and provision set to a listed path — for example ${example.provision} (${example.label}).`
+            : 'No provisions are listed for this item at this version.'),
       },
     };
   }
 
-  /** Assembles the item-level output (no provision). */
+  /**
+   * Assembles the item-level output (no provision). An outline omits
+   * `unapplied_effects` and notes the item's count instead (Design Decision
+   * 58); a full or PDF-only read lists them as `baseOutput` caps them.
+   */
   private itemOutput(
     query: DocumentQuery,
     md: DocumentMetadata,
@@ -482,32 +595,38 @@ export class LegislationService {
     notices: string[],
   ): DocumentOutput {
     const sorted = sortOutstandingFirst(md.unappliedEffects);
-    if (sorted.length > ITEM_EFFECTS_MAX) {
+    if (kind === 'outline' && sorted.length > 0) {
+      const outstanding = sorted.filter((e) => e.outstanding).length;
       notices.push(
-        `${sorted.length} unapplied effects are recorded against this item; the first ${ITEM_EFFECTS_MAX} are listed. Call uklaw_get_amendments with item ${query.item.path} and status "unapplied" for the full list.`,
+        `${sorted.length} unapplied effect${sorted.length === 1 ? ' is' : 's are'} recorded against this item (${outstanding} outstanding); an item outline does not list them. Call uklaw_get_amendments with item ${query.item.path} and status "unapplied" for the list.`,
       );
     }
-    return this.baseOutput(
-      query,
-      md,
-      kind,
-      sorted.slice(0, ITEM_EFFECTS_MAX),
-      sorted,
-      notices,
-      'item',
-    );
+    return this.baseOutput(query, md, kind, sorted, kind !== 'outline', notices, 'item');
   }
 
+  /**
+   * The output fields every document read shares. `effects` is the whole
+   * sorted list, which `editorial.outstanding_effects` counts; when `listed`,
+   * the first `EFFECTS_LISTED_MAX` become `unapplied_effects`, with a notice
+   * when more exist (Design Decision 73).
+   */
   private baseOutput(
     query: DocumentQuery,
     md: DocumentMetadata,
     kind: DocumentOutput['kind'],
     effects: EffectRecord[],
-    allEffects: EffectRecord[],
+    listed: boolean,
     notices: string[],
     scope: 'provision' | 'item',
   ): DocumentOutput {
     const item = query.item;
+    if (listed && effects.length > EFFECTS_LISTED_MAX) {
+      notices.push(
+        scope === 'item'
+          ? `${effects.length} unapplied effects are recorded against this item; the first ${EFFECTS_LISTED_MAX} are listed. Call uklaw_get_amendments with item ${item.path} and status "unapplied" for the full list.`
+          : `${effects.length} unapplied effects touch this provision, whole-item effects included; the first ${EFFECTS_LISTED_MAX} are listed. Call uklaw_get_amendments with item ${item.path}, provision ${query.provision} and status "unapplied" for the full list.`,
+      );
+    }
     const version = versionSegment(query.version, item.type);
     const served = legislationPath(md.identifier)?.split('/').at(-1);
     const applied =
@@ -518,11 +637,21 @@ export class LegislationService {
     if (query.language === 'cy' && language !== 'cy') {
       notices.push('Welsh text is not held for this document; the English text is returned.');
     }
-    const outstanding = allEffects.filter((e) => e.outstanding).length;
+    if (query.asOf) {
+      const keyword = query.version;
+      const when = md.madeDate
+        ? `${keyword} ${md.madeDate}`
+        : `its ${keyword} date is not recorded`;
+      notices.push(
+        `legislation.gov.uk holds no revised versions of ${item.path}, only its ${keyword} text (${when}), so that text is returned for ${query.asOf}.`,
+      );
+    }
+    const outstanding = effects.filter((e) => e.outstanding).length;
     const web = `${ORIGIN}${documentPath({ item: item.path, ...(query.provision ? { provision: query.provision } : {}), ...(version ? { version } : {}), welsh: language === 'cy' })}`;
     const documentUri = query.provision
       ? md.identifier
-      : (md.identifier?.replace(/\/contents(?=\/|$)/, '') ?? undefined);
+      : md.identifier?.replace(/\/contents(?=\/|$)/, '');
+    const number = md.number ?? item.number;
     return {
       kind,
       item: {
@@ -534,11 +663,11 @@ export class LegislationService {
         type_label: typeLabel(item.type),
         ...(md.category ? { category: md.category } : {}),
         ...(md.year !== undefined ? { year: md.year } : {}),
-        ...((md.number ?? item.number) ? { number: md.number ?? item.number } : {}),
+        ...(number ? { number } : {}),
         ...(md.restrictExtent ? { extent: md.restrictExtent } : {}),
       },
       version: {
-        requested: query.version,
+        requested: query.asOf ?? query.version,
         applied,
         ...(md.restrictEndDate ? { valid_to: md.restrictEndDate } : {}),
         document_uri: toHttps(documentUri ?? web),
@@ -550,9 +679,16 @@ export class LegislationService {
         publisher: md.publishers,
         ...(md.modified ? { modified: md.modified } : {}),
         outstanding_effects: outstanding,
-        caveat: caveatFor(md.status, outstanding, query.version, scope),
+        /** An original-only item's text is its current text, so it takes the current-read caveat. */
+        caveat: caveatFor(
+          md.status,
+          outstanding,
+          query.asOf ? 'current' : query.version,
+          scope,
+          listed,
+        ),
       },
-      unapplied_effects: effects,
+      ...(listed ? { unapplied_effects: effects.slice(0, EFFECTS_LISTED_MAX) } : {}),
       links: {
         web,
         xml: `${web}/data.xml`,
@@ -573,6 +709,8 @@ export class LegislationService {
     const provision = query.provision as string;
     const fullPath = `${item}/${provision}`;
     const md = readMetadata(root);
+    if (query.asOf && md.madeDate && query.asOf < md.madeDate)
+      return { kind: 'not_found', which: 'provision', checkRan: true };
     const notices: string[] = [];
     const body = bodyRoot(root);
     const path = body
@@ -586,15 +724,33 @@ export class LegislationService {
       parent?.name === 'P1group' &&
       elements(parent).filter((c) => attr(c, 'DocumentURI')).length === 1;
     const renderAs = grouped ? (parent as XmlElement) : target;
+    const nearest = [target, ...ancestors.toReversed()];
     const inherited = (name: string): string | undefined =>
-      [target, ...[...ancestors].reverse()]
-        .map((el) => attr(el, name))
-        .find((v) => v !== undefined);
+      nearest.map((el) => attr(el, name)).find((v) => v !== undefined);
+    /** Both window ends come from one element: mixing elements yields a window no element records. */
+    const windowed = nearest.find(
+      (el) => attr(el, 'RestrictStartDate') ?? attr(el, 'RestrictEndDate'),
+    );
+    let validFrom = attr(windowed, 'RestrictStartDate');
+    let validTo = attr(windowed, 'RestrictEndDate');
+    /** The notice quotes both ends, so it is raised only over calendar dates (Design Decision 74). */
+    if (
+      validFrom &&
+      validTo &&
+      isCalendarDate(validFrom) &&
+      isCalendarDate(validTo) &&
+      validTo < validFrom
+    ) {
+      notices.push(
+        `legislation.gov.uk records this provision's text window as ${validFrom} to ${validTo}, which ends before it starts; valid_from and valid_to are omitted.`,
+      );
+      validFrom = validTo = undefined;
+    }
 
     const touching = sortOutstandingFirst(
       md.unappliedEffects.filter((e) => effectTouches(e, 'affected', fullPath)),
     );
-    const base = this.baseOutput(query, md, 'full', touching, touching, notices, 'provision');
+    const base = this.baseOutput(query, md, 'full', touching, true, notices, 'provision');
     const heading = textOf(
       (target?.name === 'P1' && parent?.name === 'P1group' ? child(parent, 'Title') : undefined) ??
         child(target, 'Title') ??
@@ -602,8 +758,6 @@ export class LegislationService {
     );
     const status = attr(target, 'Status') ?? (grouped ? attr(parent, 'Status') : undefined);
     const extent = inherited('RestrictExtent');
-    const validFrom = inherited('RestrictStartDate');
-    const validTo = inherited('RestrictEndDate');
     const output: DocumentOutput = {
       ...base,
       provision: {
@@ -621,33 +775,51 @@ export class LegislationService {
       return { kind: 'found', notices, output: { ...output, text: '', annotations: [] } };
 
     const rendered = renderNodes(root, [renderAs]);
+    let returned: RenderResult = rendered;
     if (rendered.chars > TEXT_BUDGET_CHARS && target) {
-      const outline = fragmentOutline(root, target, item, OUTLINE_MAX);
-      if (outline.length > 0) {
-        const fits = outline.find((e) => (e.chars ?? 0) <= TEXT_BUDGET_CHARS) ?? outline[0];
+      const outline = fragmentOutline(root, target, item, {
+        offset: query.outlineOffset,
+        max: OUTLINE_MAX,
+      });
+      if (outline.total > 0) {
+        const window = placeWindow(
+          query.outlineOffset,
+          outline.entries.length,
+          outline.total,
+          `The outline has ${outline.total} entries`,
+        );
+        if (window.notice) notices.push(window.notice);
+        const fits =
+          outline.entries.find((e) => (e.chars ?? 0) <= TEXT_BUDGET_CHARS) ?? outline.entries[0];
+        const over = `${provisionLabel(provision)} renders to ${rendered.chars} characters, over the ${TEXT_BUDGET_CHARS}-character budget.`;
         return {
           kind: 'found',
           notices,
           output: {
             ...output,
             kind: 'outline',
-            outline,
-            outline_notice: `${provisionLabel(provision)} renders to ${rendered.chars} characters, over the ${TEXT_BUDGET_CHARS}-character budget. Re-call uklaw_get_document with a narrower provision from the outline — for example ${fits?.provision} (${fits?.chars} characters).`,
+            outline: outline.entries,
+            outline_notice: `${over} ${window.pastEnd ?? `Re-call uklaw_get_document with a narrower provision from the outline — for example ${fits?.provision} (${fits?.chars} characters).`}`,
           },
         };
       }
-      notices.push(
-        `This provision renders to ${rendered.chars} characters and has no smaller child provisions; the full text is returned.`,
-      );
+      const leafless = `This provision renders to ${rendered.chars} characters and has no smaller child provisions`;
+      if (rendered.chars > TEXT_CEILING_CHARS) {
+        returned = cutRendered(rendered, TEXT_CEILING_CHARS);
+        notices.push(
+          `${leafless}, so its text is cut to ${returned.chars} characters to fit the ${TEXT_CEILING_CHARS}-character ceiling, keeping only the annotations that text references. The full text is at ${output.links.web}, and its XML at ${output.links.xml}.`,
+        );
+      } else {
+        notices.push(
+          `${leafless}; that is within the ${TEXT_CEILING_CHARS}-character ceiling, so the full text is returned.`,
+        );
+      }
     }
-    if (rendered.simplifiedTable)
-      notices.push(
-        'Tables with merged cells were simplified; the XML link carries the exact layout.',
-      );
+    if (rendered.simplifiedTable) notices.push(SIMPLIFIED_TABLE_NOTICE);
     return {
       kind: 'found',
       notices,
-      output: { ...output, text: rendered.text, annotations: rendered.annotations },
+      output: { ...output, text: returned.text, annotations: returned.annotations },
     };
   }
 
@@ -764,6 +936,18 @@ export class LegislationService {
   // ─── track_changes ───────────────────────────────────────────────────
 
   async trackChanges(query: TrackQuery, ctx: Context): Promise<TrackOutcome> {
+    // The log holds no events dated after today's UK date, so no request reads one (Decision 65).
+    const today = this.today();
+    if (query.startDate > today) {
+      return {
+        mode: query.item?.full ? 'item_log' : 'day_walk',
+        events: [],
+        days: [],
+        hasMore: false,
+        capped: false,
+        attribution: buildAttribution(),
+      };
+    }
     const budget = this.client.budget(LOG_MAX_REQUESTS);
     const filters = {
       ...(query.contentType ? { contentType: query.contentType } : {}),
@@ -785,6 +969,7 @@ export class LegislationService {
       let offset = query.position?.offset ?? 0;
       let next: CursorPosition | undefined;
       let itemLogTotal: number | undefined;
+      let readBackTo: string | undefined;
       let capped = false;
       for (let i = 0; i < LOG_MAX_REQUESTS; i += 1) {
         const run = () =>
@@ -804,7 +989,9 @@ export class LegislationService {
         let stopAt: number | undefined;
         for (let idx = offset; idx < feed.events.length; idx += 1) {
           const event = feed.events[idx] as PublicationEvent;
-          const date = event.updated.slice(0, 10);
+          const date = calendarDateOf(event);
+          if (date === undefined) continue;
+          if (readBackTo === undefined || date < readBackTo) readBackTo = date;
           if (date > query.endDate) continue;
           if (date < query.startDate) {
             done = true;
@@ -820,7 +1007,10 @@ export class LegislationService {
         if (stopAt !== undefined) {
           // The log is newest-first: an older event left on the page ends the window there.
           const rest = feed.events.slice(stopAt);
-          const moreOnPage = rest.some((e) => e.updated.slice(0, 10) >= query.startDate);
+          const moreOnPage = rest.some((e) => {
+            const date = calendarDateOf(e);
+            return date !== undefined && date >= query.startDate;
+          });
           next = moreOnPage
             ? { page, offset: stopAt }
             : rest.length === 0 && feed.hasMore
@@ -841,6 +1031,7 @@ export class LegislationService {
         events,
         days: [],
         ...(itemLogTotal !== undefined ? { itemLogTotal } : {}),
+        ...(readBackTo !== undefined ? { readBackTo } : {}),
         hasMore: next !== undefined,
         ...(next ? { next } : {}),
         capped,
@@ -849,7 +1040,7 @@ export class LegislationService {
     }
 
     const days = new Map<string, { date: string; pages_read: number; total?: number }>();
-    let date = query.position?.date ?? query.endDate;
+    let date = query.position?.date ?? (query.endDate < today ? query.endDate : today);
     let page = query.position?.page ?? 1;
     let offset = query.position?.offset ?? 0;
     let next: CursorPosition | undefined;
@@ -1021,6 +1212,7 @@ export class LegislationService {
 
     let outcome: LookupOutcome;
     let hydrationSkipped = false;
+    let foundByChapter: string | undefined;
     if (parsed.kind === 'numbered' || (parsed.kind === 'uri' && !parsed.item.regnal)) {
       const [type, year, number] =
         parsed.kind === 'numbered'
@@ -1062,40 +1254,86 @@ export class LegislationService {
       outcome = this.pathFields(parsed.item);
     } else {
       const result = await this.client.get(idTitleUrl(parsed.title), 'identifier', budget, ctx);
-      if (result.kind === 'not_found') {
-        return miss(
-          `No item has the short title "${parsed.title}". Call uklaw_search_legislation with title set to its distinctive words.`,
-        );
-      }
+      const wanted = normalizeTitle(parsed.title);
       let resolved: { item: ItemPath; title?: string } | undefined;
-      if (result.kind === 'multiple') {
+      let titleMiss: { candidates?: LookupOutcome['candidates']; guidance: string } | undefined;
+      if (result.kind === 'not_found') {
+        titleMiss = {
+          guidance: `No item has the short title "${parsed.title}". Call uklaw_search_legislation with title set to its distinctive words.`,
+        };
+      } else if (result.kind === 'multiple') {
         const candidates = extractTitleCandidates(result.body);
-        const wanted = normalizeTitle(parsed.title);
         const exact = candidates.filter((c) => normalizeTitle(c.title) === wanted);
         const only = exact.length === 1 ? exact[0] : undefined;
         const item = only ? parseItemInput(only.item)?.item : undefined;
-        if (!only || !item) {
-          return miss(
-            `${candidates.length} items match "${parsed.title}"; pick one and call uklaw_get_document with its item path.`,
-            candidates.map((c) => ({ item: c.item, id_uri: idUriFor(c.item), title: c.title })),
-          );
+        if (only && item) {
+          resolved = { item, title: only.title };
+        } else {
+          titleMiss = {
+            guidance: `${candidates.length} items match "${parsed.title}"; pick one and call uklaw_get_document with its item path.`,
+            candidates: candidates.map((c) => ({
+              item: c.item,
+              id_uri: idUriFor(c.item),
+              title: c.title,
+            })),
+          };
         }
-        resolved = { item, title: only.title };
       } else if (result.kind === 'redirect') {
         const item = parseItemInput(result.location)?.item;
         if (item?.full) resolved = { item };
       }
-      if (!resolved) {
-        return miss(
-          `legislation.gov.uk could not resolve "${parsed.title}". Call uklaw_search_legislation with title set to its distinctive words.`,
+      if (resolved) {
+        const hydrated = await this.hydrate(resolved.item, resolved.title, budget, ctx);
+        outcome = hydrated.outcome;
+        hydrationSkipped = !hydrated.hydrated;
+      } else {
+        titleMiss ??= {
+          guidance: `legislation.gov.uk could not resolve "${parsed.title}". Call uklaw_search_legislation with title set to its distinctive words.`,
+        };
+        /**
+         * A trailing `(c. N)` names the Act outright once the year is known, so
+         * a title that does not resolve is retried by chapter number, and a
+         * pre-1963 chapter shared across sessions is settled by the title.
+         */
+        if (!parsed.chapter || parsed.year === undefined) {
+          return miss(titleMiss.guidance, titleMiss.candidates);
+        }
+        const chapter = `${parsed.year} c. ${parsed.chapter}`;
+        const entries = await this.numberEntries(
+          'ukpga',
+          parsed.year,
+          parsed.chapter,
+          budget,
+          ctx,
+          false,
         );
+        if (!entries) {
+          return miss(
+            `${titleMiss.guidance} The chapter number was not tried within this call's request budget; call uklaw_lookup_citation with "${chapter}".`,
+            titleMiss.candidates,
+          );
+        }
+        const titled = entries.filter((e) => normalizeTitle(e.title) === wanted);
+        const match =
+          entries.length === 1 ? entries[0] : titled.length === 1 ? titled[0] : undefined;
+        if (!match) {
+          if (entries.length === 0) {
+            return miss(
+              `${titleMiss.guidance} No ${typeLabel('ukpga')} item is numbered ${parsed.year}/${parsed.chapter} either.`,
+              titleMiss.candidates,
+            );
+          }
+          return miss(
+            `"${parsed.title}" did not resolve as a short title, and ${entries.length} items carry this number (${chapter}); pick one and call uklaw_get_document with its item path.`,
+            entries.slice(0, 20).map((e) => ({ item: e.item, id_uri: e.id_uri, title: e.title })),
+          );
+        }
+        outcome = this.foundFields(match);
+        foundByChapter = `"${parsed.title}" did not resolve as a short title; the item was found by its chapter number, ${chapter}.`;
       }
-      const hydrated = await this.hydrate(resolved.item, resolved.title, budget, ctx);
-      outcome = hydrated.outcome;
-      hydrationSkipped = !hydrated.hydrated;
     }
 
-    const guidance: string[] = [];
+    const guidance: string[] = foundByChapter ? [foundByChapter] : [];
     if (hydrationSkipped) {
       guidance.push(
         `Title and dates were not fetched within this call's request budget; uklaw_get_document with item ${outcome.item} returns them.`,

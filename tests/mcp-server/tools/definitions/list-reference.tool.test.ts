@@ -33,6 +33,7 @@ describe('uklaw_list_reference', () => {
         );
       }
       expect(up.paths()).toEqual([]);
+      expect(up.unhandled).toEqual([]);
     },
   );
 

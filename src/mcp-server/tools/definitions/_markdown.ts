@@ -13,8 +13,8 @@ import type { EffectRecordSchema } from './_schemas.js';
 
 type EffectRecord = z.output<typeof EffectRecordSchema>;
 
-/** Unicode line and paragraph separators, which break a line like CR/LF. */
-const SEPARATORS = String.fromCodePoint(0x2028, 0x2029);
+/** NEL and the Unicode line and paragraph separators, which break a line like CR/LF; the regex `\s` class omits NEL. */
+const SEPARATORS = String.fromCodePoint(0x0085, 0x2028, 0x2029);
 const LINE_BREAKS = new RegExp(`[\\r\\n${SEPARATORS}]+`, 'g');
 const LINE_SPLIT = new RegExp(`\\r\\n|[\\r\\n${SEPARATORS}]`);
 
@@ -28,8 +28,8 @@ export function inline(value: string | number | boolean | undefined): string {
     .replace(/<(?=[A-Za-z/!?])/g, '&lt;');
 }
 
-/** Whitespace (line separators included) and the characters RFC 3986 bars from a URI unencoded. */
-const URI_UNSAFE = /[\s"<>\\^`{|}[\]]/g;
+/** Whitespace (line separators and NEL included) and the characters RFC 3986 bars from a URI unencoded. */
+const URI_UNSAFE = /[\s\u0085"<>\\^`{|}[\]]/g;
 
 /**
  * A URI or path for an inline slot, bare, in a code span, or in `<…>`:

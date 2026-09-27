@@ -24,9 +24,12 @@ describe('service accessor', () => {
 });
 
 describe('LegislationService', () => {
-  it('reports today from the injected clock (UTC date)', () => {
-    const up = createUpstream([], { clock: testClock('2026-09-26T23:30:00Z'), register: false });
-    expect(up.service.today()).toBe('2026-09-26');
+  it.each([
+    ['2026-09-26T23:30:00Z', '2026-09-27'],
+    ['2026-01-15T23:30:00Z', '2026-01-15'],
+  ])('reports today as the UK date from the injected clock (%s → %s)', (now, date) => {
+    const up = createUpstream([], { clock: testClock(now), register: false });
+    expect(up.service.today()).toBe(date);
   });
 
   it('spends at most two requests on a search, redirect hops included', async () => {

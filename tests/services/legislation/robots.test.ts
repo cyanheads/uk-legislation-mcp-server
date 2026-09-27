@@ -1,13 +1,18 @@
 /**
  * @fileoverview Tests for the startup robots.txt read: only a group naming this
- * server's product token sets a crawl delay; the `*` group is ignored.
+ * server's product token sets a crawl delay; the `*` group is ignored; an
+ * oversized file is refused.
  * @module tests/services/legislation/robots.test
  */
 
 import { createFetchMock } from '@cyanheads/mcp-ts-core/testing';
 import { describe, expect, it } from 'vitest';
-import { crawlDelayFor, readUserAgentCrawlDelay } from '@/services/legislation/robots.js';
-import { fixture, ORIGIN, USER_AGENT } from '../../helpers/upstream.js';
+import {
+  crawlDelayFor,
+  ROBOTS_MAX_BYTES,
+  readUserAgentCrawlDelay,
+} from '@/services/legislation/robots.js';
+import { fixture, ORIGIN, streamedBody, USER_AGENT } from '../../helpers/upstream.js';
 
 const recorded = fixture('robots/robots.txt');
 /** The recorded robots.txt with a group added for this server's product token. */
@@ -91,6 +96,20 @@ describe('readUserAgentCrawlDelay', () => {
     await expect(
       readUserAgentCrawlDelay({ fetch: http.fetch, userAgent: USER_AGENT }),
     ).rejects.toThrow(/HTTP 503/);
+  });
+
+  it('throws on a robots.txt over its size cap, cancelling the read', async () => {
+    const body = streamedBody(ROBOTS_MAX_BYTES + 1);
+    const http = createFetchMock([
+      {
+        match: `${ORIGIN}/robots.txt`,
+        respond: () => new Response(body.stream, { headers: { 'content-type': 'text/plain' } }),
+      },
+    ]);
+    await expect(
+      readUserAgentCrawlDelay({ fetch: http.fetch, userAgent: USER_AGENT }),
+    ).rejects.toThrow('robots.txt is over 512 KiB; it was not read.');
+    expect(body.state.cancelled).toBe(true);
   });
 
   it('aborts a read that outlasts its timeout', async () => {

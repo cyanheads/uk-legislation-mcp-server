@@ -18,6 +18,7 @@ import {
   localName,
   textOf,
   toHttps,
+  WHITESPACE_RUN,
   type XmlChild,
   type XmlElement,
 } from '../xml.js';
@@ -34,7 +35,7 @@ export interface Annotation {
 /** Rendered Markdown plus the annotations it references. */
 export interface RenderResult {
   annotations: Annotation[];
-  /** Rendered size: text plus annotation text, in characters. */
+  /** Rendered size in characters: the text plus each annotation's label, type, type label, text, and citation titles and URIs. */
   chars: number;
   text: string;
 }
@@ -102,16 +103,17 @@ const SKIP = new Set([
   'EarlierOrders',
 ]);
 
-const CHARACTERS: Readonly<Record<string, string>> = {
-  DotPadding: '…',
-  EmDash: '—',
-  EnDash: '–',
-  Minus: '−',
-  NonBreakingSpace: ' ',
-  ThinSpace: ' ',
-  LinePadding: ' … ',
-  Ellipsis: '…',
-};
+/** `<Character Name>` → text. A `Map`, because the key is upstream text. */
+const CHARACTERS: ReadonlyMap<string, string> = new Map([
+  ['DotPadding', '…'],
+  ['EmDash', '—'],
+  ['EnDash', '–'],
+  ['Minus', '−'],
+  ['NonBreakingSpace', ' '],
+  ['ThinSpace', ' '],
+  ['LinePadding', ' … '],
+  ['Ellipsis', '…'],
+]);
 
 /** Escapes Markdown/HTML openers in upstream text placed in the rendered body. */
 function escapeBodyText(value: string): string {
@@ -164,7 +166,7 @@ class Renderer {
   }
 
   inline(node: XmlChild): string {
-    if (typeof node === 'string') return escapeBodyText(node.replace(/\s+/g, ' '));
+    if (typeof node === 'string') return escapeBodyText(node.replace(WHITESPACE_RUN, ' '));
     const inner = () => node.children.map((c) => this.inline(c)).join('');
     switch (node.name) {
       case 'Addition':
@@ -188,7 +190,7 @@ class Renderer {
       case 'InlineAmendment':
         return `“${inner().trim()}”`;
       case 'Character':
-        return CHARACTERS[attr(node, 'Name') ?? ''] ?? '';
+        return CHARACTERS.get(attr(node, 'Name') ?? '') ?? '';
       case 'Image':
         return this.image(node);
       case 'Formula':
@@ -210,7 +212,7 @@ class Renderer {
   }
 
   push(indent: number, text: string, heading = false): void {
-    const trimmed = text.replace(/\s+/g, ' ').trim();
+    const trimmed = text.replace(WHITESPACE_RUN, ' ').trim();
     if (trimmed.length > 0)
       this.lines.push({ indent, text: trimmed, ...(heading ? { heading } : {}) });
   }
@@ -323,7 +325,7 @@ class Renderer {
     const number = child(titleBlock, 'Number') ?? child(node, 'Number');
     const title = child(titleBlock, 'Title') ?? child(node, 'Title');
     const heading = [number, title]
-      .filter((x): x is XmlElement => x !== undefined)
+      .filter((x) => x !== undefined)
       .map((x) => this.inline(x).trim())
       .filter(Boolean)
       .join(' — ');
@@ -382,7 +384,7 @@ class Renderer {
           if (Number(cell.attrs.colspan ?? 1) > 1 || Number(cell.attrs.rowspan ?? 1) > 1) {
             this.simplifiedTable = true;
           }
-          return this.inline(cell).replace(/\s+/g, ' ').trim().replace(/\|/g, '\\|');
+          return this.inline(cell).replace(WHITESPACE_RUN, ' ').trim().replace(/\|/g, '\\|');
         }),
     );
     const width = Math.max(0, ...rows.map((r) => r.length));
@@ -403,7 +405,7 @@ class Renderer {
             .map((c) => this.inline(c))
             .join(' ')
         : '';
-      return `[^${n}]: ${text.replace(/\s+/g, ' ').trim()}`;
+      return `[^${n}]: ${text.replace(WHITESPACE_RUN, ' ').trim()}`;
     });
   }
 
@@ -422,11 +424,11 @@ class Renderer {
           const title = attr(el, 'Title') ?? textOf(el);
           return uri ? { uri: toHttps(uri), ...(title ? { title } : {}) } : undefined;
         })
-        .filter((c): c is { title?: string; uri: string } => c !== undefined);
+        .filter((c) => c !== undefined);
       out.push({
         label,
         type,
-        type_label: ANNOTATION_TYPES[type] ?? 'Annotation',
+        type_label: ANNOTATION_TYPES.get(type) ?? 'Annotation',
         text: childrenNamed(commentary, 'Para')
           .map((para) => textOf(para))
           .filter(Boolean)
@@ -444,6 +446,20 @@ class Renderer {
     );
   }
 }
+
+/** One annotation's share of `chars`: its label, type, type label, text, and citation titles and URIs. */
+function annotationChars(a: Annotation): number {
+  return (
+    a.label.length +
+    a.type.length +
+    a.type_label.length +
+    a.text.length +
+    a.citations.reduce((n, c) => n + (c.title?.length ?? 0) + c.uri.length, 0)
+  );
+}
+
+/** A commentary label where rendered text opens a bracket: `[F1 …]` or `[F1]`. */
+const LABEL_REF = /\[([^\s[\]]+)/g;
 
 function joinLines(lines: Line[]): string {
   const out: string[] = [];
@@ -478,7 +494,53 @@ export function renderNodes(
   let text = joinLines(renderer.lines);
   if (footnotes.length > 0) text = `${text}\n\n${footnotes.join('\n')}`;
   const annotations = renderer.annotations();
-  const chars =
-    text.length + annotations.reduce((sum, a) => sum + a.text.length + a.label.length, 0);
+  /** Every annotation field both result surfaces carry counts, citation titles and URIs included. */
+  const chars = annotations.reduce((sum, a) => sum + annotationChars(a), text.length);
   return { text, annotations, chars, simplifiedTable: renderer.simplifiedTable };
+}
+
+/**
+ * Cuts a render to at most `max` characters, measured as `chars` is: the text
+ * ends at the last line break that fits, and only the annotations the kept
+ * text references are kept. A line too long to fit even on its own (a whole
+ * table row or paragraph over `max`) is cut after the last word that fits.
+ */
+export function cutRendered(result: RenderResult, max: number): RenderResult {
+  const byLabel = new Map(result.annotations.map((a) => [a.label, a]));
+  const referenced = (piece: string) =>
+    new Set(
+      [...piece.matchAll(LABEL_REF)]
+        .map(([, label]) => byLabel.get(label ?? ''))
+        .filter((a) => a !== undefined),
+    );
+  const kept = new Set<Annotation>();
+  let chars = 0;
+  let text = '';
+  /** Appends `piece` when it and the annotations it references first still fit. */
+  const keep = (piece: string): boolean => {
+    const added = [...referenced(piece)].filter((a) => !kept.has(a));
+    const size = added.reduce((n, a) => n + annotationChars(a), piece.length);
+    if (chars + size > max) return false;
+    chars += size;
+    text += piece;
+    for (const a of added) kept.add(a);
+    return true;
+  };
+  for (const [i, line] of result.text.split('\n').entries()) {
+    const piece = i === 0 ? line : `\n${line}`;
+    if (keep(piece)) continue;
+    const alone = [...referenced(line)].reduce((n, a) => n + annotationChars(a), line.length);
+    if (alone > max) {
+      /** Words past `max - chars` cannot fit, and the one the slice truncates never does. */
+      for (const word of piece.slice(0, max - chars + 1).split(/(?<=\s)/)) if (!keep(word)) break;
+    }
+    break;
+  }
+  text = text.trimEnd();
+  const annotations = result.annotations.filter((a) => kept.has(a));
+  return {
+    text,
+    annotations,
+    chars: annotations.reduce((sum, a) => sum + annotationChars(a), text.length),
+  };
 }

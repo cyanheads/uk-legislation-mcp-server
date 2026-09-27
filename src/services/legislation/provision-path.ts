@@ -143,38 +143,42 @@ function validateProvisionPath(segments: string[]): string | undefined {
   return expectValue ? undefined : out.join('/');
 }
 
-/** Citation shorthand keyword → path keyword. */
-const SHORTHAND: Readonly<Record<string, string>> = {
-  s: 'section',
-  sec: 'section',
-  section: 'section',
-  reg: 'regulation',
-  regulation: 'regulation',
-  art: 'article',
-  article: 'article',
-  r: 'rule',
-  rule: 'rule',
-  sch: 'schedule',
-  schedule: 'schedule',
-  para: 'paragraph',
-  paragraph: 'paragraph',
-  pt: 'part',
-  part: 'part',
-  ch: 'chapter',
-  chapter: 'chapter',
-};
+/**
+ * Citation shorthand keyword → path keyword. A `Map`, because the key is
+ * caller text: an object literal would answer `constructor` from `Object.prototype`.
+ */
+const SHORTHAND: ReadonlyMap<string, string> = new Map([
+  ['s', 'section'],
+  ['sec', 'section'],
+  ['section', 'section'],
+  ['reg', 'regulation'],
+  ['regulation', 'regulation'],
+  ['art', 'article'],
+  ['article', 'article'],
+  ['r', 'rule'],
+  ['rule', 'rule'],
+  ['sch', 'schedule'],
+  ['schedule', 'schedule'],
+  ['para', 'paragraph'],
+  ['paragraph', 'paragraph'],
+  ['pt', 'part'],
+  ['part', 'part'],
+  ['ch', 'chapter'],
+  ['chapter', 'chapter'],
+]);
 
+/** A value may be dotted (`r. 3.4`), as procedure rules number theirs. */
 const SHORTHAND_PART =
-  /^\s*([A-Za-z]+)\.?\s*(\d+[A-Za-z]*|[IVXLC]+)((?:\s*\(\s*[0-9A-Za-z]+\s*\))*)\s*/;
+  /^\s*([A-Za-z]+)\.?\s*(\d+[A-Za-z]*(?:\.\d+[A-Za-z]*)*|[IVXLC]+)((?:\s*\(\s*[0-9A-Za-z]+\s*\))*)\s*/;
 
-/** Parses a shorthand provision (`s. 45(2)(f)`, `Sch. 2 para. 3`); undefined unless the whole string parses. */
+/** Parses a shorthand provision (`s. 45(2)(f)`, `Sch. 2 para. 3`, `r. 3.4`); undefined unless the whole string parses. */
 function parseShorthand(raw: string): string | undefined {
   let rest = raw.trim();
   const out: string[] = [];
   while (rest.length > 0) {
     const match = SHORTHAND_PART.exec(rest);
     if (!match) return;
-    const keyword = SHORTHAND[match[1]?.toLowerCase() ?? ''];
+    const keyword = SHORTHAND.get(match[1]?.toLowerCase() ?? '');
     if (!keyword) return;
     out.push(keyword, match[2] as string);
     for (const sub of (match[3] ?? '').matchAll(/\(\s*([0-9A-Za-z]+)\s*\)/g))
@@ -198,15 +202,19 @@ export function normalizeProvision(raw: string): string | undefined {
   return parseShorthand(value);
 }
 
+/** Where a provision tail may start: a shorthand keyword, then a number or roman numeral. */
+const TAIL_START = new RegExp(
+  String.raw`(?:^|[\s,])((?:${[...SHORTHAND.keys()].join('|')})\.?\s*(?:\d|[IVXLC]+\b))`,
+  'gi',
+);
+
 /**
  * Finds a provision shorthand tail at the end of a citation: the earliest
  * keyword position from which the rest of the string parses completely.
  * Returns the head (citation without the tail) and the provision path.
  */
 export function splitProvisionTail(citation: string): { head: string; provision?: string } {
-  const keywordStart =
-    /(?:^|[\s,])((?:s|sec|section|reg|regulation|art|article|r|rule|sch|schedule|para|paragraph|pt|part|ch|chapter)\.?\s*(?:\d|[IVXLC]+\b))/gi;
-  for (const match of citation.matchAll(keywordStart)) {
+  for (const match of citation.matchAll(TAIL_START)) {
     const start = (match.index ?? 0) + match[0].length - (match[1]?.length ?? 0);
     const provision = parseShorthand(citation.slice(start));
     if (provision) {
@@ -214,6 +222,19 @@ export function splitProvisionTail(citation: string): { head: string; provision?
     }
   }
   return { head: citation.trim() };
+}
+
+/**
+ * Finds a provision written before its citation (`section 45 of the Data
+ * Protection Act 2018`): shorthand that parses completely, then `of` and an
+ * optional `the`. Returns the citation after it as the head.
+ */
+export function splitLeadingProvision(citation: string): { head: string; provision?: string } {
+  const match = /^(.+?)\s+of\s+(?:the\s+)?(?=\S)/i.exec(citation);
+  const provision = match ? parseShorthand(match[1] as string) : undefined;
+  return match && provision
+    ? { head: citation.slice(match[0].length), provision }
+    : { head: citation };
 }
 
 /** Maps a version input to the path segment the item's type uses (undefined for current). */

@@ -9,7 +9,10 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { decodeCursor, encodeCursor } from '@/services/legislation/cursor.js';
-import { getLegislationService } from '@/services/legislation/legislation-service.js';
+import {
+  getLegislationService,
+  LOG_PAGE_SIZE,
+} from '@/services/legislation/legislation-service.js';
 import { isCalendarDate, parseItemInput } from '@/services/legislation/provision-path.js';
 import { attributionLines, inline, uri } from './_markdown.js';
 import { AttributionSchema, blankAsUnset, CursorInput, DateInput, ItemInput } from './_schemas.js';
@@ -176,6 +179,12 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       .describe(
         "Events in the item's whole log, all dates; present in item-log mode when reported.",
       ),
+    read_back_to: z
+      .string()
+      .optional()
+      .describe(
+        "Item-log mode: date (YYYY-MM-DD) of the oldest event this call read from the item's log, which is read newest first. While it is after end_date, the read has not reached the window yet. Absent in a day walk and when no event read carries a calendar date.",
+      ),
     has_more: z
       .boolean()
       .describe('True when more events remain in the window — call again with next_cursor.'),
@@ -237,7 +246,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       reason: 'invalid_cursor',
       code: JsonRpcErrorCode.ValidationError,
       severity: 'notice',
-      when: 'cursor does not decode or belongs to a different window.',
+      when: 'cursor does not decode, belongs to a different window, or holds a position no call over that window reaches (a day outside the window or after today, a day in item-log mode, a page past 10,000, or an offset past the end of its page).',
       recovery: 'Call uklaw_track_changes again without cursor to start from end_date.',
     },
     {
@@ -271,9 +280,11 @@ export const trackChangesTool = tool('uklaw_track_changes', {
     const endDate = input.end_date ?? input.start_date;
     for (const date of [input.start_date, endDate]) {
       if (!isCalendarDate(date)) {
-        throw ctx.fail('invalid_date', `${date} is not a real calendar date.`, {
-          ...ctx.recoveryFor('invalid_date'),
-        });
+        throw ctx.fail(
+          'invalid_date',
+          `${date} is not a real calendar date.`,
+          ctx.recoveryFor('invalid_date'),
+        );
       }
     }
     const span = daysBetween(input.start_date, endDate);
@@ -283,13 +294,15 @@ export const trackChangesTool = tool('uklaw_track_changes', {
         span < 0
           ? `end_date ${endDate} is before start_date ${input.start_date}.`
           : `The window ${input.start_date} to ${endDate} spans ${span + 1} days; the limit is ${MAX_WINDOW_DAYS}.`,
-        { ...ctx.recoveryFor('invalid_window') },
+        ctx.recoveryFor('invalid_window'),
       );
     }
     if (input.direction && input.content_type !== 'changes') {
-      throw ctx.fail('direction_needs_changes', 'direction filters changes events only.', {
-        ...ctx.recoveryFor('direction_needs_changes'),
-      });
+      throw ctx.fail(
+        'direction_needs_changes',
+        'direction filters changes events only.',
+        ctx.recoveryFor('direction_needs_changes'),
+      );
     }
     if (
       input.category &&
@@ -299,7 +312,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       throw ctx.fail(
         'category_needs_content_type',
         'category applies only after content_type legislation or associated-documents; elsewhere legislation.gov.uk answers zero events.',
-        { ...ctx.recoveryFor('category_needs_content_type') },
+        ctx.recoveryFor('category_needs_content_type'),
       );
     }
     const parsedItem =
@@ -308,9 +321,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       throw ctx.fail(
         'invalid_item',
         `"${input.item}" is not a legislation item path, type, or type and year.`,
-        {
-          ...ctx.recoveryFor('invalid_item'),
-        },
+        ctx.recoveryFor('invalid_item'),
       );
     }
     const item = parsedItem?.item;
@@ -328,14 +339,26 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       input.event ?? '',
       input.limit,
     ].join('|');
-    const position = input.cursor !== undefined ? decodeCursor(input.cursor, queryKey) : undefined;
+    const service = getLegislationService();
+    const today = service.today();
+    // A day walk stands only on window days up to today; the item log carries no day (Design Decision 75).
+    const position =
+      input.cursor !== undefined
+        ? decodeCursor(input.cursor, queryKey, {
+            pageSize: LOG_PAGE_SIZE,
+            ...(mode === 'day_walk'
+              ? { days: { first: input.start_date, last: endDate < today ? endDate : today } }
+              : {}),
+          })
+        : undefined;
     if (input.cursor !== undefined && !position) {
-      throw ctx.fail('invalid_cursor', 'cursor does not decode or belongs to a different window.', {
-        ...ctx.recoveryFor('invalid_cursor'),
-      });
+      throw ctx.fail(
+        'invalid_cursor',
+        'cursor does not decode, belongs to a different window, or holds a position no call over this window reaches.',
+        ctx.recoveryFor('invalid_cursor'),
+      );
     }
 
-    const service = getLegislationService();
     const outcome = await service.trackChanges(
       {
         startDate: input.start_date,
@@ -353,7 +376,16 @@ export const trackChangesTool = tool('uklaw_track_changes', {
     );
 
     const nextCursor = outcome.next ? encodeCursor(queryKey, outcome.next) : undefined;
-    if (outcome.events.length === 0) {
+    if (input.start_date > today) {
+      ctx.enrich.notice(
+        `The window starts after today (${today}, UK date): the Publication Log holds no events for future dates, so nothing was requested. Pass a start_date on or before ${today}.`,
+      );
+    } else if (outcome.events.length === 0 && outcome.hasMore && item && outcome.readBackTo) {
+      // Every event read so far is newer than the window: progress, not a quiet window (Design Decision 68).
+      ctx.enrich.notice(
+        `No events yet: the log of ${item.path} is read newest first, and this call reached ${outcome.readBackTo}, after the window's end (${endDate}); call again with cursor set to next_cursor to read further back toward ${input.start_date}.`,
+      );
+    } else if (outcome.events.length === 0) {
       const fragments: string[] = [
         outcome.hasMore
           ? 'No events in the part of the window read so far; call again with cursor set to next_cursor to continue.'
@@ -364,9 +396,13 @@ export const trackChangesTool = tool('uklaw_track_changes', {
           'Filters narrow an otherwise busy log: drop new_only, category, event, or item to widen.',
         );
       }
-      if (endDate >= service.today()) {
+      if (endDate > today) {
         fragments.push(
-          'The window reaches today or later: the log for today fills during the UK working day.',
+          `Days after today (${today}, UK date) were not read: the log holds no events for them yet, and today's fills during the UK working day.`,
+        );
+      } else if (endDate === today) {
+        fragments.push(
+          'The window reaches today: the log for today fills during the UK working day.',
         );
       }
       if (item) fragments.push('Confirm the item with uklaw_lookup_citation.');
@@ -397,6 +433,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       mode: outcome.mode,
       days: outcome.days,
       ...(outcome.itemLogTotal !== undefined ? { item_log_total: outcome.itemLogTotal } : {}),
+      ...(outcome.readBackTo !== undefined ? { read_back_to: outcome.readBackTo } : {}),
       has_more: outcome.hasMore,
       ...(nextCursor ? { next_cursor: nextCursor } : {}),
       attribution: outcome.attribution,
@@ -416,7 +453,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
     const lines = [
       `## Publication Log ${result.window.start_date} to ${result.window.end_date} (${result.mode})`,
       `**Filters:** ${filters.join(' · ')}`,
-      `**Events:** ${result.events.length} · has_more: ${result.has_more}${result.next_cursor ? ` · next_cursor: \`${result.next_cursor}\`` : ''}${result.item_log_total !== undefined ? ` · item log total ${result.item_log_total}` : ''}`,
+      `**Events:** ${result.events.length} · has_more: ${result.has_more}${result.next_cursor ? ` · next_cursor: \`${result.next_cursor}\`` : ''}${result.item_log_total !== undefined ? ` · item log total ${result.item_log_total}` : ''}${result.read_back_to ? ` · read back to ${inline(result.read_back_to)}` : ''}`,
     ];
     if (result.days.length > 0) {
       lines.push(

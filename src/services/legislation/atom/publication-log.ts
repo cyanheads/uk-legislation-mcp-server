@@ -99,6 +99,6 @@ export function parsePublicationLog(body: string): PublicationLogPage {
     ...readPaging(feed),
     events: entries(feed)
       .map(parseEvent)
-      .filter((e): e is PublicationEvent => e !== undefined),
+      .filter((e) => e !== undefined),
   };
 }

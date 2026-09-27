@@ -1,7 +1,8 @@
 /**
  * @fileoverview Tests for CLML metadata reading over recorded documents:
- * identity, status read per document, publishers, versions, links (the main
- * PDF, not an explanatory note), Welsh documents, and PDF-only items.
+ * identity, status read per document, the made or enactment date, publishers,
+ * versions, links (the main PDF, not an explanatory note), Welsh documents,
+ * and PDF-only items.
  * @module tests/services/legislation/clml/metadata.test
  */
 
@@ -38,6 +39,7 @@ describe('readMetadata', () => {
       mainType: 'UnitedKingdomPublicGeneralAct',
       status: 'revised',
       number: '12',
+      madeDate: '2018-05-23',
       restrictExtent: 'E+W+S+N.I.',
       restrictStartDate: '2026-06-19',
       aknUri: 'https://www.legislation.gov.uk/ukpga/2018/12/section/45/data.akn',
@@ -58,6 +60,10 @@ describe('readMetadata', () => {
     const md = read('ukpga-2018-12-section-45-2019-01-01.xml');
     expect(md.valid).toBe('2018-07-23');
     expect(md.identifier).toBe('http://www.legislation.gov.uk/ukpga/2018/12/section/45/2019-01-01');
+  });
+
+  it('reads the made date of an instrument from ukm:Made', () => {
+    expect(read('uksi-1984-458-made.xml').madeDate).toBe('1984-03-28');
   });
 
   it('reads secondary legislation as revised when upstream says so', () => {

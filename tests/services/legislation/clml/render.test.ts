@@ -79,11 +79,18 @@ describe('renderNodes — recorded section 45', () => {
     });
   });
 
-  it('measures size as text plus annotation text and labels', () => {
+  it('measures size as the text plus every annotation field both surfaces carry, citations included', () => {
     const annotationChars = result.annotations.reduce(
-      (n, a) => n + a.text.length + a.label.length,
+      (n, a) =>
+        n +
+        a.label.length +
+        a.type.length +
+        a.type_label.length +
+        a.text.length +
+        a.citations.reduce((c, cite) => c + (cite.title?.length ?? 0) + cite.uri.length, 0),
       0,
     );
+    expect(result.annotations.some((a) => a.citations.length > 0)).toBe(true);
     expect(result.chars).toBe(result.text.length + annotationChars);
     expect(result.simplifiedTable).toBe(false);
   });
@@ -263,6 +270,23 @@ describe('renderNodes — CLML constructs', () => {
     );
   });
 
+  it('renders a character or annotation type named after an Object.prototype member as unknown', () => {
+    const result = render(
+      '<P><Text>a<Character Name="constructor"/>b<Character Name="__proto__"/>c<CommentaryRef Ref="c1"/></Text></P>',
+      '<Commentaries><Commentary id="c1" Type="constructor"><Para><Text>Note.</Text></Para></Commentary></Commentaries>',
+    );
+    expect(result.text).toBe('abc[constructor1]');
+    expect(result.annotations).toEqual([
+      {
+        label: 'constructor1',
+        type: 'constructor',
+        type_label: 'Annotation',
+        text: 'Note.',
+        citations: [],
+      },
+    ]);
+  });
+
   it('numbers footnotes once per reference target', () => {
     const { text } = render(
       '<P><Text>one<FootnoteRef Ref="f1"/> two<FootnoteRef Ref="f2"/> again<FootnoteRef Ref="f1"/></Text></P>',
@@ -276,6 +300,17 @@ describe('renderNodes — CLML constructs', () => {
       '<P><Text>a *b* `c` &lt;script&gt;x&lt;/script&gt; 2 &lt; 3</Text></P>',
     );
     expect(text).toBe('a \\*b\\* \\`c\\` &lt;script>x&lt;/script> 2 < 3');
+  });
+
+  it('collapses U+0085 (NEL) like other whitespace in headings, numbers, text, table cells and footnotes', () => {
+    const { text } = render(
+      '<Part><Number>Part&#133;1</Number><Title>One&#133;two</Title><P1><Pnumber>1&#133;A</Pnumber><P1para><Text>a&#133;## b<FootnoteRef Ref="f1"/></Text></P1para></P1><Tabular><table><tr><td>c&#133;d</td></tr></table></Tabular></Part>',
+      '<Footnotes><Footnote id="f1"><FootnoteText><Para><Text>note&#133;here</Text></Para></FootnoteText></Footnote></Footnotes>',
+    );
+    expect(text).not.toContain('\u0085');
+    for (const piece of ['Part 1 — One two', '**1 A** a ## b[^1]', '| c d |', '[^1]: note here']) {
+      expect(text).toContain(piece);
+    }
   });
 
   it('renders an unknown element by its text content', () => {

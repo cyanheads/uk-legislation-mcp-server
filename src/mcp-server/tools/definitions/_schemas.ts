@@ -1,7 +1,7 @@
 /**
  * @fileoverview Schema building blocks shared by the tool definitions: the
  * blank-as-unset wrapper for optional string inputs, the date pattern, the
- * item/provision/cursor input shapes, and the effect record and attribution
+ * free-text, item, provision and cursor input shapes, and the effect record and attribution
  * output shapes.
  * @module mcp-server/tools/definitions/_schemas
  */
@@ -25,6 +25,17 @@ export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 export const DateInput = z
   .string()
   .regex(DATE_PATTERN, 'Pass a date as YYYY-MM-DD, e.g. 2026-09-24.');
+
+/**
+ * Free text sent upstream in a query parameter. An unpaired surrogate has no
+ * UTF-8 form, so the URL could not be built; it is refused here instead.
+ */
+export const TextInput = z
+  .string()
+  .refine(
+    (value) => value.isWellFormed(),
+    'Pass well-formed Unicode text: this value holds an unpaired surrogate.',
+  );
 
 /**
  * Item inputs are shape-checked in the schema and normalized in the handler.

@@ -1,6 +1,6 @@
 /**
  * @fileoverview Tests for the `format()` Markdown helpers: inline slots flatten
- * line breaks (CR, LF, U+2028, U+2029) and escape Markdown/HTML openers, URI
+ * line breaks (CR, LF, U+0085, U+2028, U+2029) and escape Markdown/HTML openers, URI
  * and path slots percent-encode what a URI may not carry, multi-line upstream
  * text is blockquoted line by line, and an effect record renders every field.
  * @module tests/mcp-server/tools/definitions/_markdown.test
@@ -25,6 +25,10 @@ describe('inline', () => {
     expect(inline('a\r\nb\nc\rd\u2028e\u2029f')).toBe('a b c d e f');
   });
 
+  it('flattens U+0085 (NEL), which the regex \\s class does not match', () => {
+    expect(inline('a\u0085## b')).toBe('a ## b');
+  });
+
   it('escapes Markdown openers and HTML tags', () => {
     expect(inline('**bold** `code` [link](x) <img src=x> a < b')).toBe(
       '\\*\\*bold\\*\\* \\`code\\` \\[link\\](x) &lt;img src=x> a < b',
@@ -43,6 +47,7 @@ describe('inline', () => {
 
   it('cell also escapes table pipes', () => {
     expect(cell('a | b\nc')).toBe('a \\| b c');
+    expect(cell('a\u0085|b')).toBe('a \\|b');
   });
 });
 
@@ -51,6 +56,7 @@ describe('uri', () => {
     expect(uri('https://x/a\r\nb c\u2028d<e>`f`[g]|h"{i}^\\')).toBe(
       'https://x/a%0D%0Ab%20c%E2%80%A8d%3Ce%3E%60f%60%5Bg%5D%7Ch%22%7Bi%7D%5E%5C',
     );
+    expect(uri('https://x/\u0085y')).toBe('https://x/%C2%85y');
   });
 
   it('leaves a well-formed URI or path unchanged, underscores and asterisks included', () => {
@@ -69,6 +75,7 @@ describe('blockquote', () => {
     expect(blockquote('first\n\n<script>x</script>\r\nlast\u2028sep')).toBe(
       '> first\n>\n> &lt;script>x&lt;/script>\n> last\n> sep',
     );
+    expect(blockquote('a\u0085> b')).toBe('> a\n> > b');
   });
 });
 

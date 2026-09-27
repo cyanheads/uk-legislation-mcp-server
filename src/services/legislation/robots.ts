@@ -5,7 +5,14 @@
  * @module services/legislation/robots
  */
 
+import { readTextWithin } from './legislation-client.js';
 import { ORIGIN } from './urls.js';
+
+/** Largest robots.txt read, in bytes. */
+export const ROBOTS_MAX_BYTES = 512 * 1024;
+
+/** Longest crawl delay applied, in seconds; `setup()` caps a longer one here and warns. */
+export const MAX_CRAWL_DELAY_S = 60;
 
 /** Inputs for {@link readUserAgentCrawlDelay}. */
 export interface RobotsReadOptions {
@@ -53,22 +60,21 @@ export function crawlDelayFor(robotsTxt: string, productToken: string): number |
 /**
  * Fetches robots.txt with one request through the injected `fetch` and returns
  * the crawl delay (seconds) set for this user agent. Throws on a network or
- * HTTP failure; the caller keeps the configured gap.
+ * HTTP failure or a file over {@link ROBOTS_MAX_BYTES}; the caller keeps the
+ * configured gap.
  */
 export async function readUserAgentCrawlDelay(
   options: RobotsReadOptions,
 ): Promise<number | undefined> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 5_000);
-  try {
-    const response = await options.fetch(`${ORIGIN}/robots.txt`, {
-      headers: { 'User-Agent': options.userAgent },
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error(`robots.txt answered HTTP ${response.status}`);
-    const productToken = options.userAgent.split('/')[0] ?? options.userAgent;
-    return crawlDelayFor(await response.text(), productToken);
-  } finally {
-    clearTimeout(timer);
+  const response = await options.fetch(`${ORIGIN}/robots.txt`, {
+    headers: { 'User-Agent': options.userAgent },
+    signal: AbortSignal.timeout(options.timeoutMs ?? 5_000),
+  });
+  if (!response.ok) throw new Error(`robots.txt answered HTTP ${response.status}`);
+  const robotsTxt = await readTextWithin(response, ROBOTS_MAX_BYTES);
+  if (robotsTxt === undefined) {
+    throw new Error(`robots.txt is over ${ROBOTS_MAX_BYTES / 1024} KiB; it was not read.`);
   }
+  const productToken = options.userAgent.split('/')[0] ?? options.userAgent;
+  return crawlDelayFor(robotsTxt, productToken);
 }

@@ -9,8 +9,13 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { decodeCursor, encodeCursor } from '@/services/legislation/cursor.js';
-import { getLegislationService } from '@/services/legislation/legislation-service.js';
+import {
+  getLegislationService,
+  SCAN_PAGE_SIZE,
+} from '@/services/legislation/legislation-service.js';
 import { normalizeProvision, parseItemInput } from '@/services/legislation/provision-path.js';
+import { codesIn } from '@/services/legislation/reference-data.js';
+import type { ItemPath } from '@/services/legislation/types.js';
 import { attributionLines, renderEffect } from './_markdown.js';
 import {
   AttributionSchema,
@@ -21,6 +26,52 @@ import {
   ProvisionInput,
 } from './_schemas.js';
 
+/** Where a provision scan's misses usually are: effects that name the enclosing heading (Design Decision 49). */
+const HEADING_ROUTE = `An effect on a heading names the enclosing cross-heading or Part instead of the section (e.g. "s. 65 heading" names part/3/chapter/4/crossheading/general-obligations): read the enclosing Part with uklaw_get_document (its item-level outline lists the Parts), or pass the Part's path as provision to uklaw_get_amendments. The provision's applied history is in its annotations in uklaw_get_document.`;
+
+/** Draft type codes, numbered by ISBN: the changes feeds index none of them (Design Decision 66). */
+const DRAFT_TYPES = codesIn('draft');
+
+const DRAFTS_UNINDEXED =
+  "legislation.gov.uk's changes feeds do not index drafts: a draft is not amended, and amends nothing, until it is made.";
+
+const PRE_1994 =
+  'Effects are normally recorded only from amending legislation of 1994 onwards (uklaw_list_reference topic coverage), so the changes feeds hold few or none made by a pre-1963 Act.';
+
+/**
+ * Message and recovery for a regnal item or counterpart (Design Decision 64).
+ * An item on the affected side is indexed under its calendar year. On the
+ * affecting side the feeds hold effects made from 1994 on, so a pre-1963 Act
+ * there is reached through the other item's feed. A counterpart is dropped and
+ * filtered by its effect side.
+ */
+function regnalRefusal(
+  field: 'item' | 'counterpart',
+  item: ItemPath,
+  side: 'affected' | 'affecting',
+  provision?: string,
+): { hint: string; message: string } {
+  const message = `${field} "${item.path}" addresses ${item.full ? 'a pre-1963 Act' : 'the Acts of a pre-1963 session'} by regnal year; legislation.gov.uk's changes feeds index effects by calendar year and chapter number, so they cannot be queried by this path.`;
+  const keep = `keep the effects whose ${side}.item ${item.full ? `is ${item.path}` : `starts with ${item.path}/`}`;
+  if (field === 'counterpart') {
+    const route = `Call again without counterpart and ${keep}.`;
+    return { message, hint: side === 'affecting' ? `${PRE_1994} ${route}` : route };
+  }
+  if (side === 'affecting') {
+    return {
+      message,
+      hint: `${PRE_1994} To see what ${item.path} changed, call uklaw_get_amendments on the amended item (direction affected) and ${keep}, or read that item's annotations with uklaw_get_document.`,
+    };
+  }
+  const route = item.full
+    ? `Call uklaw_get_amendments with item ${item.type}/YYYY/${item.number}, where YYYY is the calendar year uklaw_get_document reports as item.year for ${item.path}, and ${keep}: two sessions sitting in one calendar year can share a chapter number.`
+    : `Call uklaw_get_amendments with item ${item.type}/YYYY for each calendar year the session ${item.path} sat in (uklaw_get_document reports item.year for any Act of it), and ${keep}.`;
+  const hint = provision
+    ? `${route} Leave provision out: effects give ${provision} as a URI under the regnal path, which the provision filter cannot match on the calendar path; look for it in each effect's ${side}.provisions.`
+    : route;
+  return { message, hint };
+}
+
 export const getAmendmentsTool = tool('uklaw_get_amendments', {
   title: 'List amendments to or by legislation',
   description:
@@ -29,13 +80,13 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
   auth: ['tool:uklaw_get_amendments:read'],
   input: z.object({
     item: ItemInput.describe(
-      'Item path or legislation.gov.uk URI (ukpga/2018/12), or a partial path: a type (uksi) or type and year (ukpga/2018). Get a full path from uklaw_lookup_citation or uklaw_search_legislation.',
+      `Item path or legislation.gov.uk URI (ukpga/2018/12), or a partial path: a type (uksi) or type and year (ukpga/2018). Get a full path from uklaw_lookup_citation or uklaw_search_legislation. A pre-1963 Act takes its calendar year (ukpga/1925/20, not ukpga/Geo5/15-16/20); its effects name the regnal path, and two sessions in one year can share a number. Drafts (${DRAFT_TYPES.join(', ')}) are not in the changes feeds.`,
     ),
     direction: blankAsUnset(z.enum(['affected', 'affecting']).default('affected')).describe(
       'affected: changes made to item. affecting: changes item makes to other legislation.',
     ),
     counterpart: blankAsUnset(ItemInput.optional()).describe(
-      'Restrict to effects involving this other item (full or partial path, e.g. uksi/2019/419 or uksi/2026) — the amending item for direction affected, the amended item for affecting.',
+      'Restrict to effects involving this other item (full or partial item path, without a provision, e.g. uksi/2019/419 or uksi/2026) — the amending item for direction affected, the amended item for affecting. A pre-1963 Act takes its calendar year, not its regnal path; drafts are not in the changes feeds.',
     ),
     status: blankAsUnset(z.enum(['all', 'unapplied', 'applied']).default('all')).describe(
       'unapplied: effects not yet applied to the revised text; applied: already applied; all: both.',
@@ -48,8 +99,10 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       .int()
       .min(1)
       .max(100)
-      .default(50)
-      .describe('Effects per page, or with provision the most matches returned (1–100).'),
+      .default(20)
+      .describe(
+        'Effects per page, or with provision the most matches returned (1–100, default 20).',
+      ),
     cursor: blankAsUnset(CursorInput.optional()).describe(
       'next_cursor from the previous call, passed with the other inputs unchanged; omit for the first page.',
     ),
@@ -106,9 +159,25 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       reason: 'invalid_item',
       code: JsonRpcErrorCode.ValidationError,
       severity: 'notice',
-      when: 'item or counterpart is not a (partial) item path or legislation.gov.uk URI, or its type code is unknown.',
+      when: 'item or counterpart is not a (partial) item path or legislation.gov.uk URI, or its type code is unknown, or counterpart carries a provision.',
       recovery:
         'Pass an item path such as ukpga/2018/12, or a type and year such as uksi/2026; uklaw_list_reference topic types lists the codes.',
+    },
+    {
+      reason: 'regnal_item',
+      code: JsonRpcErrorCode.ValidationError,
+      severity: 'notice',
+      when: 'item or counterpart is a pre-1963 regnal path (ukpga/Geo5/15-16/20, aep/Ann/6): the changes feeds index effects by calendar year and chapter number only.',
+      recovery:
+        'Query the Act by its calendar-year path (ukpga/1925/20 for ukpga/Geo5/15-16/20; uklaw_get_document reports item.year) and keep the effects that name the regnal item.',
+    },
+    {
+      reason: 'draft_item',
+      code: JsonRpcErrorCode.ValidationError,
+      severity: 'notice',
+      when: `item or counterpart is draft legislation (${DRAFT_TYPES.join(', ')}), which the changes feeds do not index.`,
+      recovery:
+        "Once made, an instrument is published under its own path with a calendar year and number: find it by title with uklaw_search_legislation (types secondary) and pass that path as item. uklaw_get_document reads a draft's own text.",
     },
     {
       reason: 'invalid_provision',
@@ -130,7 +199,7 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       reason: 'invalid_cursor',
       code: JsonRpcErrorCode.ValidationError,
       severity: 'notice',
-      when: 'cursor does not decode or belongs to a different query.',
+      when: 'cursor does not decode, belongs to a different query, or holds a position no call over that query reaches (a page past 10,000, or an offset past the end of its page).',
       recovery: 'Call uklaw_get_amendments again without cursor to start from the first page.',
     },
     {
@@ -166,9 +235,7 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       throw ctx.fail(
         'invalid_item',
         `"${input.item}" is not a legislation item path or legislation.gov.uk URI.`,
-        {
-          ...ctx.recoveryFor('invalid_item'),
-        },
+        ctx.recoveryFor('invalid_item'),
       );
     }
     const counterpart =
@@ -179,8 +246,18 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       throw ctx.fail(
         'invalid_item',
         `counterpart "${input.counterpart}" is not a legislation item path or URI.`,
+        ctx.recoveryFor('invalid_item'),
+      );
+    }
+    const counterpartSide = input.direction === 'affected' ? 'affecting' : 'affected';
+    if (counterpart?.provision) {
+      throw ctx.fail(
+        'invalid_item',
+        `counterpart "${input.counterpart}" names a provision (${counterpart.provision}); counterpart takes an item path, and legislation.gov.uk cannot filter effects by the counterpart's provision.`,
         {
-          ...ctx.recoveryFor('invalid_item'),
+          recovery: {
+            hint: `Pass counterpart "${counterpart.item.path}" and read the counterpart's provisions in each effect's ${counterpartSide}.provisions; provision filters on item's side only.`,
+          },
         },
       );
     }
@@ -191,20 +268,42 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
         throw ctx.fail(
           'invalid_provision',
           `"${input.provision}" is not a provision path or citation shorthand.`,
-          {
-            ...ctx.recoveryFor('invalid_provision'),
-          },
+          ctx.recoveryFor('invalid_provision'),
         );
       }
       provision = normalized;
+    }
+    if (parsed.item.regnal) {
+      const { message, hint } = regnalRefusal('item', parsed.item, input.direction, provision);
+      throw ctx.fail('regnal_item', message, { recovery: { hint } });
+    }
+    if (DRAFT_TYPES.includes(parsed.item.type)) {
+      throw ctx.fail(
+        'draft_item',
+        `item "${parsed.item.path}" is draft legislation; ${DRAFTS_UNINDEXED}`,
+        ctx.recoveryFor('draft_item'),
+      );
+    }
+    if (counterpart?.item.regnal) {
+      const { message, hint } = regnalRefusal('counterpart', counterpart.item, counterpartSide);
+      throw ctx.fail('regnal_item', message, { recovery: { hint } });
+    }
+    if (counterpart && DRAFT_TYPES.includes(counterpart.item.type)) {
+      throw ctx.fail(
+        'draft_item',
+        `counterpart "${counterpart.item.path}" is draft legislation; ${DRAFTS_UNINDEXED}`,
+        {
+          recovery: {
+            hint: 'Call again without counterpart, or once the instrument is made pass its own path as counterpart: find it by title with uklaw_search_legislation (types secondary).',
+          },
+        },
+      );
     }
     if (provision && !parsed.item.full) {
       throw ctx.fail(
         'provision_needs_full_item',
         `provision needs a full item path; "${parsed.item.path}" is partial.`,
-        {
-          ...ctx.recoveryFor('provision_needs_full_item'),
-        },
+        ctx.recoveryFor('provision_needs_full_item'),
       );
     }
     const queryKey = [
@@ -216,12 +315,19 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       provision ?? '',
       provision ? '' : input.limit,
     ].join('|');
+    // A scan resumes inside a 500-effect page; a plain page reads `limit` effects (Design Decision 75).
     const position =
-      input.cursor !== undefined ? decodeCursor(input.cursor, queryKey) : { page: 1, offset: 0 };
+      input.cursor !== undefined
+        ? decodeCursor(input.cursor, queryKey, {
+            pageSize: provision ? SCAN_PAGE_SIZE : input.limit,
+          })
+        : { page: 1, offset: 0 };
     if (!position) {
-      throw ctx.fail('invalid_cursor', 'cursor does not decode or belongs to a different query.', {
-        ...ctx.recoveryFor('invalid_cursor'),
-      });
+      throw ctx.fail(
+        'invalid_cursor',
+        'cursor does not decode, belongs to a different query, or holds a position no call over this query reaches.',
+        ctx.recoveryFor('invalid_cursor'),
+      );
     }
 
     const outcome = await getLegislationService().getAmendments(
@@ -238,7 +344,13 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
     );
 
     const nextCursor = outcome.next ? encodeCursor(queryKey, outcome.next) : undefined;
-    if (outcome.effects.length === 0) {
+    if (outcome.effects.length === 0 && input.cursor !== undefined && outcome.scan) {
+      ctx.enrich.notice(
+        outcome.hasMore
+          ? `No further matches in the ${outcome.scan.effects_scanned} effects scanned this call; call again with cursor set to next_cursor to scan further.`
+          : `No further matches: this call scanned the last ${outcome.scan.effects_scanned} of ${outcome.scan.total_effects} effects, so the scan is complete. If earlier pages returned no match either, no effect references this provision by URI. ${HEADING_ROUTE}`,
+      );
+    } else if (outcome.effects.length === 0) {
       const fragments: string[] = ['No effects matched.'];
       if (outcome.total === 0) {
         fragments.push(
@@ -253,7 +365,7 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
         fragments.push(
           outcome.hasMore
             ? `Only the first ${outcome.scan.effects_scanned} of ${outcome.scan.total_effects} effects were scanned; call again with cursor to continue, or read the provision's applied history in the annotations of uklaw_get_document.`
-            : `No effect references this provision by URI. An effect on a heading names the enclosing cross-heading or Part instead of the section (e.g. "s. 65 heading" names part/3/chapter/4/crossheading/general-obligations): read the enclosing Part with uklaw_get_document (its item-level outline lists the Parts), or pass the Part's path as provision to uklaw_get_amendments. The provision's applied history is in its annotations in uklaw_get_document.`,
+            : `No effect references this provision by URI. ${HEADING_ROUTE}`,
         );
       }
       ctx.enrich.notice(fragments.join(' '));

@@ -73,6 +73,3 @@ export interface ParsedItemInput {
   provision?: string;
   version?: string;
 }
-
-/** Normalized document version: `current`, an enacted keyword, or a calendar date. */
-export type VersionKeyword = 'current' | 'enacted' | 'made' | 'adopted' | 'created';

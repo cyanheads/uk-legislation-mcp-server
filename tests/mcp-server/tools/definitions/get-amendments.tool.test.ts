@@ -20,6 +20,7 @@ import {
   errorOf,
   feed,
   fixture,
+  forgeCursor,
   gatedPacer,
   ok,
   type Route,
@@ -50,7 +51,7 @@ const scanRoutes = (): Route[] =>
     [`${SCAN}&page=3`, feed('changes-unapplied-scan-page-3.feed')],
     [`${SCAN}&page=4`, feed('changes-unapplied-scan-page-4.feed')],
   );
-const PAGED = '/changes/unapplied/affected/ukpga/2018/12/data.feed?results-count=50';
+const PAGED = '/changes/unapplied/affected/ukpga/2018/12/data.feed?results-count=20';
 
 describe('listing effects', () => {
   it('lists one page of effects with total, has_more and a cursor', async () => {
@@ -72,6 +73,19 @@ describe('listing effects', () => {
     });
     expect(output).not.toHaveProperty('scan');
     expect(enrichment).toMatchObject({ truncated: true, shown: 3, cap: 3 });
+  });
+
+  it('asks for 20 effects per page when limit is omitted, and caps at 20, on both surfaces', async () => {
+    expect(getAmendmentsTool.input.parse({ item: 'ukpga/2018/12' }).limit).toBe(20);
+    const path = '/changes/affected/ukpga/2018/12/data.feed?results-count=20';
+    const up = createUpstream(routes([path, feed('changes-affected-ukpga-2018-12.feed')]));
+    const result = await runToolContract(getAmendmentsTool, { item: 'ukpga/2018/12' });
+    expect(up.paths()).toEqual([path]);
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured).toMatchObject({ has_more: true, truncated: true, cap: 20 });
+    const text = contentText(result);
+    expect(text).toContain('**cap:** 20');
+    expect(text).toContain(`next_cursor: \`${structured.next_cursor as string}\``);
   });
 
   it('follows next_cursor page by page to the final page, which carries no cursor', async () => {
@@ -113,9 +127,27 @@ describe('listing effects', () => {
     ],
     [{ item: 'ukpga/2018' }, '/changes/affected/ukpga/2018/data.feed?results-count=3'],
     [{ item: 'uksi', direction: 'affecting' }, '/changes/affecting/uksi/data.feed?results-count=3'],
+    // With a counterpart the feed is addressed affected side first, whatever the direction.
     [
       { item: 'ukpga/2025/18', direction: 'affecting', counterpart: 'ukpga/2018/12' },
-      '/changes/affecting/ukpga/2025/18/affected/ukpga/2018/12/data.feed?results-count=3',
+      '/changes/affected/ukpga/2018/12/affecting/ukpga/2025/18/data.feed?results-count=3',
+    ],
+    [
+      { item: 'ukpga/2025/18', direction: 'affecting', counterpart: 'ukpga/2018' },
+      '/changes/affected/ukpga/2018/affecting/ukpga/2025/18/data.feed?results-count=3',
+    ],
+    [
+      {
+        item: 'ukpga/2025/18',
+        direction: 'affecting',
+        counterpart: 'ukpga/2018/12',
+        status: 'unapplied',
+      },
+      '/changes/unapplied/affected/ukpga/2018/12/affecting/ukpga/2025/18/data.feed?results-count=3',
+    ],
+    [
+      { item: 'ukpga/2025', direction: 'affecting', counterpart: 'uksi/2026' },
+      '/changes/affected/uksi/2026/affecting/ukpga/2025/data.feed?results-count=3',
     ],
   ] as [Partial<AmendmentsInput>, string][])('%j → %s', async (input, path) => {
     const up = createUpstream(
@@ -123,11 +155,61 @@ describe('listing effects', () => {
     );
     const { output } = await amendments({ item: 'ukpga/2018/12', limit: 3, ...input });
     expect(up.paths()).toEqual([path]);
+    expect(up.unhandled).toEqual([]);
     expect(output.query).toMatchObject({
       ...(input.counterpart
         ? { counterpart: expect.stringMatching(/^[a-z]+\/\d{4}(\/\d+)?$/) }
         : {}),
     });
+  });
+
+  it('direction affecting with a counterpart reads the affected-first feed, pages on it, and echoes the query as given, on both surfaces', async () => {
+    const path =
+      '/changes/affected/ukpga/2018/12/affecting/ukpga/2025/18/data.feed?results-count=3';
+    const up = createUpstream(
+      routes(
+        [path, feed('changes-affected-ukpga-2018-12-affecting-ukpga-2025-18.feed')],
+        [`${path}&page=2`, feed('changes-affected-ukpga-2018-12-affecting-ukpga-2025-18.feed')],
+      ),
+    );
+    const input = {
+      item: 'ukpga/2025/18',
+      direction: 'affecting',
+      counterpart: 'ukpga/2018/12',
+      limit: 3,
+    } as const;
+    const first = await runToolContract(getAmendmentsTool, input);
+    expect(first.isError).toBeFalsy();
+    const structured = first.structuredContent as z.output<typeof getAmendmentsTool.output>;
+    expect(structured).toMatchObject({
+      query: {
+        item: 'ukpga/2025/18',
+        direction: 'affecting',
+        counterpart: 'ukpga/2018/12',
+        status: 'all',
+      },
+      total: 414,
+      has_more: true,
+    });
+    expect(structured.effects).toHaveLength(3);
+    for (const effect of structured.effects) {
+      expect(effect.affecting.item).toBe('ukpga/2025/18');
+      expect(effect.affected.item).toBe('ukpga/2018/12');
+    }
+    const text = contentText(first);
+    expect(text).toContain('## Effects made by `ukpga/2025/18`');
+    expect(text).toContain(
+      '**Query:** direction affecting · status all · counterpart `ukpga/2018/12`',
+    );
+    expect(text).toContain('**Total:** 414 · shown 3 · has_more: true');
+
+    const second = await runToolContract(getAmendmentsTool, {
+      ...input,
+      cursor: structured.next_cursor as string,
+    });
+    expect(second.isError).toBeFalsy();
+    expect(up.paths()).toEqual([path, `${path}&page=2`]);
+    expect(up.unhandled).toEqual([]);
   });
 
   it('keeps a whole-item effect from a partial-item feed with an empty provision list', async () => {
@@ -140,7 +222,7 @@ describe('listing effects', () => {
   it('treats blank optional strings as unset', async () => {
     const up = createUpstream(
       routes([
-        '/changes/affected/ukpga/2018/12/data.feed?results-count=50',
+        '/changes/affected/ukpga/2018/12/data.feed?results-count=20',
         feed('changes-affected-ukpga-2018-12.feed'),
       ]),
     );
@@ -152,7 +234,7 @@ describe('listing effects', () => {
       provision: '',
       cursor: '',
     } as AmendmentsInput);
-    expect(up.paths()).toEqual(['/changes/affected/ukpga/2018/12/data.feed?results-count=50']);
+    expect(up.paths()).toEqual(['/changes/affected/ukpga/2018/12/data.feed?results-count=20']);
     expect(output.query).toEqual({ item: 'ukpga/2018/12', direction: 'affected', status: 'all' });
   });
 
@@ -238,42 +320,102 @@ describe('provision scan', () => {
     expect(output.effects.map((e) => e.affected.provisions_label)).toEqual(['s. 51']);
   });
 
-  it('continues the scan from the cursor and reaches the end of the feed', async () => {
+  it('continues the scan from the cursor and reaches the end of the feed without denying earlier matches, on both surfaces', async () => {
     const up = createUpstream(scanRoutes());
-    const first = await amendments({
-      item: 'ukpga/2018/12',
-      provision: 'section/45',
-      status: 'unapplied',
-    });
-    const { output, enrichment } = await amendments({
-      item: 'ukpga/2018/12',
-      provision: 'section/45',
-      status: 'unapplied',
-      cursor: first.output.next_cursor as string,
-    });
-    expect(up.paths().at(-1)).toBe(`${SCAN}&page=4`);
-    expect(output).toMatchObject({
-      effects: [],
-      has_more: false,
-      scan: { effects_scanned: 4, pages_scanned: 1 },
-    });
-    expect(output.next_cursor).toBeUndefined();
-    expect(enrichment.notice).toContain('No effect references this provision by URI');
-    expect(enrichment.notice).toContain('Retry with status "all".');
-    expect(enrichment.notice).not.toContain('does not exist');
-  });
-
-  it('routes a full-scan zero hit to the enclosing Part or cross-heading, on both surfaces', async () => {
-    createUpstream(scanRoutes());
     const base = { item: 'ukpga/2018/12', provision: 'section/45', status: 'unapplied' as const };
     const first = await amendments(base);
+    expect(first.output.effects).toHaveLength(3);
     const result = await runToolContract(getAmendmentsTool, {
       ...base,
       cursor: first.output.next_cursor as string,
     });
-    const structured = result.structuredContent as { effects: unknown[]; notice: string };
+    expect(up.paths().at(-1)).toBe(`${SCAN}&page=4`);
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured).toMatchObject({
+      effects: [],
+      has_more: false,
+      scan: { effects_scanned: 4, pages_scanned: 1 },
+    });
+    expect(structured).not.toHaveProperty('next_cursor');
+    const complete =
+      'No further matches: this call scanned the last 4 of 309 effects, so the scan is complete. If earlier pages returned no match either, no effect references this provision by URI.';
+    for (const surface of [structured.notice as string, contentText(result)]) {
+      expect(surface).toContain(complete);
+      expect(surface).toContain(
+        "names part/3/chapter/4/crossheading/general-obligations): read the enclosing Part with uklaw_get_document (its item-level outline lists the Parts), or pass the Part's path as provision to uklaw_get_amendments.",
+      );
+      expect(surface).not.toContain('No effects matched.');
+      expect(surface).not.toContain('No effect references this provision by URI.');
+      expect(surface).not.toContain('Retry with status');
+      expect(surface).not.toContain('1994');
+    }
+  });
+
+  it('says a continuation that stops early found no further matches, never "Only the first N", through to the end', async () => {
+    createUpstream(scanRoutes());
+    const base = {
+      item: 'ukpga/2018/12',
+      provision: 'section/26',
+      status: 'unapplied' as const,
+      limit: 1,
+    };
+    const first = await amendments(base);
+    expect(first.output.effects.map((e) => e.affected.provisions_label)).toEqual([
+      's. 26(2)(h)(i)',
+    ]);
+
+    const second = await runToolContract(getAmendmentsTool, {
+      ...base,
+      cursor: first.output.next_cursor as string,
+    });
+    const secondStructured = second.structuredContent as Record<string, unknown>;
+    expect(secondStructured).toMatchObject({
+      effects: [],
+      has_more: true,
+      scan: { effects_scanned: 23, pages_scanned: 3 },
+    });
+    const further =
+      'No further matches in the 23 effects scanned this call; call again with cursor set to next_cursor to scan further.';
+    expect(secondStructured.notice).toBe(further);
+    expect(contentText(second)).toContain(further);
+    expect(contentText(second)).not.toContain('Only the first');
+
+    const third = await runToolContract(getAmendmentsTool, {
+      ...base,
+      cursor: secondStructured.next_cursor as string,
+    });
+    const thirdStructured = third.structuredContent as Record<string, unknown>;
+    expect(thirdStructured).toMatchObject({
+      effects: [],
+      has_more: false,
+      scan: { effects_scanned: 4, pages_scanned: 1 },
+    });
+    for (const surface of [thirdStructured.notice as string, contentText(third)]) {
+      expect(surface).toContain(
+        'No further matches: this call scanned the last 4 of 309 effects, so the scan is complete.',
+      );
+      expect(surface).not.toContain('Only the first');
+      expect(surface).not.toContain('No effects matched.');
+    }
+  });
+
+  it('routes a first-call full-scan zero hit to the enclosing Part or cross-heading, on both surfaces', async () => {
+    createUpstream(routes([SCAN, feed('changes-unapplied-scan-page-4.feed')]));
+    const result = await runToolContract(getAmendmentsTool, {
+      item: 'ukpga/2018/12',
+      provision: 'section/45',
+      status: 'unapplied',
+    });
+    const structured = result.structuredContent as {
+      effects: unknown[];
+      has_more: boolean;
+      notice: string;
+    };
     expect(structured.effects).toEqual([]);
+    expect(structured.has_more).toBe(false);
     for (const surface of [structured.notice, contentText(result)]) {
+      expect(surface).toContain('No effects matched.');
+      expect(surface).toContain('Retry with status "all".');
       expect(surface).toContain('No effect references this provision by URI.');
       expect(surface).toContain(
         "names part/3/chapter/4/crossheading/general-obligations): read the enclosing Part with uklaw_get_document (its item-level outline lists the Parts), or pass the Part's path as provision to uklaw_get_amendments.",
@@ -434,7 +576,166 @@ describe('errors', () => {
       data: { reason },
     });
     expect(up.paths()).toEqual([]);
+    expect(up.unhandled).toEqual([]);
   });
+
+  it.each([
+    ['affected', 'ukpga/2025/18/section/103', 'section/103', 'affecting'],
+    [
+      'affected',
+      'https://www.legislation.gov.uk/id/ukpga/2025/18/section/103',
+      'section/103',
+      'affecting',
+    ],
+    ['affecting', 'uksi/2019/419/regulation/5/2', 'regulation/5/2', 'affected'],
+  ] as const)(
+    'direction %s: counterpart %s carrying a provision fails invalid_item, not a whole-Act query, on both surfaces',
+    async (direction, counterpart, provision, side) => {
+      const up = createUpstream([]);
+      const result = await runToolContract(getAmendmentsTool, {
+        item: 'ukpga/2018/12',
+        direction,
+        counterpart,
+        limit: 2,
+      });
+      expect(up.paths()).toEqual([]);
+      expect(up.unhandled).toEqual([]);
+      const error = errorOf(result);
+      expect(error.code).toBe(JsonRpcErrorCode.ValidationError);
+      expect(error.data?.reason).toBe('invalid_item');
+      const item = counterpart.includes('uksi') ? 'uksi/2019/419' : 'ukpga/2025/18';
+      const message = `counterpart "${counterpart}" names a provision (${provision}); counterpart takes an item path, and legislation.gov.uk cannot filter effects by the counterpart's provision.`;
+      const hint = `Pass counterpart "${item}" and read the counterpart's provisions in each effect's ${side}.provisions; provision filters on item's side only.`;
+      expect(error.message).toBe(message);
+      expect(error.data?.recovery).toEqual({ hint });
+      const text = contentText(result);
+      expect(text).toContain(message);
+      expect(text).toContain(hint);
+    },
+  );
+
+  const LPA = 'ukpga/Geo5/15-16/20';
+  const BY_CALENDAR_YEAR =
+    "legislation.gov.uk's changes feeds index effects by calendar year and chapter number, so they cannot be queried by this path.";
+  const PRE_1994 =
+    'Effects are normally recorded only from amending legislation of 1994 onwards (uklaw_list_reference topic coverage), so the changes feeds hold few or none made by a pre-1963 Act.';
+  const LPA_MESSAGE = `item "${LPA}" addresses a pre-1963 Act by regnal year; ${BY_CALENDAR_YEAR}`;
+  const LPA_CALENDAR = `Call uklaw_get_amendments with item ukpga/YYYY/20, where YYYY is the calendar year uklaw_get_document reports as item.year for ${LPA}, and keep the effects whose affected.item is ${LPA}: two sessions sitting in one calendar year can share a chapter number.`;
+  const VICT_MESSAGE = `counterpart "ukpga/Vict/24-25/100" addresses a pre-1963 Act by regnal year; ${BY_CALENDAR_YEAR}`;
+  const ELIZ_MESSAGE = `counterpart "ukpga/Eliz2/3-4" addresses the Acts of a pre-1963 session by regnal year; ${BY_CALENDAR_YEAR}`;
+
+  it.each([
+    ['item, direction affected', { item: LPA, limit: 2 }, LPA_MESSAGE, LPA_CALENDAR],
+    [
+      'item as its URI',
+      { item: `https://www.legislation.gov.uk/id/${LPA}` },
+      LPA_MESSAGE,
+      LPA_CALENDAR,
+    ],
+    [
+      'item with provision',
+      { item: LPA, provision: 'section/1' },
+      LPA_MESSAGE,
+      `${LPA_CALENDAR} Leave provision out: effects give section/1 as a URI under the regnal path, which the provision filter cannot match on the calendar path; look for it in each effect's affected.provisions.`,
+    ],
+    [
+      'item, direction affecting',
+      { item: LPA, direction: 'affecting' },
+      LPA_MESSAGE,
+      `${PRE_1994} To see what ${LPA} changed, call uklaw_get_amendments on the amended item (direction affected) and keep the effects whose affecting.item is ${LPA}, or read that item's annotations with uklaw_get_document.`,
+    ],
+    [
+      'partial item',
+      { item: 'aep/Ann/6' },
+      `item "aep/Ann/6" addresses the Acts of a pre-1963 session by regnal year; ${BY_CALENDAR_YEAR}`,
+      'Call uklaw_get_amendments with item aep/YYYY for each calendar year the session aep/Ann/6 sat in (uklaw_get_document reports item.year for any Act of it), and keep the effects whose affected.item starts with aep/Ann/6/.',
+    ],
+    [
+      'counterpart, direction affected',
+      { item: 'ukpga/2018/12', counterpart: 'ukpga/Vict/24-25/100' },
+      VICT_MESSAGE,
+      `${PRE_1994} Call again without counterpart and keep the effects whose affecting.item is ukpga/Vict/24-25/100.`,
+    ],
+    [
+      'counterpart, direction affecting',
+      { item: 'ukpga/2018/12', direction: 'affecting', counterpart: 'ukpga/Vict/24-25/100' },
+      VICT_MESSAGE,
+      'Call again without counterpart and keep the effects whose affected.item is ukpga/Vict/24-25/100.',
+    ],
+    [
+      'partial counterpart, direction affected',
+      { item: 'ukpga/2018/12', counterpart: 'ukpga/Eliz2/3-4' },
+      ELIZ_MESSAGE,
+      `${PRE_1994} Call again without counterpart and keep the effects whose affecting.item starts with ukpga/Eliz2/3-4/.`,
+    ],
+    [
+      'partial counterpart, direction affecting',
+      { item: 'ukpga/2018/12', direction: 'affecting', counterpart: 'ukpga/Eliz2/3-4' },
+      ELIZ_MESSAGE,
+      'Call again without counterpart and keep the effects whose affected.item starts with ukpga/Eliz2/3-4/.',
+    ],
+  ] as [string, AmendmentsInput, string, string][])(
+    '%s: a regnal path fails regnal_item before any request, on both surfaces',
+    async (_case, input, message, hint) => {
+      const up = createUpstream([]);
+      const result = await runToolContract(getAmendmentsTool, input);
+      expect(up.unhandled).toEqual([]);
+      expect(up.paths()).toEqual([]);
+      const error = errorOf(result);
+      expect(error.code).toBe(JsonRpcErrorCode.ValidationError);
+      expect(error.data?.reason).toBe('regnal_item');
+      expect(error.message).toBe(message);
+      expect(error.data?.recovery).toEqual({ hint });
+      const text = contentText(result);
+      expect(text).toContain(message);
+      expect(text).toContain(hint);
+    },
+  );
+
+  it('the calendar-year path a regnal_item recovery names lists the regnal Act’s effects', async () => {
+    const path = '/changes/affected/ukpga/1925/20/data.feed?results-count=2';
+    const up = createUpstream(routes([path, feed('changes-affected-ukpga-1925-20.feed')]));
+    const { output } = await amendments({ item: 'ukpga/1925/20', limit: 2 });
+    expect(up.paths()).toEqual([path]);
+    expect(output.total).toBe(277);
+    expect(output.effects.map((e) => e.affected.item)).toEqual([LPA, LPA]);
+  });
+
+  const DRAFT_ITEM_HINT =
+    "Once made, an instrument is published under its own path with a calendar year and number: find it by title with uklaw_search_legislation (types secondary) and pass that path as item. uklaw_get_document reads a draft's own text.";
+
+  it.each([
+    [{ item: 'ukdsi/2026/9780348287233' }, 'item "ukdsi/2026/9780348287233"', DRAFT_ITEM_HINT],
+    [
+      { item: 'ukdsi/2026/9780348287233', direction: 'affecting' },
+      'item "ukdsi/2026/9780348287233"',
+      DRAFT_ITEM_HINT,
+    ],
+    [{ item: 'sdsi/2026' }, 'item "sdsi/2026"', DRAFT_ITEM_HINT],
+    [{ item: 'nidsr' }, 'item "nidsr"', DRAFT_ITEM_HINT],
+    [
+      { item: 'ukpga/2018/12', counterpart: 'ukdsi/2026/9780348287233' },
+      'counterpart "ukdsi/2026/9780348287233"',
+      'Call again without counterpart, or once the instrument is made pass its own path as counterpart: find it by title with uklaw_search_legislation (types secondary).',
+    ],
+  ] as [AmendmentsInput, string, string][])(
+    '%j fails draft_item before any request, on both surfaces',
+    async (input, subject, hint) => {
+      const up = createUpstream([]);
+      const result = await runToolContract(getAmendmentsTool, input);
+      expect(up.unhandled).toEqual([]);
+      expect(up.paths()).toEqual([]);
+      const error = errorOf(result);
+      const message = `${subject} is draft legislation; legislation.gov.uk's changes feeds do not index drafts: a draft is not amended, and amends nothing, until it is made.`;
+      expect(error.code).toBe(JsonRpcErrorCode.ValidationError);
+      expect(error.data?.reason).toBe('draft_item');
+      expect(error.message).toBe(message);
+      expect(error.data?.recovery).toEqual({ hint });
+      const text = contentText(result);
+      expect(text).toContain(message);
+      expect(text).toContain(hint);
+    },
+  );
 
   it('a changes-feed 404 fails filter_refused with its recovery, not an empty list', async () => {
     createUpstream(routes([AFFECTED, status(404)]));
@@ -463,6 +764,42 @@ describe('errors', () => {
       await expect(failure({ ...changed, cursor })).resolves.toMatchObject({
         data: { reason: 'invalid_cursor' },
       });
+    }
+  });
+
+  it('rejects a cursor holding a position no call over its query produces, before any request', async () => {
+    createUpstream([
+      ...routes([AFFECTED, feed('changes-affected-ukpga-2018-12.feed')]),
+      ...scanRoutes(),
+    ]);
+    const plain: AmendmentsInput = { item: 'ukpga/2018/12', limit: 3 };
+    const scan: AmendmentsInput = {
+      item: 'ukpga/2018/12',
+      provision: 'section/45',
+      status: 'unapplied',
+      limit: 2,
+    };
+    const plainCursor = (await amendments(plain)).output.next_cursor as string;
+    const scanCursor = (await amendments(scan)).output.next_cursor as string;
+    const forged: [AmendmentsInput, string, Record<string, unknown>][] = [
+      [plain, plainCursor, { p: Number.MAX_SAFE_INTEGER }],
+      [plain, plainCursor, { p: 10_001 }],
+      // A plain page reads `limit` effects; a scan page holds 500.
+      [plain, plainCursor, { o: 3 }],
+      [scan, scanCursor, { o: 500 }],
+      [scan, scanCursor, { p: 10_001 }],
+      // Only a Publication Log day walk carries a day.
+      [scan, scanCursor, { d: '2026-09-24' }],
+    ];
+    for (const [input, cursor, change] of forged) {
+      const up = createUpstream([]);
+      await expect(
+        failure({ ...input, cursor: forgeCursor(cursor, change) }),
+      ).resolves.toMatchObject({
+        code: JsonRpcErrorCode.ValidationError,
+        data: { reason: 'invalid_cursor' },
+      });
+      expect(up.paths()).toEqual([]);
     }
   });
 
@@ -514,7 +851,7 @@ describe('errors', () => {
 
 describe('both surfaces and enrichment', () => {
   it('the zero-result page (total 0) carries the notice and passes the enrichment parse', async () => {
-    const path = '/changes/unapplied/affected/uksi/1980/2049/data.feed?results-count=50';
+    const path = '/changes/unapplied/affected/uksi/1980/2049/data.feed?results-count=20';
     createUpstream(routes([path, feed('changes-empty.feed')]));
     const result = await runToolContract(getAmendmentsTool, {
       item: 'uksi/1980/2049',

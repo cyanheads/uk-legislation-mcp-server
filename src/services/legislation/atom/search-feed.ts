@@ -64,14 +64,15 @@ export function parseSearchEntry(entry: XmlElement): SearchResult | undefined {
   const number = attr(child(entry, 'ukm:Number'), 'Value') ?? item.split('/').at(-1);
   const madeDate = attr(child(entry, 'ukm:CreationDate'), 'Date');
   const updated = textOf(child(entry, 'updated'));
-  const documentLink = childrenNamed(entry, 'link').find(
-    (l) => attr(l, 'rel') === undefined && attr(l, 'href'),
+  const documentHref = attr(
+    childrenNamed(entry, 'link').find((l) => attr(l, 'rel') === undefined && attr(l, 'href')),
+    'href',
   );
   const subjects = [
     ...new Set(
       childrenNamed(entry, 'category')
         .map((c) => attr(c, 'term'))
-        .filter((t): t is string => t !== undefined),
+        .filter((t) => t !== undefined),
     ),
   ];
   return {
@@ -92,15 +93,20 @@ export function parseSearchEntry(entry: XmlElement): SearchResult | undefined {
     ...(summary ? { summary } : {}),
     subjects,
     ...(updated ? { updated } : {}),
-    ...(documentLink ? { document_uri: toHttps(attr(documentLink, 'href') as string) } : {}),
+    ...(documentHref ? { document_uri: toHttps(documentHref) } : {}),
   };
 }
 
-/** Type code a facet link points at: the `type=` parameter or the first path segment. */
+/**
+ * Type code a facet link points at: the `type=` parameter or the first path
+ * segment. A `type=` value is read only in a type code's shape (lowercase
+ * letters), so nothing upstream sends is percent-decoded, which a malformed
+ * escape would make throw.
+ */
 function facetTypeCode(href: string | undefined): string | undefined {
   if (!href) return;
-  const param = /[?&]type=([^&]+)/.exec(href)?.[1];
-  if (param) return decodeURIComponent(param);
+  const param = /[?&]type=([a-z]+)(?=&|$)/.exec(href)?.[1];
+  if (param) return param;
   const path = legislationPath(href);
   const first = path?.split('/')[0];
   return first && first !== 'search' ? first : undefined;
@@ -133,7 +139,7 @@ export function parseSearchFeed(body: string): SearchFeed {
     ...readPaging(feed),
     results: entries(feed)
       .map(parseSearchEntry)
-      .filter((r): r is SearchResult => r !== undefined),
+      .filter((r) => r !== undefined),
     facets: parseFacets(feed),
   };
 }

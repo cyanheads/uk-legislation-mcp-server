@@ -10,7 +10,7 @@ import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { type ParsedCitation, parseCitation } from '@/services/legislation/citations.js';
 import { getLegislationService } from '@/services/legislation/legislation-service.js';
 import { attributionLines, cell, inline, uri } from './_markdown.js';
-import { AttributionSchema } from './_schemas.js';
+import { AttributionSchema, TextInput } from './_schemas.js';
 
 function parsedEcho(parsed: ParsedCitation) {
   switch (parsed.kind) {
@@ -33,6 +33,7 @@ function parsedEcho(parsed: ParsedCitation) {
     case 'title':
       return {
         kind: parsed.kind,
+        ...(parsed.chapter ? { type: 'ukpga', number: parsed.chapter } : {}),
         title: parsed.title,
         ...(parsed.year !== undefined ? { year: String(parsed.year) } : {}),
         ...(parsed.provision ? { provision: parsed.provision } : {}),
@@ -49,9 +50,7 @@ export const lookupCitationTool = tool('uklaw_lookup_citation', {
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   auth: ['tool:uklaw_lookup_citation:read'],
   input: z.object({
-    citation: z
-      .string()
-      .min(1)
+    citation: TextInput.min(1)
       .max(300)
       .describe(
         'A citation ("2018 c. 12", "S.I. 2019/419 reg. 5", "Regulation (EU) 2016/679 art. 28"), a short title ("Data Protection Act 2018 s. 45(2)(f)"), or a legislation.gov.uk URI. uklaw_list_reference topic citation_formats lists the accepted forms.',
@@ -69,14 +68,21 @@ export const lookupCitationTool = tool('uklaw_lookup_citation', {
         type: z
           .string()
           .optional()
-          .describe('Type code the citation maps to, e.g. ukpga, uksi, eur; absent for a title.'),
+          .describe(
+            'Type code the citation maps to, e.g. ukpga, uksi, eur; for a title, present only when it carries a chapter such as (c. 42).',
+          ),
         year: z
           .string()
           .optional()
           .describe(
             'Year as parsed: a calendar year, or a regnal Monarch/session; absent when none.',
           ),
-        number: z.string().optional().describe('Number as parsed; absent for a title.'),
+        number: z
+          .string()
+          .optional()
+          .describe(
+            'Number as parsed; for a title, the chapter number when it carries one such as (c. 42).',
+          ),
         title: z.string().optional().describe('Short title as parsed; present for kind title.'),
         provision: z
           .string()

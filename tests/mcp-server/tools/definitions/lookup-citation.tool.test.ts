@@ -260,11 +260,32 @@ describe('short titles', () => {
   });
 
   it('misses an unknown title with routing guidance', async () => {
-    createUpstream([{ path: '/id?title=UK%20GDPR', respond: notFound() }]);
-    const result = await lookup('UK GDPR');
-    expect(result).toMatchObject({ found: false, parsed: { kind: 'title', title: 'UK GDPR' } });
+    createUpstream([{ path: '/id?title=Widget%20Licensing%20Act', respond: notFound() }]);
+    const result = await lookup('Widget Licensing Act');
+    expect(result).toMatchObject({
+      found: false,
+      parsed: { kind: 'title', title: 'Widget Licensing Act' },
+    });
     expect(result.guidance).toContain('uklaw_search_legislation');
   });
+
+  it.each(['constructor', '__proto__'])(
+    'looks up %j as a short title, on both surfaces',
+    async (citation) => {
+      const path = `/id?title=${citation}`;
+      const up = createUpstream([{ path, respond: notFound() }]);
+      const result = await runToolContract(lookupCitationTool, { citation });
+      expect(up.paths()).toEqual([path]);
+      expect(result.structuredContent).toMatchObject({
+        found: false,
+        parsed: { kind: 'title', title: citation },
+        guidance: `No item has the short title "${citation}". Call uklaw_search_legislation with title set to its distinctive words.`,
+      });
+      const text = contentText(result);
+      expect(text).toContain('No item has the short title');
+      expect(text).not.toContain('undefined');
+    },
+  );
 
   it('misses when the title resolves to something that is not a full item', async () => {
     createUpstream([
@@ -273,6 +294,260 @@ describe('short titles', () => {
     const result = await lookup('Finance Acts');
     expect(result.found).toBe(false);
     expect(result.guidance).toContain('could not resolve');
+  });
+});
+
+describe('written citation forms', () => {
+  const TITLE_DPA = '/id?title=Data%20Protection%20Act%202018';
+  const TITLE_TYPO = '/id?title=Data%20Protecton%20Act%202018';
+  const TITLE_AIR_FORCE = '/id?title=Air%20Force%20Act%201955';
+  const NUMBER_1955_19 = '/ukpga/1955/data.feed?number=19';
+  const NUMBER_GDPR = '/eur/2016/data.feed?number=679';
+  const ART28 = '/eur/2016/679/article/28/data.xml';
+
+  it('reads a leading provision followed by "of the" and confirms it, on both surfaces', async () => {
+    const up = createUpstream([
+      { path: TITLE_DPA, respond: redirect(301, '/id/ukpga/2018/12') },
+      dpaNumber(),
+      { path: S45, respond: clml('ukpga-2018-12-section-45.xml') },
+    ]);
+    const result = await runToolContract(lookupCitationTool, {
+      citation: 'section 45 of the Data Protection Act 2018',
+    });
+    expect(result.structuredContent).toMatchObject({
+      found: true,
+      parsed: {
+        kind: 'title',
+        title: 'Data Protection Act 2018',
+        year: '2018',
+        provision: 'section/45',
+      },
+      item: 'ukpga/2018/12',
+      provision_path: 'section/45',
+      provision_found: true,
+    });
+    const text = contentText(result);
+    expect(text).toContain(
+      '**Parsed:** kind title, year 2018, title "Data Protection Act 2018", provision section/45',
+    );
+    expect(text).toContain('- Item: `ukpga/2018/12`');
+    expect(text).toContain('exists in the current version (provision_found: true)');
+    expect(up.paths()).toEqual([TITLE_DPA, NUMBER_DPA, S45]);
+    expect(up.unhandled).toEqual([]);
+  });
+
+  it('resolves the UK GDPR through the listing feed of Regulation (EU) 2016/679, on both surfaces', async () => {
+    const up = createUpstream([
+      { path: NUMBER_GDPR, respond: feed('number-eur-2016-679.feed') },
+      { path: ART28, respond: clml('eur-2016-679-article-28.xml') },
+    ]);
+    const result = await runToolContract(lookupCitationTool, { citation: 'UK GDPR art. 28' });
+    expect(result.structuredContent).toMatchObject({
+      found: true,
+      parsed: {
+        kind: 'numbered',
+        type: 'eur',
+        year: '2016',
+        number: '679',
+        provision: 'article/28',
+      },
+      item: 'eur/2016/679',
+      type: 'eur',
+      title: expect.stringContaining('(United Kingdom General Data Protection Regulation)'),
+      provision_path: 'article/28',
+      provision_found: true,
+    });
+    expect((result.structuredContent as { guidance?: string }).guidance).toBeUndefined();
+    const text = contentText(result);
+    expect(text).toContain(
+      '**Parsed:** kind numbered, type eur, year 2016, number 679, provision article/28',
+    );
+    expect(text).toContain('- Item: `eur/2016/679`');
+    expect(text).toContain('United Kingdom General Data Protection Regulation');
+    expect(text).toContain(ATTRIBUTION_LINES.eu);
+    expect(up.paths()).toEqual([NUMBER_GDPR, ART28]);
+    expect(up.unhandled).toEqual([]);
+  });
+
+  it.each([
+    [
+      'Council Regulation (EC) No 1/2003',
+      '/eur/2003/data.feed?number=1',
+      { type: 'eur', year: '2003', number: '1' },
+    ],
+    [
+      'Commission Implementing Regulation (EU) 2019/947',
+      '/eur/2019/data.feed?number=947',
+      { type: 'eur', year: '2019', number: '947' },
+    ],
+    [
+      '2016 c. 5 (N.I.)',
+      '/nia/2016/data.feed?number=5',
+      { type: 'nia', year: '2016', number: '5' },
+    ],
+  ])('reads %s as a numbered citation, with no title lookup', async (citation, path, parsed) => {
+    const up = createUpstream([{ path, respond: feed('search-zero-hits.feed') }]);
+    const result = await lookup(citation);
+    expect(result).toMatchObject({ found: false, parsed: { kind: 'numbered', ...parsed } });
+    expect(up.paths()).toEqual([path]);
+    expect(up.unhandled).toEqual([]);
+  });
+
+  it('requests a dotted rule number as its provision path', async () => {
+    const up = createUpstream(
+      routes(
+        ['/id?title=Civil%20Procedure%20Rules%201998', redirect(301, '/id/uksi/1998/3132')],
+        ['/uksi/1998/data.feed?number=3132', feed('search-zero-hits.feed')],
+        ['/uksi/1998/3132/rule/3.4/data.xml', notFound()],
+      ),
+    );
+    const result = await lookup('Civil Procedure Rules 1998 r. 3.4');
+    expect(result).toMatchObject({
+      found: true,
+      parsed: { kind: 'title', title: 'Civil Procedure Rules 1998', provision: 'rule/3.4' },
+      item: 'uksi/1998/3132',
+      provision_path: 'rule/3.4',
+      provision_uri: 'https://www.legislation.gov.uk/id/uksi/1998/3132/rule/3.4',
+    });
+    expect(up.paths()).toEqual([
+      '/id?title=Civil%20Procedure%20Rules%201998',
+      '/uksi/1998/data.feed?number=3132',
+      '/uksi/1998/3132/rule/3.4/data.xml',
+    ]);
+    expect(up.unhandled).toEqual([]);
+  });
+
+  it('strips a trailing chapter number before the title lookup and echoes it, on both surfaces', async () => {
+    const up = createUpstream([
+      { path: TITLE_DPA, respond: redirect(301, '/id/ukpga/2018/12') },
+      dpaNumber(),
+    ]);
+    const result = await runToolContract(lookupCitationTool, {
+      citation: 'Data Protection Act 2018 (c. 12)',
+    });
+    expect(result.structuredContent).toMatchObject({
+      found: true,
+      parsed: {
+        kind: 'title',
+        type: 'ukpga',
+        year: '2018',
+        number: '12',
+        title: 'Data Protection Act 2018',
+      },
+      item: 'ukpga/2018/12',
+      title: 'Data Protection Act 2018',
+    });
+    expect((result.structuredContent as { guidance?: string }).guidance).toBeUndefined();
+    expect(contentText(result)).toContain(
+      '**Parsed:** kind title, type ukpga, year 2018, number 12, title "Data Protection Act 2018"',
+    );
+    expect(up.paths()).toEqual([TITLE_DPA, NUMBER_DPA]);
+  });
+
+  it('resolves through the chapter number when the title does not, on both surfaces', async () => {
+    const up = createUpstream([
+      { path: TITLE_TYPO, respond: notFound() },
+      dpaNumber(),
+      { path: S45, respond: clml('ukpga-2018-12-section-45.xml') },
+    ]);
+    const result = await runToolContract(lookupCitationTool, {
+      citation: 'Data Protecton Act 2018 (c. 12) s. 45',
+    });
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({
+      found: true,
+      item: 'ukpga/2018/12',
+      title: 'Data Protection Act 2018',
+      made_date: '2018-05-23',
+      provision_path: 'section/45',
+      provision_found: true,
+      guidance: expect.stringContaining(
+        '"Data Protecton Act 2018" did not resolve as a short title; the item was found by its chapter number, 2018 c. 12',
+      ),
+    });
+    const text = contentText(result);
+    expect(text).toContain('**Data Protection Act 2018**');
+    expect(text).toContain('found by its chapter number, 2018 c. 12');
+    expect(up.paths()).toEqual([TITLE_TYPO, NUMBER_DPA, S45]);
+    expect(up.unhandled).toEqual([]);
+  });
+
+  it('resolves through the chapter number when the title matches several items but none exactly', async () => {
+    const up = createUpstream(
+      routes(
+        ['/id?title=Data%20Protection%202018', multipleChoices('id-title-300')],
+        [NUMBER_DPA, feed('number-ukpga-2018-12.feed')],
+      ),
+    );
+    const result = await lookup('Data Protection 2018 (c. 12)');
+    expect(result).toMatchObject({ found: true, item: 'ukpga/2018/12' });
+    expect(result.candidates).toBeUndefined();
+    expect(result.guidance).toContain('found by its chapter number, 2018 c. 12');
+    expect(up.paths()).toEqual(['/id?title=Data%20Protection%202018', NUMBER_DPA]);
+  });
+
+  it('picks the chapter entry carrying the title when a pre-1963 chapter number is shared', async () => {
+    const up = createUpstream(
+      routes([TITLE_AIR_FORCE, notFound()], [NUMBER_1955_19, feed('number-ukpga-1955-19.feed')]),
+    );
+    const result = await lookup('Air Force Act 1955 (c. 19)');
+    expect(result).toMatchObject({
+      found: true,
+      item: 'ukpga/Eliz2/3-4/19',
+      title: 'Air Force Act 1955 (repealed)',
+    });
+    expect(result.guidance).toContain('found by its chapter number, 1955 c. 19');
+    expect(up.paths()).toEqual([TITLE_AIR_FORCE, NUMBER_1955_19]);
+  });
+
+  it('lists the chapter candidates when none carries the title', async () => {
+    createUpstream(
+      routes(
+        ['/id?title=Air%20Farce%20Act%201955', notFound()],
+        [NUMBER_1955_19, feed('number-ukpga-1955-19.feed')],
+      ),
+    );
+    const result = await lookup('Air Farce Act 1955 (c. 19)');
+    expect(result.found).toBe(false);
+    expect(result.item).toBeUndefined();
+    expect(result.candidates?.map((c) => c.item)).toEqual([
+      'ukpga/Eliz2/4-5/19',
+      'ukpga/Eliz2/3-4/19',
+    ]);
+    expect(result.guidance).toContain('2 items carry this number');
+  });
+
+  it('keeps the title miss, noting the chapter, when the chapter number matches nothing', async () => {
+    createUpstream(
+      routes(
+        [TITLE_TYPO, notFound()],
+        ['/ukpga/2018/data.feed?number=9999', feed('search-zero-hits.feed')],
+      ),
+    );
+    const result = await lookup('Data Protecton Act 2018 (c. 9999)');
+    expect(result.found).toBe(false);
+    expect(result.guidance).toContain('No item has the short title "Data Protecton Act 2018"');
+    expect(result.guidance).toContain('No UK Public General Acts item is numbered 2018/9999');
+  });
+
+  it('keeps the title miss, routing to the chapter citation, when the chapter lookup cannot start', async () => {
+    const up = createUpstream([{ path: TITLE_TYPO, respond: notFound() }, dpaNumber()], {
+      pacer: await gatedPacer(1),
+    });
+    const result = await lookup('Data Protecton Act 2018 (c. 12)');
+    expect(result.found).toBe(false);
+    expect(result.guidance).toContain('call uklaw_lookup_citation with "2018 c. 12"');
+    expect(up.paths()).toEqual([TITLE_TYPO]);
+  });
+
+  it('does not try a chapter number when the title carries no year', async () => {
+    const up = createUpstream([{ path: '/id?title=Data%20Protection%20Act', respond: notFound() }]);
+    const result = await lookup('Data Protection Act (c. 12)');
+    expect(result).toMatchObject({
+      found: false,
+      parsed: { kind: 'title', title: 'Data Protection Act', type: 'ukpga', number: '12' },
+    });
+    expect(up.paths()).toEqual(['/id?title=Data%20Protection%20Act']);
   });
 });
 
@@ -342,6 +617,7 @@ describe('unparsed input', () => {
       expect(result).toMatchObject({ found: false, parsed: { kind: 'unparsed' } });
       expect(result.guidance).toContain('citation_formats');
       expect(up.paths()).toEqual([]);
+      expect(up.unhandled).toEqual([]);
     },
   );
 });
@@ -483,4 +759,15 @@ describe('both surfaces', () => {
     expect(error.code).toBe(JsonRpcErrorCode.InvalidParams);
     expect(error.data?.reason).toBe('invalid_arguments');
   });
+
+  it.each(['Data Protection Act 2018 \ud800', '\udfff'])(
+    'rejects a citation with an unpaired surrogate (%#), before any request',
+    async (citation) => {
+      const up = createUpstream([]);
+      const error = errorOf(await runToolContract(lookupCitationTool, { citation }));
+      expect(error.code).toBe(JsonRpcErrorCode.InvalidParams);
+      expect(error.data?.reason).toBe('invalid_arguments');
+      expect(up.paths()).toEqual([]);
+    },
+  );
 });

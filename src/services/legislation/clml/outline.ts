@@ -2,7 +2,8 @@
  * @fileoverview Outlines: the item-level outline read from a table of contents
  * (top-level Parts, Chapters, Schedules and loose provisions, or every
  * `MatchText` hit), and the outline of an oversized fragment's child
- * provisions with their measured rendered size.
+ * provisions with their measured rendered size. Each returns one window of
+ * its entries plus the count of all of them.
  * @module services/legislation/clml/outline
  */
 
@@ -39,13 +40,24 @@ const TOC_CONTAINERS = new Set([
 
 const TOC_TEXT = new Set(['ContentsTitle', 'ContentsNumber']);
 
-/** Item-level outline plus the table of contents' leaf-provision count. */
-export interface TocOutline {
+/** The window of an outline to return: at most `max` entries, starting at entry `offset` (0-based). */
+export interface OutlineWindow {
+  max: number;
+  offset: number;
+}
+
+/** One window of an outline, plus the count of every entry in it. */
+export interface OutlinePage {
+  /** The entries inside the window. */
   entries: OutlineEntry[];
+  /** Every entry of the outline, inside the window or not. */
+  total: number;
+}
+
+/** Item-level outline window plus the table of contents' leaf-provision count. */
+export interface TocOutline extends OutlinePage {
   /** `ContentsItem` count — leaf provisions. */
   leafCount: number;
-  /** Entries found before the cap was applied. */
-  total: number;
 }
 
 function tocEntry(node: XmlElement, item: string, level: number): OutlineEntry | undefined {
@@ -67,11 +79,12 @@ function tocEntry(node: XmlElement, item: string, level: number): OutlineEntry |
  * Builds the item-level outline from `Contents`. Default mode lists containers
  * (Parts, Chapters, Schedules, EU divisions) and provisions outside any listed
  * container; `matchesOnly` lists every entry upstream marked `MatchText`.
+ * Returns the entries inside `window` and the count of all of them.
  */
 export function tocOutline(
   contents: XmlElement,
   item: string,
-  max: number,
+  window: OutlineWindow,
   matchesOnly: boolean,
 ): TocOutline {
   const entries: OutlineEntry[] = [];
@@ -88,8 +101,8 @@ export function tocOutline(
       if (listed) {
         const entry = tocEntry(el, item, level);
         if (entry) {
+          if (total >= window.offset && entries.length < window.max) entries.push(entry);
           total += 1;
-          if (entries.length < max) entries.push(entry);
           if (TOC_CONTAINERS.has(el.name) || matchesOnly) nextLevel = level + 1;
         }
       }
@@ -127,19 +140,26 @@ function childProvisions(target: XmlElement): { node: XmlElement; renderAs: XmlE
   return out;
 }
 
-/** Outline of an oversized fragment's child provisions, each measured by rendering it alone. */
+/**
+ * Outline of an oversized fragment's child provisions. Children whose URI
+ * names no provision of `item` are dropped before the window is cut, and only
+ * the entries inside it are measured, each by rendering it alone.
+ */
 export function fragmentOutline(
   root: XmlElement,
   target: XmlElement,
   item: string,
-  max: number,
-): OutlineEntry[] {
-  return childProvisions(target)
-    .slice(0, max)
-    .map(({ node, renderAs }) => {
-      const provision = provisionFromUri(attr(node, 'DocumentURI'), item) ?? '';
-      const titleSource = renderAs === node ? child(node, 'Title') : child(renderAs, 'Title');
-      const heading = textOf(titleSource) || textOf(child(child(node, 'TitleBlock'), 'Title'));
+  window: OutlineWindow,
+): OutlinePage {
+  const listed = childProvisions(target).flatMap((c) => {
+    const provision = provisionFromUri(attr(c.node, 'DocumentURI'), item);
+    return provision ? [{ ...c, provision }] : [];
+  });
+  const entries = listed
+    .slice(window.offset, window.offset + window.max)
+    .map(({ node, renderAs, provision }) => {
+      const heading =
+        textOf(child(renderAs, 'Title')) || textOf(child(child(node, 'TitleBlock'), 'Title'));
       const status = attr(node, 'Status') ?? attr(renderAs, 'Status');
       return {
         provision,
@@ -149,6 +169,6 @@ export function fragmentOutline(
         ...(status ? { status } : {}),
         chars: renderNodes(root, [renderAs]).chars,
       };
-    })
-    .filter((entry) => entry.provision.length > 0);
+    });
+  return { entries, total: listed.length };
 }

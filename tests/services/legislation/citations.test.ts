@@ -40,6 +40,17 @@ describe('parseCitation — numbered forms', () => {
     ['Directive 2016/680', 'eudr', 2016, '680'],
     ['Directive 2000/31/EC', 'eudr', 2000, '31'],
     ['Decision (EU) 2019/419', 'eudn', 2019, '419'],
+    ['2016 c. 5 (N.I.)', 'nia', 2016, '5'],
+    ['2016 c 5 (NI)', 'nia', 2016, '5'],
+    ['Council Regulation (EC) No 1/2003', 'eur', 2003, '1'],
+    ['Commission Implementing Regulation (EU) 2019/947', 'eur', 2019, '947'],
+    ['Commission Delegated Regulation (EU) 2019/945', 'eur', 2019, '945'],
+    ['Commission Regulation (EC) No 1907/2006', 'eur', 2006, '1907'],
+    ['European Parliament and Council Directive 2000/31/EC', 'eudr', 2000, '31'],
+    ['European Parliament and of the Council Regulation (EU) 2016/679', 'eur', 2016, '679'],
+    ['Commission Implementing Decision (EU) 2019/419', 'eudn', 2019, '419'],
+    ['UK GDPR', 'eur', 2016, '679'],
+    ['the UK GDPR', 'eur', 2016, '679'],
   ])('%s → %s %i/%s', (citation, type, year, number) => {
     expect(parseCitation(citation)).toEqual({ kind: 'numbered', type, year, number });
   });
@@ -60,6 +71,102 @@ describe('parseCitation — numbered forms', () => {
 
   it('does not read an out-of-range year as a numbered citation', () => {
     expect(parseCitation('3000 c. 1')).toEqual({ kind: 'title', title: '3000 c. 1' });
+  });
+});
+
+describe('parseCitation — written forms', () => {
+  it('reads a leading provision followed by "of the"', () => {
+    expect(parseCitation('section 45 of the Data Protection Act 2018')).toEqual({
+      kind: 'title',
+      title: 'Data Protection Act 2018',
+      year: 2018,
+      provision: 'section/45',
+    });
+    expect(parseCitation('s. 45(2)(f) of 2018 c. 12')).toEqual({
+      kind: 'numbered',
+      type: 'ukpga',
+      year: 2018,
+      number: '12',
+      provision: 'section/45/2/f',
+    });
+    expect(parseCitation('regulation 5 of S.I. 2019/419')).toMatchObject({
+      kind: 'numbered',
+      type: 'uksi',
+      provision: 'regulation/5',
+    });
+  });
+
+  it('keeps "of" inside a title that has no leading provision', () => {
+    expect(parseCitation('Representation of the People Act 1983')).toEqual({
+      kind: 'title',
+      title: 'Representation of the People Act 1983',
+      year: 1983,
+    });
+  });
+
+  it('strips a trailing chapter number from a title and keeps it', () => {
+    expect(parseCitation('Human Rights Act 1998 (c. 42)')).toEqual({
+      kind: 'title',
+      title: 'Human Rights Act 1998',
+      year: 1998,
+      chapter: '42',
+    });
+    expect(parseCitation('Human Rights Act 1998 (c.42) s. 3')).toEqual({
+      kind: 'title',
+      title: 'Human Rights Act 1998',
+      year: 1998,
+      chapter: '42',
+      provision: 'section/3',
+    });
+    expect(parseCitation('section 3 of the Human Rights Act 1998 (c. 42)')).toEqual({
+      kind: 'title',
+      title: 'Human Rights Act 1998',
+      year: 1998,
+      chapter: '42',
+      provision: 'section/3',
+    });
+  });
+
+  it('keeps a bare year and chapter in brackets as a title', () => {
+    expect(parseCitation('2018 (c. 12)')).toEqual({
+      kind: 'title',
+      title: '2018 (c. 12)',
+      year: 2018,
+    });
+  });
+
+  it('reads a dotted rule number in a provision tail', () => {
+    expect(parseCitation('Civil Procedure Rules 1998 r. 3.4')).toEqual({
+      kind: 'title',
+      title: 'Civil Procedure Rules 1998',
+      year: 1998,
+      provision: 'rule/3.4',
+    });
+  });
+
+  it('reads the UK GDPR as Regulation (EU) 2016/679, with or without a provision', () => {
+    expect(parseCitation('UK GDPR art. 28')).toEqual({
+      kind: 'numbered',
+      type: 'eur',
+      year: 2016,
+      number: '679',
+      provision: 'article/28',
+    });
+    expect(parseCitation('Article 28(3) of the UK GDPR')).toEqual({
+      kind: 'numbered',
+      type: 'eur',
+      year: 2016,
+      number: '679',
+      provision: 'article/28/3',
+    });
+  });
+
+  it('does not read an issuing body without an EU act as a citation', () => {
+    expect(parseCitation('Council Tax Act 1992')).toEqual({
+      kind: 'title',
+      title: 'Council Tax Act 1992',
+      year: 1992,
+    });
   });
 });
 
@@ -115,6 +222,20 @@ describe('parseCitation — URIs, titles, and unparsed input', () => {
   ])('marks %j unparsed', (input) => {
     expect(parseCitation(input)).toEqual({ kind: 'unparsed' });
   });
+
+  it.each(['constructor', '__proto__'])('reads %j as a title, never as a defined name', (input) => {
+    expect(parseCitation(input)).toEqual({ kind: 'title', title: input });
+  });
+
+  it('reads no provision from a tail naming an Object.prototype member', () => {
+    const parsed = parseCitation('Data Protection Act 2018 s. 1 constructor 2');
+    expect(parsed).toEqual({
+      kind: 'title',
+      title: 'Data Protection Act 2018 s. 1 constructor 2',
+      year: 2018,
+    });
+    expect(JSON.stringify(parsed)).not.toContain('function');
+  });
 });
 
 describe('extractTitleCandidates', () => {
@@ -154,10 +275,55 @@ describe('extractTitleCandidates', () => {
     ]);
   });
 
+  it('leaves a named reference it does not define literal, Object.prototype members included', () => {
+    const html =
+      '<div id="content"><ul><li><a href="/id/ukpga/2018/12">Data &constructor; &bogus; &amp; Act</a></li></ul></div>';
+    expect(extractTitleCandidates(html)).toEqual([
+      { item: 'ukpga/2018/12', title: 'Data &constructor; &bogus; & Act' },
+    ]);
+  });
+
   it('returns nothing when the page has no content div', () => {
     expect(
       extractTitleCandidates('<html><body><a href="/id/ukpga/2018/12">x</a></body></html>'),
     ).toEqual([]);
+  });
+
+  it('reads no further than 200,000 characters past the content div, footer or not', () => {
+    const anchor = '<li><a href="/id/ukpga/2018/12">Data Protection Act 2018</a></li>';
+    const page = (gap: number) =>
+      `<div id="content"><ul>${' '.repeat(gap)}${anchor}</ul></div><div id="footerNav"></div>`;
+    expect(extractTitleCandidates(page(100_000))).toHaveLength(1);
+    expect(extractTitleCandidates(page(200_000))).toEqual([]);
+  });
+
+  it('skips an anchor whose text runs past 2,000 characters', () => {
+    const html =
+      '<div id="content"><ul>' +
+      `<li><a href="/id/ukpga/2018/12">${'x'.repeat(2_001)}</a></li>` +
+      '<li><a href="/id/uksi/2019/419">The Regulations 2019</a></li>' +
+      '</ul></div>';
+    expect(extractTitleCandidates(html)).toEqual([
+      { item: 'uksi/2019/419', title: 'The Regulations 2019' },
+    ]);
+  });
+
+  const unclosed = (kb: number) => '<li><a href="/id/a">'.repeat((kb * 1024) / 20);
+  it.each([
+    [
+      '400 KB of anchors with no </a>, the footer after them',
+      `${unclosed(400)}<div id="footerNav">`,
+    ],
+    ['190 KB of anchors with no </a>, no footer', unclosed(190)],
+    [
+      'one 190 KB anchor text of "<"',
+      `<li><a href="/id/ukpga/2018/12">${'<'.repeat(190 * 1024)}</a>`,
+    ],
+  ])('scans an adversarial page in linear time: %s', (_name, list) => {
+    const html = `<div id="content"><ul>${list}`;
+    const started = performance.now();
+    expect(extractTitleCandidates(html)).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(25);
   });
 });
 
@@ -167,7 +333,18 @@ describe('normalizeTitle', () => {
     ['Data Protection Act 1984 (repealed 1.3.2000)', 'data protection act 1984'],
     ['The Foo Order 2020 (revoked)', 'foo order 2020'],
     ['Consumer’s  Rights Act 2015', "consumer's rights act 2015"],
+    ['Air Force Act 1955  (repealed)  ', 'air force act 1955'],
+    ['The Foo (Revoked) Order 2020', 'foo (revoked) order 2020'],
+    ['Foo Act 2001 (repealed (in part))', 'foo act 2001 (repealed (in part))'],
+    ['Foo (Amendment) Order 2020 (revoked)', 'foo (amendment) order 2020'],
   ])('%s → %s', (input, expected) => {
     expect(normalizeTitle(input)).toBe(expected);
+  });
+
+  it('runs in linear time on an unclosed status note repeated', () => {
+    const title = '(repealed'.repeat(30_000);
+    const started = performance.now();
+    expect(normalizeTitle(title)).toBe(title);
+    expect(performance.now() - started).toBeLessThan(100);
   });
 });

@@ -7,11 +7,12 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { MAX_PAGE } from '@/services/legislation/cursor.js';
 import { getLegislationService } from '@/services/legislation/legislation-service.js';
 import { isCalendarDate } from '@/services/legislation/provision-path.js';
 import { EXTENTS, TYPE_CODES, TYPE_GROUPS } from '@/services/legislation/reference-data.js';
 import { attributionLines, blockquote, cell, inline, uri } from './_markdown.js';
-import { AttributionSchema, blankAsUnset, DateInput } from './_schemas.js';
+import { AttributionSchema, blankAsUnset, DateInput, TextInput } from './_schemas.js';
 
 const TYPE_VALUES = [...TYPE_GROUPS, ...TYPE_CODES] as [string, ...string[]];
 const YEAR = z.number().int().min(1267).max(2100);
@@ -23,14 +24,15 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   auth: ['tool:uklaw_search_legislation:read'],
   input: z.object({
-    text: blankAsUnset(z.string().max(500).optional()).describe(
+    text: blankAsUnset(TextInput.max(500).optional()).describe(
       'Full-text query. Supports AND/OR, "quoted phrases", and stemming. Omit for a title search or a listing.',
     ),
-    title: blankAsUnset(z.string().max(300).optional()).describe(
+    title: blankAsUnset(TextInput.max(300).optional()).describe(
       'Words that must all occur in the title. For a known short title or citation, uklaw_lookup_citation is exact.',
     ),
     types: z
       .array(z.enum(TYPE_VALUES))
+      .max(TYPE_VALUES.length)
       .default(['all'])
       .describe(
         'Type codes (ukpga, uksi, asp, eur, …) and/or groups (all, primary, secondary, eu-origin, draft). "all" covers UK and EU-origin legislation, excluding drafts, and absorbs any other value. uklaw_list_reference topic types lists the codes.',
@@ -46,6 +48,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
     ),
     extent: z
       .array(z.enum(EXTENTS))
+      .max(EXTENTS.length)
       .optional()
       .describe(
         'Geographical extent: england, wales, scotland, ni. An item matches when one of its provisions extends there. Cannot combine with as_of. legislation.gov.uk has not recorded provision-level extent for many recent items, so an empty result does not prove nothing extends there.',
@@ -57,7 +60,13 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
       'Point in time YYYY-MM-DD: only legislation as it stood on that date (items not yet enacted or made are excluded). Omit for current law. Cannot combine with extent.',
     ),
     limit: z.number().int().min(1).max(50).default(20).describe('Results per page (1–50).'),
-    page: z.number().int().min(1).default(1).describe('Page number, from 1.'),
+    page: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_PAGE)
+      .default(1)
+      .describe(`Page number (1–${MAX_PAGE.toLocaleString('en-GB')}).`),
   }),
   output: z.object({
     results: z
@@ -237,9 +246,11 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
       input.year !== undefined &&
       (input.year_from !== undefined || input.year_to !== undefined)
     ) {
-      throw ctx.fail('invalid_year_range', 'year cannot be combined with year_from or year_to.', {
-        ...ctx.recoveryFor('invalid_year_range'),
-      });
+      throw ctx.fail(
+        'invalid_year_range',
+        'year cannot be combined with year_from or year_to.',
+        ctx.recoveryFor('invalid_year_range'),
+      );
     }
     if (
       input.year_from !== undefined &&
@@ -249,24 +260,22 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
       throw ctx.fail(
         'invalid_year_range',
         `year_from ${input.year_from} is after year_to ${input.year_to}.`,
-        {
-          ...ctx.recoveryFor('invalid_year_range'),
-        },
+        ctx.recoveryFor('invalid_year_range'),
       );
     }
     if (input.as_of !== undefined && !isCalendarDate(input.as_of)) {
-      throw ctx.fail('invalid_date', `as_of ${input.as_of} is not a real calendar date.`, {
-        ...ctx.recoveryFor('invalid_date'),
-      });
+      throw ctx.fail(
+        'invalid_date',
+        `as_of ${input.as_of} is not a real calendar date.`,
+        ctx.recoveryFor('invalid_date'),
+      );
     }
     const extent = input.extent && input.extent.length > 0 ? [...new Set(input.extent)] : undefined;
     if (extent && input.as_of) {
       throw ctx.fail(
         'extent_with_as_of',
         'extent and as_of cannot be combined — legislation.gov.uk refuses the combination.',
-        {
-          ...ctx.recoveryFor('extent_with_as_of'),
-        },
+        ctx.recoveryFor('extent_with_as_of'),
       );
     }
     const types =
@@ -290,9 +299,13 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
     );
 
     if (outcome.total !== undefined) ctx.enrich({ total: outcome.total });
-    if (outcome.results.length === 0) {
+    /** Only a query reported as matching nothing gets filter advice; any other empty later page is past the end. */
+    if (outcome.results.length === 0 && input.page > 1 && outcome.total !== 0) {
+      ctx.enrich.notice(
+        `Page ${input.page} is past the last page of results; call again with page 1 or a lower page.`,
+      );
+    } else if (outcome.results.length === 0) {
       const fragments: string[] = ['No legislation matched.'];
-      if (input.page > 1) fragments.push('Page is past the last page; start again from page 1.');
       if (input.title) {
         fragments.push(
           'Title search needs every word in the title; for a known short title or citation call uklaw_lookup_citation.',

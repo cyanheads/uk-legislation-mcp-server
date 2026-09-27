@@ -18,9 +18,11 @@ import { attributionLines, blockquote, inline, renderEffect, uri } from './_mark
 import {
   AttributionSchema,
   blankAsUnset,
+  DATE_PATTERN,
   EffectRecordSchema,
   FullItemInput,
   ProvisionInput,
+  TextInput,
 } from './_schemas.js';
 
 const VERSION_PATTERN = /^(current|enacted|made|adopted|created|\d{4}-\d{2}-\d{2})$/;
@@ -49,14 +51,22 @@ export const getDocumentTool = tool('uklaw_get_document', {
         )
         .optional(),
     ).describe(
-      'current (the latest revised text, or the original text for an item never revised), enacted (made, adopted and created are synonyms — the original text), or a date YYYY-MM-DD for the text as it stood then. Omitted: the version in an item URI, else current. A future date returns the latest version; version.applied reports the version served.',
+      'current (the latest revised text, or the original text for an item never revised), enacted (made, adopted and created are synonyms — the original text), or a date YYYY-MM-DD for the text as it stood then. Omitted: the version in an item URI, else current. A future date returns the latest version, and a date on or after the made or enactment date of an item never revised returns its original text, with a notice; version.applied reports the version served.',
     ),
     language: blankAsUnset(z.enum(['en', 'cy']).optional()).describe(
       'en, or cy for the Welsh text of Welsh legislation (asc, anaw, mwa, wsi). Omitted: cy when an item URI ends in /welsh, else en. English is returned, with a notice, when no Welsh text exists.',
     ),
-    match_text: blankAsUnset(z.string().max(200).optional()).describe(
-      'Item level only (omit provision): return the outline of provisions whose text contains this term, e.g. "processor" — up to 300 entries.',
+    match_text: blankAsUnset(TextInput.max(200).optional()).describe(
+      'Item level only (omit provision): return the outline of provisions whose text contains this term, e.g. "processor" — 100 entries per call; outline_offset reaches the rest.',
     ),
+    outline_offset: z
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe(
+        'Where a returned outline starts: 0 lists entries 1–100, 100 the next 100. Applies only when kind is outline (ignored when text is returned); a notice names the next offset while entries remain.',
+      ),
   }),
   output: z.object({
     kind: z
@@ -114,13 +124,13 @@ export const getDocumentTool = tool('uklaw_get_document', {
           .string()
           .optional()
           .describe(
-            "Start date (YYYY-MM-DD) of this provision's own text window, from the nearest element carrying one; it can differ from version.applied, which dates the whole document version. Absent when not recorded (enacted and made text records none).",
+            "Start date (YYYY-MM-DD) of this provision's own text window; it can differ from version.applied, which dates the whole document version. Both window ends come from one element, the nearest carrying either. Absent when that element records no start (enacted and made text records none), or when its window ends before it starts (a notice says so).",
           ),
         valid_to: z
           .string()
           .optional()
           .describe(
-            "End date (YYYY-MM-DD) of this provision's own text window, when a later text of the provision supersedes it; absent while revised text is current, and on enacted or made text, which records no window.",
+            "End date (YYYY-MM-DD) of this provision's own text window, when a later text of the provision supersedes it, from the same element as valid_from; absent while revised text is current, on enacted or made text, which records no window, and when the window ends before it starts (a notice says so).",
           ),
       })
       .optional()
@@ -169,7 +179,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
         outstanding_effects: z
           .number()
           .describe(
-            'Effects requiring a text change not yet applied that touch this provision, or at item level every such effect on the item (the full count, beyond the 20 listed).',
+            'Effects requiring a text change not yet applied that touch this provision, or at item level every such effect on the item: the full count, beyond the 20 unapplied_effects lists.',
           ),
         caveat: z.string().describe('How far to rely on this text, given its status.'),
       })
@@ -178,7 +188,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
       .string()
       .optional()
       .describe(
-        'The text as Markdown, present when kind is full; amendments are wrapped as [F1 …] keyed to annotations.',
+        'The text as Markdown, present when kind is full; amendments are wrapped as [F1 …] keyed to annotations. A provision with no smaller child provisions that renders over 40,000 characters, counting its annotations, is cut to 40,000, and a notice gives its full size and the links to the full text.',
       ),
     annotations: z
       .array(
@@ -210,12 +220,13 @@ export const getDocumentTool = tool('uklaw_get_document', {
       )
       .optional()
       .describe(
-        'Annotations referenced by the text, present when kind is full — the applied amendment history of the version served.',
+        'Annotations referenced by the text, present when kind is full — the applied amendment history of the version served. When the text is cut, only those the kept text references.',
       ),
     unapplied_effects: z
       .array(EffectRecordSchema)
+      .optional()
       .describe(
-        'Recorded effects not yet applied to the revised text that touch this provision (item level: the first 20), outstanding first; empty when none.',
+        'Recorded effects not yet applied to the revised text that touch this provision (at item level, the item’s): the first 20, outstanding first, with a notice when more exist; empty when none. Absent on an item-level outline, where a notice gives the item’s count and uklaw_get_amendments lists them.',
       ),
     outline: z
       .array(
@@ -235,7 +246,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
               .number()
               .optional()
               .describe(
-                'Rendered size in characters; present in outlines of an oversized provision, absent at item level.',
+                'Rendered size in characters, counting the text and its annotations with their citations; present in outlines of an oversized provision, absent at item level.',
               ),
             matches_text: z
               .boolean()
@@ -245,11 +256,15 @@ export const getDocumentTool = tool('uklaw_get_document', {
           .describe('One outline entry.'),
       )
       .optional()
-      .describe('Provisions to read next, present when kind is outline (at most 300 entries).'),
+      .describe(
+        'Provisions to read next, present when kind is outline: up to 100 entries from outline_offset; empty when outline_offset is past the end.',
+      ),
     outline_notice: z
       .string()
       .optional()
-      .describe('How to read a provision from the outline, naming one to start with.'),
+      .describe(
+        'How to read a provision from the outline, naming one to start with; past the outline’s end, its entry count.',
+      ),
     links: z
       .object({
         web: z.string().describe('legislation.gov.uk page for the version read.'),
@@ -267,7 +282,9 @@ export const getDocumentTool = tool('uklaw_get_document', {
     notice: z
       .string()
       .optional()
-      .describe('Notices: Welsh fallback, truncated lists, and how to continue.'),
+      .describe(
+        'Notices: Welsh fallback, original text served for a dated read, an omitted provision window, the unapplied effects an item outline leaves out, truncated lists, an outline window with the outline_offset that continues it, an oversized provision with no smaller child provisions returned whole or cut (its full size, and the links to the full text), and how to continue.',
+      ),
   },
   errors: [
     {
@@ -349,9 +366,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
       throw ctx.fail(
         'invalid_item',
         `"${input.item}" is not a legislation item path or legislation.gov.uk URI.`,
-        {
-          ...ctx.recoveryFor('invalid_item'),
-        },
+        ctx.recoveryFor('invalid_item'),
       );
     }
     let provision = parsed.provision;
@@ -361,40 +376,31 @@ export const getDocumentTool = tool('uklaw_get_document', {
         throw ctx.fail(
           'invalid_provision',
           `"${input.provision}" is not a provision path or citation shorthand.`,
-          {
-            ...ctx.recoveryFor('invalid_provision'),
-          },
+          ctx.recoveryFor('invalid_provision'),
         );
       }
       if (provision && provision !== normalized) {
         throw ctx.fail(
           'invalid_provision',
           `item carries provision ${provision} but provision is ${normalized}; pass one of them.`,
-          { ...ctx.recoveryFor('invalid_provision') },
+          ctx.recoveryFor('invalid_provision'),
         );
       }
       provision = normalized;
     }
     const version = input.version ?? parsed.version ?? 'current';
-    if (
-      version === 'prospective' ||
-      (/^\d{4}-\d{2}-\d{2}$/.test(version) && !isCalendarDate(version))
-    ) {
+    if (version === 'prospective' || (DATE_PATTERN.test(version) && !isCalendarDate(version))) {
       throw ctx.fail(
         'invalid_version',
         `version ${version} is not supported: use current, enacted, or a real calendar date.`,
-        {
-          ...ctx.recoveryFor('invalid_version'),
-        },
+        ctx.recoveryFor('invalid_version'),
       );
     }
     if (input.match_text !== undefined && provision) {
       throw ctx.fail(
         'match_text_needs_item_level',
         "match_text searches an item's table of contents and cannot combine with provision.",
-        {
-          ...ctx.recoveryFor('match_text_needs_item_level'),
-        },
+        ctx.recoveryFor('match_text_needs_item_level'),
       );
     }
     const language = input.language ?? parsed.language ?? 'en';
@@ -406,6 +412,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
         version,
         language,
         ...(input.match_text !== undefined ? { matchText: input.match_text } : {}),
+        outlineOffset: input.outline_offset,
       },
       ctx,
     );
@@ -416,18 +423,14 @@ export const getDocumentTool = tool('uklaw_get_document', {
         throw ctx.fail(
           'provision_not_found',
           `${parsed.item.path} exists but has no document at ${provision} (version ${version}).`,
-          {
-            ...ctx.recoveryFor('provision_not_found'),
-          },
+          ctx.recoveryFor('provision_not_found'),
         );
       }
       if (outcome.which === 'version') {
         throw ctx.fail(
           'version_not_found',
           `${parsed.item.path} exists but has no version at ${version}.`,
-          {
-            ...ctx.recoveryFor('version_not_found'),
-          },
+          ctx.recoveryFor('version_not_found'),
         );
       }
       if (!outcome.checkRan) {
@@ -444,9 +447,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
       throw ctx.fail(
         'document_not_found',
         `legislation.gov.uk has no item at ${parsed.item.path}.`,
-        {
-          ...ctx.recoveryFor('document_not_found'),
-        },
+        ctx.recoveryFor('document_not_found'),
       );
     }
 
@@ -514,11 +515,20 @@ export const getDocumentTool = tool('uklaw_get_document', {
       }
     }
     if (result.outline_notice) lines.push('', `**Next:** ${inline(result.outline_notice)}`);
-    lines.push('', `### Unapplied effects (${result.unapplied_effects.length} listed)`);
-    if (result.unapplied_effects.length === 0) {
-      lines.push(`None recorded against this ${result.provision ? 'provision' : 'item'}.`);
+    const effects = result.unapplied_effects;
+    if (effects) {
+      lines.push('', `### Unapplied effects (${effects.length} listed)`);
+      if (effects.length === 0) {
+        lines.push(`None recorded against this ${result.provision ? 'provision' : 'item'}.`);
+      }
+      for (const e of effects) lines.push(renderEffect(e));
+    } else {
+      lines.push(
+        '',
+        '### Unapplied effects',
+        `Not listed on an item outline; call uklaw_get_amendments with item \`${uri(item.path)}\` and status "unapplied" for them.`,
+      );
     }
-    for (const e of result.unapplied_effects) lines.push(renderEffect(e));
     const l = result.links;
     lines.push(
       '',

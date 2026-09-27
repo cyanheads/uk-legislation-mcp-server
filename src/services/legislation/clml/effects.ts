@@ -42,7 +42,7 @@ function sections(node: XmlElement | undefined): ProvisionRef[] {
   if (!node) return [];
   return elements(node)
     .map(provisionRef)
-    .filter((ref): ref is ProvisionRef => ref !== undefined);
+    .filter((ref) => ref !== undefined);
 }
 
 function side(effect: XmlElement, name: 'Affected' | 'Affecting'): EffectSide {
@@ -214,13 +214,13 @@ export function effectTouches(
 }
 
 function firstInForceDate(effect: EffectRecord): string {
-  const dates = effect.in_force.map((e) => e.date).filter((d): d is string => d !== undefined);
+  const dates = effect.in_force.map((e) => e.date).filter((d) => d !== undefined);
   return dates.sort()[0] ?? '9999-12-31';
 }
 
 /** Outstanding effects first, then by earliest in-force date (undated last). */
 export function sortOutstandingFirst(effects: EffectRecord[]): EffectRecord[] {
-  return [...effects].sort((a, b) => {
+  return effects.toSorted((a, b) => {
     if (a.outstanding !== b.outstanding) return a.outstanding ? -1 : 1;
     return firstInForceDate(a).localeCompare(firstInForceDate(b));
   });

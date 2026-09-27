@@ -16,6 +16,9 @@ import {
 } from '@/services/legislation/xml.js';
 import { fixture } from '../../../helpers/upstream.js';
 
+/** A window holding every entry of the recorded outlines. */
+const ALL = { offset: 0, max: 300 };
+
 function contentsOf(name: string): XmlElement {
   const contents = child(parseXml(fixture(`clml/${name}`), 'x'), 'Contents');
   if (!contents) throw new Error('no Contents');
@@ -27,7 +30,7 @@ describe('tocOutline', () => {
     const outline = tocOutline(
       contentsOf('uksi-2019-419-contents.xml'),
       'uksi/2019/419',
-      300,
+      ALL,
       false,
     );
     expect(outline.leafCount).toBe(28);
@@ -56,7 +59,7 @@ describe('tocOutline', () => {
     const outline = tocOutline(
       contentsOf('ukpga-2018-12-contents.xml'),
       'ukpga/2018/12',
-      300,
+      ALL,
       false,
     );
     const levels = Object.fromEntries(outline.entries.map((e) => [e.provision, e.level]));
@@ -73,7 +76,7 @@ describe('tocOutline', () => {
     const outline = tocOutline(
       contentsOf('ukpga-2018-12-contents-text-processor.xml'),
       'ukpga/2018/12',
-      300,
+      ALL,
       true,
     );
     expect(outline.total).toBe(3);
@@ -81,10 +84,16 @@ describe('tocOutline', () => {
     expect(outline.entries[0]).toMatchObject({ provision: 'section/3', level: 1 });
   });
 
-  it('caps the entries but keeps counting the total', () => {
-    const outline = tocOutline(contentsOf('ukpga-2018-12-contents.xml'), 'ukpga/2018/12', 2, false);
-    expect(outline.entries).toHaveLength(2);
-    expect(outline.total).toBeGreaterThan(2);
+  it('returns the window from the offset but keeps counting the total', () => {
+    const contents = contentsOf('ukpga-2018-12-contents.xml');
+    const whole = tocOutline(contents, 'ukpga/2018/12', ALL, false);
+    const window = tocOutline(contents, 'ukpga/2018/12', { offset: 1, max: 2 }, false);
+    expect(window.entries).toEqual(whole.entries.slice(1, 3));
+    expect(window.total).toBe(whole.total);
+    expect(window.leafCount).toBe(whole.leafCount);
+    const past = tocOutline(contents, 'ukpga/2018/12', { offset: whole.total, max: 300 }, false);
+    expect(past.entries).toEqual([]);
+    expect(past.total).toBe(whole.total);
   });
 
   it('skips entries whose URI belongs to another item and carries status', () => {
@@ -93,7 +102,7 @@ describe('tocOutline', () => {
         '<ContentsItem IdURI="http://www.legislation.gov.uk/id/ukpga/2018/12/section/2" Status="Repealed"><ContentsNumber>2</ContentsNumber></ContentsItem></Contents>',
       'x',
     );
-    const outline = tocOutline(contents, 'ukpga/2018/12', 300, false);
+    const outline = tocOutline(contents, 'ukpga/2018/12', ALL, false);
     expect(outline.entries).toEqual([
       { provision: 'section/2', label: 'Section 2', level: 1, status: 'Repealed' },
     ]);
@@ -108,7 +117,8 @@ describe('fragmentOutline', () => {
       root,
       (e) => attr(e, 'IdURI') === 'http://www.legislation.gov.uk/id/ukpga/2018/12/section/45',
     ) as XmlElement;
-    const outline = fragmentOutline(root, p1, 'ukpga/2018/12', 300);
+    const { entries: outline, total } = fragmentOutline(root, p1, 'ukpga/2018/12', ALL);
+    expect(total).toBe(8);
     expect(outline.map((e) => e.provision)).toEqual([
       'section/45/1',
       'section/45/2',
@@ -129,7 +139,7 @@ describe('fragmentOutline', () => {
   it('keeps a numbered provision with its heading group', () => {
     const root = parseXml(fixture('clml/uksi-1984-458-made.xml'), 'x');
     const body = findDescendant(root, (e) => e.name === 'Body') as XmlElement;
-    const outline = fragmentOutline(root, body, 'uksi/1984/458', 300);
+    const { entries: outline } = fragmentOutline(root, body, 'uksi/1984/458', ALL);
     expect(outline).toHaveLength(18);
     expect(outline.at(-1)).toMatchObject({ provision: 'signature', label: 'Signature' });
     expect(outline[0]).toMatchObject({
@@ -139,9 +149,31 @@ describe('fragmentOutline', () => {
     });
   });
 
-  it('honours the cap', () => {
+  it('returns the window from the offset and the whole count', () => {
     const root = parseXml(fixture('clml/uksi-1984-458-made.xml'), 'x');
     const body = findDescendant(root, (e) => e.name === 'Body') as XmlElement;
-    expect(fragmentOutline(root, body, 'uksi/1984/458', 3)).toHaveLength(3);
+    const whole = fragmentOutline(root, body, 'uksi/1984/458', ALL).entries;
+    const window = fragmentOutline(root, body, 'uksi/1984/458', { offset: 2, max: 3 });
+    expect(window.entries).toEqual(whole.slice(2, 5));
+    expect(window.total).toBe(18);
+    expect(fragmentOutline(root, body, 'uksi/1984/458', { offset: 18, max: 300 })).toEqual({
+      entries: [],
+      total: 18,
+    });
+  });
+
+  it('drops a child provision of another item before cutting the window', () => {
+    const root = parseXml(
+      '<Legislation><Body>' +
+        '<P1 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/99/section/1"><Text>Other item</Text></P1>' +
+        '<P1 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/1"><Text>One</Text></P1>' +
+        '<P1 DocumentURI="http://www.legislation.gov.uk/ukpga/2018/12/section/2"><Text>Two</Text></P1>' +
+        '</Body></Legislation>',
+      'x',
+    );
+    const body = findDescendant(root, (e) => e.name === 'Body') as XmlElement;
+    const outline = fragmentOutline(root, body, 'ukpga/2018/12', { offset: 0, max: 1 });
+    expect(outline.total).toBe(2);
+    expect(outline.entries.map((e) => e.provision)).toEqual(['section/1']);
   });
 });

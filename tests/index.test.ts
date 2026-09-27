@@ -188,6 +188,23 @@ describe('setup', () => {
     expect(app.logger.warning).not.toHaveBeenCalled();
   });
 
+  it.each([100_000, 1e300])(
+    'caps a crawl delay of %d s for this user agent at 60 s, with a warning',
+    async (crawlDelayS) => {
+      const app = await boot(robotsWithGroup(crawlDelayS));
+      await app.setup();
+      expect(app.createPacer).toHaveBeenCalledExactlyOnceWith(pacerOptions(60_000));
+      expect(app.logger.warning).toHaveBeenCalledExactlyOnceWith(
+        'robots.txt sets a crawl delay over 60 s for this user agent; applying 60 s',
+        expect.objectContaining({ operation: 'setup', extra: { crawlDelayS } }),
+      );
+      expect(app.logger.notice).toHaveBeenCalledExactlyOnceWith(
+        'robots.txt sets a crawl delay for this user agent; raising the request gap',
+        expect.objectContaining({ extra: { gapMs: 60_000 } }),
+      );
+    },
+  );
+
   it('keeps a configured gap longer than the crawl delay', async () => {
     vi.stubEnv('UK_LEGISLATION_MIN_REQUEST_GAP_MS', '3000');
     const app = await boot(robotsWithGroup(2));

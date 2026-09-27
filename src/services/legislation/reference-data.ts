@@ -389,8 +389,13 @@ export function typeLabel(code: string): string {
   return TYPES_BY_CODE.get(code)?.label ?? code;
 }
 
+/** Type codes in one category, in reference order. */
+export function codesIn(category: TypeCategory): string[] {
+  return LEGISLATION_TYPES.filter((t) => t.category === category).map((t) => t.code);
+}
+
 /** EU-origin type codes — their content carries the EU attribution line. */
-export const EU_TYPE_CODES: ReadonlySet<string> = new Set(['eur', 'eudn', 'eudr', 'eut']);
+export const EU_TYPE_CODES: ReadonlySet<string> = new Set(codesIn('eu-origin'));
 
 /** Extent names the search path accepts. */
 export const EXTENTS = ['england', 'wales', 'scotland', 'ni'] as const;
@@ -434,16 +439,19 @@ export const STANDALONE_PROVISIONS: ReadonlySet<string> = new Set([
   'earlier-orders',
 ]);
 
-/** Commentary (annotation) type letters and what each records. */
-export const ANNOTATION_TYPES: Readonly<Record<string, string>> = {
-  F: 'Textual amendment',
-  C: 'Modification without textual change',
-  I: 'Commencement information',
-  M: 'Marginal citation',
-  E: 'Extent information',
-  P: 'Power exercised',
-  X: 'Editorial note',
-};
+/**
+ * Commentary (annotation) type letters and what each records. A `Map`,
+ * because the renderer looks it up by upstream text.
+ */
+export const ANNOTATION_TYPES: ReadonlyMap<string, string> = new Map([
+  ['F', 'Textual amendment'],
+  ['C', 'Modification without textual change'],
+  ['I', 'Commencement information'],
+  ['M', 'Marginal citation'],
+  ['E', 'Extent information'],
+  ['P', 'Power exercised'],
+  ['X', 'Editorial note'],
+]);
 
 /** Display order of annotation types, as legislation.gov.uk groups them. */
 export const ANNOTATION_TYPE_ORDER = ['F', 'C', 'I', 'M', 'E', 'P', 'X'] as const;
@@ -523,36 +531,22 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
     {
       key: 'primary',
       label: 'Primary legislation',
-      description: `Acts and Measures: ${LEGISLATION_TYPES.filter((t) => t.category === 'primary')
-        .map((t) => t.code)
-        .join(', ')}.`,
+      description: `Acts and Measures: ${codesIn('primary').join(', ')}.`,
     },
     {
       key: 'secondary',
       label: 'Secondary legislation',
-      description: `Statutory instruments and rules: ${LEGISLATION_TYPES.filter(
-        (t) => t.category === 'secondary',
-      )
-        .map((t) => t.code)
-        .join(', ')}.`,
+      description: `Statutory instruments and rules: ${codesIn('secondary').join(', ')}.`,
     },
     {
       key: 'eu-origin',
       label: 'Legislation originating from the EU',
-      description: `EU regulations, decisions, directives and treaties held as they stood at the end of the transition period and since amended as UK law: ${LEGISLATION_TYPES.filter(
-        (t) => t.category === 'eu-origin',
-      )
-        .map((t) => t.code)
-        .join(', ')}.`,
+      description: `EU regulations, decisions, directives and treaties held as they stood at the end of the transition period and since amended as UK law: ${codesIn('eu-origin').join(', ')}.`,
     },
     {
       key: 'draft',
       label: 'Draft legislation',
-      description: `Draft instruments laid before Parliament, numbered by ISBN: ${LEGISLATION_TYPES.filter(
-        (t) => t.category === 'draft',
-      )
-        .map((t) => t.code)
-        .join(', ')}. Not law.`,
+      description: `Draft instruments laid before Parliament, numbered by ISBN: ${codesIn('draft').join(', ')}. Not law.`,
     },
   ],
   extents: [
@@ -649,7 +643,7 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
   ],
   annotation_types: ANNOTATION_TYPE_ORDER.map((letter) => ({
     key: letter,
-    label: ANNOTATION_TYPES[letter] ?? letter,
+    label: ANNOTATION_TYPES.get(letter) ?? letter,
     description: {
       F: 'Records a textual amendment (words inserted, substituted, repealed). The amended words are wrapped as [F1 …] in the text.',
       C: 'Records a modification that changes how a provision applies without changing its words.',
@@ -751,7 +745,7 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
       key: 'shorthand',
       label: 'Shorthand table',
       description:
-        'Case-insensitive: s./section → section, reg. → regulation, art./Article → article, r. → rule, Sch. → schedule, para. → paragraph, Pt./Part → part, Ch./Chapter → chapter; bracketed sub-levels become segments. Anything else is rejected.',
+        'Case-insensitive: s./section → section, reg. → regulation, art./Article → article, r. → rule, Sch. → schedule, para. → paragraph, Pt./Part → part, Ch./Chapter → chapter; bracketed sub-levels become segments, and a dotted number stays one value (r. 3.4 → rule/3.4). Anything else is rejected.',
     },
   ],
   citation_formats: [
@@ -760,6 +754,11 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
       label: 'UK Act by chapter',
       description:
         'ukpga/2018/12. Before 1963 the calendar year is searched and regnal candidates are returned.',
+    },
+    {
+      key: '2016 c. 5 (N.I.)',
+      label: 'Act of the Northern Ireland Assembly',
+      description: 'nia/2016/5.',
     },
     {
       key: 'S.I. 2019/419',
@@ -786,7 +785,13 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
       key: 'Regulation (EU) 2016/679',
       label: 'EU-origin legislation',
       description:
-        'Regulation (EU) 2016/679 → eur/2016/679; Regulation (EC) No 1535/2003 → eur/2003/1535 (pre-2015 numbering is number/year); Directive 95/46/EC → eudr/1995/46; Decision (EU) 2019/419 → eudn/2019/419.',
+        'Regulation (EU) 2016/679 → eur/2016/679; Regulation (EC) No 1535/2003 → eur/2003/1535 (pre-2015 numbering is number/year); Directive 95/46/EC → eudr/1995/46; Decision (EU) 2019/419 → eudn/2019/419. The issuing body may come first: Council, Commission, Commission Implementing, Commission Delegated, European Parliament and Council (Council Regulation (EC) No 1/2003 → eur/2003/1).',
+    },
+    {
+      key: 'UK GDPR',
+      label: 'Defined name',
+      description:
+        'eur/2016/679: the short name the Data Protection Act 2018 s. 3(10) defines for Regulation (EU) 2016/679 as retained in UK law.',
     },
     {
       key: 'URI',
@@ -797,13 +802,13 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
       key: 'provision tail',
       label: 'Provision',
       description:
-        'Any form above may end with a provision: s. 45(2)(f), section 45, reg. 5, art. 28(3), r. 7, Sch. 2 para. 3, Pt 3.',
+        'Any form above may end with a provision: s. 45(2)(f), section 45, reg. 5, art. 28(3), r. 7, r. 3.4, Sch. 2 para. 3, Pt 3. Or it may start with one followed by "of" or "of the": section 45 of the Data Protection Act 2018.',
     },
     {
       key: 'short title',
       label: 'Short title',
       description:
-        'Anything else is resolved as a short title, with its year if present (Data Protection Act 2018).',
+        'Anything else is resolved as a short title, with its year if present (Data Protection Act 2018). A trailing UK Act chapter, as in Human Rights Act 1998 (c. 42), is left out of the title lookup and resolves the Act by number when the title does not.',
     },
   ],
   publication_log: [
@@ -847,7 +852,7 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
       key: 'item_log',
       label: 'Mode: item log',
       description:
-        "When item is a full type/year/number: reads that item's undated log newest-first and keeps events inside the window, usually in one request.",
+        "When item is a full type/year/number: reads that item's undated log newest-first and keeps events inside the window, usually in one request. A window further back takes more calls of at most 4 requests; each reports read_back_to, the date of the oldest event read that carries a calendar date. An event not dated by a calendar date is skipped.",
     },
     {
       key: 'dates',

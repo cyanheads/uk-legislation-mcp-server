@@ -19,19 +19,19 @@ describe('readPaging', () => {
     expect(fixture('feeds/search-ukpga-2018-title-data.feed')).toContain(
       '<leg:morePages>1</leg:morePages>',
     );
-    expect(readPaging(feed)).toEqual({ page: 1, hasMore: false, total: 2 });
+    expect(readPaging(feed)).toEqual({ hasMore: false, total: 2 });
   });
 
-  it('reads total pages on changes feeds and omits an absent total', () => {
+  it('reads the total on changes feeds and omits an absent total', () => {
     const changes = parseXml(fixture('feeds/changes-affected-ukpga-2018-12.feed'), 'a feed');
-    expect(readPaging(changes)).toEqual({ page: 1, hasMore: true, total: 2271, totalPages: 757 });
+    expect(readPaging(changes)).toEqual({ hasMore: true, total: 2271 });
     const text = parseXml(fixture('feeds/search-text-processor.feed'), 'a feed');
-    expect(readPaging(text)).toEqual({ page: 1, hasMore: true });
+    expect(readPaging(text)).toEqual({ hasMore: true });
   });
 
-  it('defaults the page to 1 and lists entries in order', () => {
+  it('reads a feed with no paging fields and lists entries in order', () => {
     const feed = parseXml('<feed><entry><id>a</id></entry><entry><id>b</id></entry></feed>', 'x');
-    expect(readPaging(feed)).toEqual({ page: 1, hasMore: false });
+    expect(readPaging(feed)).toEqual({ hasMore: false });
     expect(entries(feed)).toHaveLength(2);
   });
 });
@@ -88,6 +88,15 @@ describe('parseSearchFeed', () => {
     expect(years).toEqual([...years].sort((a, b) => b - a));
     expect(feed.total).toBe(149);
     expect(feed.hasMore).toBe(true);
+  });
+
+  it('skips a type facet whose type= value is not a type code, keeping the rest', () => {
+    const facet = (type: string, value: number) =>
+      `<leg:facetType type="X" href="http://www.legislation.gov.uk/search/data.feed?type=${type}&amp;title=x" value="${value}"/>`;
+    const feed = parseSearchFeed(
+      `<feed><leg:facets><leg:facetTypes>${facet('%E0%A4%A', 5)}${facet('%ED%A0%80', 4)}${facet('uksi', 3)}</leg:facetTypes></leg:facets></feed>`,
+    );
+    expect(feed.facets.types.map((t) => [t.type, t.count])).toEqual([['uksi', 3]]);
   });
 
   it('keeps one facet per type across the whole all-types listing', () => {

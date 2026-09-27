@@ -3,7 +3,8 @@
  * through the injected fetch fake and real pacers: per-kind accept-lists,
  * manual redirects (paced and budgeted), the response cache with TTL caps and
  * `If-Modified-Since` revalidation, stale bodies served when revalidation is
- * refused, 403/429 mapping inside the paced task, retries, budget and deadline.
+ * refused, 403/429 mapping inside the paced task, retries, budget and deadline,
+ * and the response size cap.
  * @module tests/services/legislation/legislation-client.test
  */
 
@@ -12,7 +13,7 @@ import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
 import { createPacer } from '@cyanheads/mcp-ts-core/utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { searchLegislationTool } from '@/mcp-server/tools/definitions/search-legislation.tool.js';
-import { isCannotStart } from '@/services/legislation/legislation-client.js';
+import { isCannotStart, MAX_BODY_BYTES } from '@/services/legislation/legislation-client.js';
 import { ResponseCache } from '@/services/legislation/response-cache.js';
 import {
   clml,
@@ -27,6 +28,7 @@ import {
   redirect,
   routes,
   status,
+  streamedBody,
   testClock,
   USER_AGENT,
 } from '../../helpers/upstream.js';
@@ -210,6 +212,44 @@ describe('LegislationClient — redirects', () => {
     }
   });
 
+  it.each([
+    'ftp://evil.legislation.gov.uk/ukpga/2018/12/data.xml',
+    'https://other.legislation.gov.uk/ukpga/2018/12/data.xml',
+    'https://www.legislation.gov.uk:8443/ukpga/2018/12/data.xml',
+    'https://www.legislation.gov.uk./ukpga/2018/12/data.xml',
+    'javascript:alert(1)',
+    'http://',
+  ])('refuses a Location naming any other origin, or none: %s', async (location) => {
+    const up = createUpstream(routes(['/a/data.xml', redirect(301, location)]));
+    await expect(
+      up.client.get('/a/data.xml', 'document', up.client.budget(4), ctx()),
+    ).rejects.toMatchObject({
+      code: JsonRpcErrorCode.ServiceUnavailable,
+      message: expect.stringMatching(/without a usable Location/),
+    });
+    expect(up.paths()).toEqual(['/a/data.xml']);
+  });
+
+  it.each([
+    'http://www.legislation.gov.uk/ukpga/2018/12/data.xml',
+    'https://legislation.gov.uk/ukpga/2018/12/data.xml',
+    'HTTPS://WWW.LEGISLATION.GOV.UK:443/ukpga/2018/12/data.xml',
+  ])('follows a legislation.gov.uk Location at the https origin: %s', async (location) => {
+    const up = createUpstream(
+      routes(
+        ['/a/data.xml', redirect(301, location)],
+        ['/ukpga/2018/12/data.xml', clml('ukpga-2018-12-section-45.xml')],
+      ),
+    );
+    await expect(
+      up.client.get('/a/data.xml', 'document', up.client.budget(4), ctx()),
+    ).resolves.toMatchObject({ kind: 'ok', url: '/ukpga/2018/12/data.xml' });
+    expect(up.requests().map((r) => r.url)).toEqual([
+      'https://www.legislation.gov.uk/a/data.xml',
+      'https://www.legislation.gov.uk/ukpga/2018/12/data.xml',
+    ]);
+  });
+
   it('a feed redirected off its data.feed path is past its last page', async () => {
     const path = '/ukpga/data.feed?title=data%20protection&results-count=20&page=9';
     const up = createUpstream(
@@ -373,6 +413,7 @@ describe('LegislationClient — cache', () => {
       fresh,
     );
     expect(shed.paths()).toEqual([]);
+    expect(shed.unhandled).toEqual([]);
   });
 
   it.each([
@@ -442,6 +483,21 @@ describe('LegislationClient — refusals, retries, budget', () => {
     ).rejects.toMatchObject({ data: { retryAfter: 300 } });
   });
 
+  it.each([
+    ['99999999', 3_600],
+    ['3600', 3_600],
+    ['0', 60],
+    ['30', 60],
+    ['-5', 300],
+    ['1.5', 300],
+    ['Wed, 21 Oct 2026 07:28:00 GMT', 300],
+  ])('clamps a 429 Retry-After of %s to %i seconds', async (header, retryAfter) => {
+    const up = createUpstream(routes([S45, status(429, { 'retry-after': header })]));
+    await expect(up.client.get(S45, 'document', up.client.budget(4), ctx())).rejects.toMatchObject({
+      data: { reason: 'upstream_refused', retryAfter },
+    });
+  });
+
   it.each([403, 429])(
     'a %i closes the shared pacer gate for the next request (mapped inside the paced task)',
     async (code) => {
@@ -487,6 +543,7 @@ describe('LegislationClient — refusals, retries, budget', () => {
     expect(error.data.retryAfter).toBeGreaterThan(0);
     expect(isCannotStart(error)).toBe(true);
     expect(up.paths()).toEqual([]);
+    expect(up.unhandled).toEqual([]);
   });
 
   it('retries a 5xx once and succeeds', async () => {
@@ -614,6 +671,55 @@ describe('LegislationClient — refusals, retries, budget', () => {
     await expect(
       up.client.get(S45, 'document', up.client.budget(1, 150), ctx()),
     ).rejects.toMatchObject({ code: JsonRpcErrorCode.Timeout });
+  });
+});
+
+describe('LegislationClient — response size cap', () => {
+  const OVER_CAP = {
+    code: JsonRpcErrorCode.ServiceUnavailable,
+    message: `legislation.gov.uk returned more than 24 MB for ${S45}; the response was refused before parsing.`,
+    data: { retryable: false },
+  };
+
+  function streamed(total: number, headers: Record<string, string> = {}) {
+    const body = streamedBody(total);
+    const up = createUpstream([
+      {
+        path: S45,
+        respond: () =>
+          new Response(body.stream, {
+            status: 200,
+            headers: { 'content-type': 'application/xml;charset=utf-8', ...headers },
+          }),
+      },
+    ]);
+    return { body, up };
+  }
+
+  it('refuses a body one byte over the cap, cancelling the stream, without a retry', async () => {
+    const { body, up } = streamed(MAX_BODY_BYTES + 1);
+    await expect(up.client.get(S45, 'document', up.client.budget(4), ctx())).rejects.toMatchObject(
+      OVER_CAP,
+    );
+    expect(body.state.cancelled).toBe(true);
+    expect(up.paths()).toEqual([S45]);
+  });
+
+  it('refuses a body whose Content-Length is over the cap before reading any of it', async () => {
+    const { body, up } = streamed(MAX_BODY_BYTES + 1, {
+      'content-length': String(MAX_BODY_BYTES + 1),
+    });
+    await expect(up.client.get(S45, 'document', up.client.budget(4), ctx())).rejects.toMatchObject(
+      OVER_CAP,
+    );
+    expect(body.state).toEqual({ cancelled: true, pulled: 0 });
+  });
+
+  it('reads a body of exactly the cap', async () => {
+    const { body, up } = streamed(MAX_BODY_BYTES);
+    const result = await up.client.get(S45, 'document', up.client.budget(4), ctx());
+    expect(result.kind === 'ok' && result.body.length).toBe(MAX_BODY_BYTES);
+    expect(body.state.cancelled).toBe(false);
   });
 });
 

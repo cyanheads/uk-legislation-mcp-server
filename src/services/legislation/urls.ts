@@ -106,13 +106,18 @@ export interface ChangesUrlInput {
   status: 'all' | 'applied' | 'unapplied';
 }
 
-/** `/changes[/{status}]/{direction}/{item}[/{other}/{counterpart}]/data.feed?results-count=&page=` */
+/**
+ * `/changes[/{status}]/{direction}/{item}/data.feed?results-count=&page=`, or with a counterpart
+ * `/changes[/{status}]/affected/{affected}/affecting/{affecting}/…` in either direction: upstream
+ * 404s a counterpart after an `affecting` first segment (Design Decision 67).
+ */
 export function changesUrl(input: ChangesUrlInput): string {
-  const other = input.direction === 'affected' ? 'affecting' : 'affected';
   const segments = ['changes'];
   if (input.status !== 'all') segments.push(input.status);
-  segments.push(input.direction, input.item);
-  if (input.counterpart) segments.push(other, input.counterpart);
+  if (!input.counterpart) segments.push(input.direction, input.item);
+  else if (input.direction === 'affected')
+    segments.push('affected', input.item, 'affecting', input.counterpart);
+  else segments.push('affected', input.counterpart, 'affecting', input.item);
   return `/${segments.join('/')}/data.feed${query({
     'results-count': input.limit,
     page: input.page > 1 ? input.page : undefined,

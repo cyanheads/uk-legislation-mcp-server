@@ -2,9 +2,10 @@
  * @fileoverview Tests for uklaw_track_changes over recorded Publication Log
  * pages: the day walk (pages within a day, days newest-first, the four-request
  * budget, in-page offset cursors resumed from the cache, degraded answers when
- * a later request cannot start), item-log mode (window filtering and the stop
- * at the first older event), path segment order, every declared error reason,
- * blank inputs, and both result surfaces through the enrichment parse.
+ * a later request cannot start, no day after today's UK date read), item-log mode (window filtering, the stop
+ * at the first older event, events not dated by a calendar date skipped, and read_back_to taken only from
+ * calendar dates), path segment order, every declared error reason (cursors holding a position no call over
+ * their window produces included), blank inputs, and both result surfaces through the enrichment parse.
  * @module tests/mcp-server/tools/definitions/track-changes.tool.test
  */
 
@@ -21,6 +22,7 @@ import {
   errorOf,
   feed,
   fixture,
+  forgeCursor,
   gatedPacer,
   ok,
   type Route,
@@ -255,6 +257,134 @@ describe('day walk', () => {
     expect(enrichment.notice).toContain('the log for today fills during the UK working day');
   });
 
+  it('starts the walk at today when end_date is later', async () => {
+    const up = createUpstream(
+      routes(
+        [NEW('2026-09-26'), feed(EMPTY)],
+        [NEW('2026-09-25'), feed(EMPTY)],
+        [NEW('2026-09-24'), feed('update-2026-09-24-legislation-new.feed')],
+        [NEW('2026-09-23'), feed(EMPTY)],
+      ),
+      { clock: testClock() },
+    );
+    const result = await runToolContract(trackChangesTool, {
+      start_date: '2026-09-15',
+      end_date: '2026-09-30',
+      content_type: 'legislation',
+      new_only: true,
+    });
+    expect(up.paths()).toEqual([
+      NEW('2026-09-26'),
+      NEW('2026-09-25'),
+      NEW('2026-09-24'),
+      NEW('2026-09-23'),
+    ]);
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured).toMatchObject({
+      window: { start_date: '2026-09-15', end_date: '2026-09-30' },
+      has_more: true,
+    });
+    expect(structured.events).toHaveLength(7);
+    expect((structured.days as { date: string }[]).map((d) => d.date)).toEqual([
+      '2026-09-26',
+      '2026-09-25',
+      '2026-09-24',
+      '2026-09-23',
+    ]);
+    const cursor = JSON.parse(
+      Buffer.from(structured.next_cursor as string, 'base64url').toString(),
+    );
+    expect(cursor).toMatchObject({ p: 1, d: '2026-09-22' });
+    expect(structured.notice).toContain("This call's request budget ended before the window did");
+    const text = contentText(result);
+    expect(text).toContain(
+      '**Days read:** 2026-09-26 (0 events, 1 page(s)), 2026-09-25 (0 events, 1 page(s)), 2026-09-24 (7 events, 1 page(s)), 2026-09-23 (0 events, 1 page(s))',
+    );
+    expect(text).toContain("This call's request budget ended before the window did");
+  });
+
+  const FUTURE_NOTICE =
+    'The window starts after today (2026-09-26, UK date): the Publication Log holds no events for future dates, so nothing was requested. Pass a start_date on or before 2026-09-26.';
+
+  it.each([
+    ['day_walk', { content_type: 'legislation', category: 'primary' }],
+    ['item_log', itemLogBase],
+  ] as [string, Partial<TrackInput>][])(
+    'a window wholly after today answers without a request (%s)',
+    async (mode, input) => {
+      const up = createUpstream([], { clock: testClock() });
+      const result = await runToolContract(trackChangesTool, {
+        start_date: '2026-10-01',
+        end_date: '2026-10-31',
+        ...input,
+      });
+      expect(up.paths()).toEqual([]);
+      expect(up.unhandled).toEqual([]);
+      expect(result.isError).toBeFalsy();
+      const structured = result.structuredContent as Record<string, unknown>;
+      expect(structured).toMatchObject({ mode, events: [], days: [], has_more: false });
+      for (const key of ['next_cursor', 'item_log_total', 'read_back_to', 'truncated']) {
+        expect(structured).not.toHaveProperty(key);
+      }
+      expect(structured.notice).toBe(FUTURE_NOTICE);
+      expect(contentText(result)).toContain(FUTURE_NOTICE);
+    },
+  );
+
+  it.each([
+    // 23:30 UTC is 00:30 BST the next day: the UK date is already 2026-09-27.
+    [
+      '2026-09-26T23:30:00Z',
+      '2026-09-27',
+      ['/update/2026-09-27/data.feed'],
+      '2026-09-27 (0 events, 1 page(s))',
+    ],
+    // In winter the UK is on UTC: the UK date is still 2026-01-15.
+    [
+      '2026-01-15T23:30:00Z',
+      '2026-01-16',
+      [],
+      'The window starts after today (2026-01-15, UK date)',
+    ],
+  ])('at %s, a window starting %s reads %j', async (now, start, paths, text) => {
+    const up = createUpstream(routes(['/update/2026-09-27/data.feed', feed(EMPTY)]), {
+      clock: testClock(now),
+    });
+    const result = await runToolContract(trackChangesTool, { start_date: start });
+    expect(up.paths()).toEqual(paths);
+    expect(up.unhandled).toEqual([]);
+    expect(result.isError).toBeFalsy();
+    expect(contentText(result)).toContain(text);
+  });
+
+  it('names the unread days after today when a quiet window runs past it', async () => {
+    const up = createUpstream(
+      routes(
+        ['/update/2026-09-26/legislation/primary/data.feed', feed(EMPTY)],
+        ['/update/2026-09-25/legislation/primary/data.feed', feed(EMPTY)],
+      ),
+      { clock: testClock() },
+    );
+    const result = await runToolContract(trackChangesTool, {
+      start_date: '2026-09-25',
+      end_date: '2026-09-30',
+      content_type: 'legislation',
+      category: 'primary',
+    });
+    expect(up.paths()).toEqual([
+      '/update/2026-09-26/legislation/primary/data.feed',
+      '/update/2026-09-25/legislation/primary/data.feed',
+    ]);
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured).toMatchObject({ events: [], has_more: false });
+    for (const surface of [structured.notice as string, contentText(result)]) {
+      expect(surface).toContain(
+        "Days after today (2026-09-26, UK date) were not read: the log holds no events for them yet, and today's fills during the UK working day.",
+      );
+      expect(surface).not.toContain('The window reaches today');
+    }
+  });
+
   it('a feed 404 fails filter_refused with its recovery, not a quiet window', async () => {
     createUpstream(routes([DAY, status(404)]));
     await expect(failure({ start_date: '2026-09-24' })).resolves.toMatchObject({
@@ -415,6 +545,221 @@ describe('item log', () => {
     expect(enrichment.notice).toContain('Confirm the item with uklaw_lookup_citation.');
     expect(enrichment.notice).toContain('drop new_only, category, event, or item');
   });
+
+  /** The recorded item-log page with every event year moved back by `years`: a deeper page of the log. */
+  const olderLogPage = (years: number) =>
+    ok(
+      fixture('feeds/update-changes-affected-ukpga-2018-12.feed').replace(
+        /<updated>(\d{4})/g,
+        (_, year: string) => `<updated>${Number(year) - years}`,
+      ),
+      { contentType: 'application/atom+xml;charset=utf-8' },
+    );
+
+  it('names how far back four pages read when the window lies deeper, then continues from there, on both surfaces', async () => {
+    const up = createUpstream(
+      routes(
+        [ITEM_LOG, olderLogPage(0)],
+        [`${ITEM_LOG}?page=2`, olderLogPage(3)],
+        [`${ITEM_LOG}?page=3`, olderLogPage(6)],
+        [`${ITEM_LOG}?page=4`, olderLogPage(9)],
+        [`${ITEM_LOG}?page=5`, olderLogPage(15)],
+      ),
+    );
+    const window = { ...itemLogBase, start_date: '2010-06-01', end_date: '2010-06-30' };
+    const first = await runToolContract(trackChangesTool, window);
+    expect(first.isError).toBeFalsy();
+    const structured = first.structuredContent as Record<string, unknown>;
+    expect(structured).toMatchObject({
+      mode: 'item_log',
+      events: [],
+      days: [],
+      has_more: true,
+      read_back_to: '2015-01-16',
+    });
+    const progress =
+      "No events yet: the log of ukpga/2018/12 is read newest first, and this call reached 2015-01-16, after the window's end (2010-06-30); call again with cursor set to next_cursor to read further back toward 2010-06-01.";
+    expect(structured.notice).toBe(progress);
+    const text = contentText(first);
+    expect(text).toContain('**Events:** 0 · has_more: true');
+    expect(text).toContain('read back to 2015-01-16');
+    expect(text).toContain(progress);
+    for (const surface of [structured.notice as string, text]) {
+      expect(surface).not.toContain('Confirm the item');
+      expect(surface).not.toContain('drop new_only');
+    }
+
+    const second = await runToolContract(trackChangesTool, {
+      ...window,
+      cursor: structured.next_cursor as string,
+    });
+    const rest = second.structuredContent as Record<string, unknown>;
+    expect(rest).toMatchObject({ has_more: false, read_back_to: '2010-04-17' });
+    expect((rest.events as { updated: string }[]).map((e) => e.updated.slice(0, 10))).toEqual([
+      '2010-06-26',
+      '2010-06-26',
+    ]);
+    expect(contentText(second)).toContain('read back to 2010-04-17');
+    expect(up.paths()).toEqual([
+      ITEM_LOG,
+      `${ITEM_LOG}?page=2`,
+      `${ITEM_LOG}?page=3`,
+      `${ITEM_LOG}?page=4`,
+      `${ITEM_LOG}?page=5`,
+    ]);
+    expect(up.unhandled).toEqual([]);
+  });
+
+  it('names the oldest event read: the one that ended the window, or the last one returned when limit filled', async () => {
+    createUpstream(routes([ITEM_LOG, feed('update-changes-affected-ukpga-2018-12.feed')]));
+    const window = { ...itemLogBase, start_date: '2026-01-20', end_date: '2026-02-19' };
+    const whole = await runToolContract(trackChangesTool, window);
+    expect(whole.structuredContent).toMatchObject({ has_more: false, read_back_to: '2026-01-06' });
+    expect(contentText(whole)).toContain('read back to 2026-01-06');
+
+    const capped = await runToolContract(trackChangesTool, { ...window, limit: 2 });
+    const cappedOut = capped.structuredContent as Record<string, unknown>;
+    expect(cappedOut).toMatchObject({ has_more: true, read_back_to: '2026-02-06' });
+    expect(contentText(capped)).toContain('read back to 2026-02-06');
+    const rest = await runToolContract(trackChangesTool, {
+      ...window,
+      limit: 2,
+      cursor: cappedOut.next_cursor as string,
+    });
+    expect(rest.structuredContent).toMatchObject({ has_more: false, read_back_to: '2026-01-06' });
+  });
+
+  it.each([
+    [
+      'an item log holding no event',
+      { ...itemLogBase, start_date: '2026-01-01', end_date: '2026-01-31' },
+    ],
+    ['a day walk', { start_date: '2026-09-24' }],
+  ] as [string, TrackInput][])('leaves read_back_to out for %s', async (_, input) => {
+    const up = createUpstream([...dayRoutes(), ...routes([ITEM_LOG, feed(EMPTY)])]);
+    const result = await runToolContract(trackChangesTool, input);
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).not.toHaveProperty('read_back_to');
+    expect(contentText(result)).not.toContain('read back to');
+    expect(up.unhandled).toEqual([]);
+  });
+
+  /**
+   * The recorded item-log page with entry `i`'s `<updated>` replaced by `updated(i)`,
+   * as written into the XML. The feed's own `<updated>` precedes the first entry and is kept.
+   */
+  const withEntryDates = (updated: (i: number) => string) => {
+    const xml = fixture('feeds/update-changes-affected-ukpga-2018-12.feed');
+    const first = xml.indexOf('<entry>');
+    let i = 0;
+    return `${xml.slice(0, first)}${xml
+      .slice(first)
+      .replace(/<updated>[^<]*<\/updated>/g, () => `<updated>${updated(i++)}</updated>`)}`;
+  };
+  const atomOk = (body: string) => () =>
+    ok(body, { contentType: 'application/atom+xml;charset=utf-8' });
+
+  it('takes read_back_to only from an event dated by a calendar date, on both surfaces', async () => {
+    // The second event's date sorts before any calendar date; the third, older than the window, ends it.
+    const page = withEntryDates((i) =>
+      i === 0 ? '2026-02-06T16:26:43Z' : i === 1 ? '**&lt;img src' : '2026-01-06T10:35:32Z',
+    );
+    createUpstream(routes([ITEM_LOG, atomOk(page)]));
+    const result = await runToolContract(trackChangesTool, {
+      ...itemLogBase,
+      start_date: '2026-01-20',
+      end_date: '2026-02-19',
+    });
+    expect(result.isError).toBeFalsy();
+    const structured = result.structuredContent as { events: unknown[]; read_back_to?: string };
+    expect(structured.events).toHaveLength(1);
+    expect(structured.read_back_to).toBe('2026-01-06');
+    const text = contentText(result);
+    expect(text).toContain('read back to 2026-01-06');
+    expect(text).not.toContain('**<img');
+  });
+
+  const recordedDates = () =>
+    parsePublicationLog(fixture('feeds/update-changes-affected-ukpga-2018-12.feed')).events.map(
+      (e) => e.updated,
+    );
+
+  it('skips an event not dated by a calendar date rather than ending the window on it', async () => {
+    const dates = recordedDates();
+    // Events 5–7 fall inside the window and event 8 precedes it; event 6's date sorts before any calendar date.
+    const page = withEntryDates((i) => (i === 6 ? '**&lt;img src' : (dates[i] as string)));
+    const up = createUpstream(routes([ITEM_LOG, atomOk(page)]));
+    const { output } = await track({
+      ...itemLogBase,
+      start_date: '2026-01-20',
+      end_date: '2026-02-19',
+    });
+    expect(output.events.map((e) => e.updated.slice(0, 10))).toEqual(['2026-02-06', '2026-02-04']);
+    expect(output).toMatchObject({ has_more: false, read_back_to: '2026-01-06' });
+    expect(up.paths()).toEqual([ITEM_LOG]);
+  });
+
+  it('leaves out an event not dated by a calendar date that sorts inside the window, and does not count it as more to read', async () => {
+    const dates = recordedDates();
+    const page = withEntryDates((i) => (i === 7 ? '2026-02-0x' : (dates[i] as string)));
+    createUpstream(routes([ITEM_LOG, atomOk(page)]));
+    const window = { ...itemLogBase, start_date: '2026-01-20', end_date: '2026-02-19' };
+    const whole = await track(window);
+    expect(whole.output.events.map((e) => e.updated)).toEqual([dates[5], dates[6]]);
+    // limit fills on event 6; only the malformed event 7 is left on the page inside the window.
+    const capped = await track({ ...window, limit: 2 });
+    expect(capped.output).toMatchObject({ has_more: false });
+    expect(capped.output.next_cursor).toBeUndefined();
+    expect(capped.enrichment).not.toHaveProperty('truncated');
+  });
+
+  it('quotes no event date that is not a calendar date in the progress notice, on both surfaces', async () => {
+    const page = withEntryDates(() => '9999&lt;b&gt;x');
+    const up = createUpstream(
+      routes(
+        [ITEM_LOG, atomOk(page)],
+        [`${ITEM_LOG}?page=2`, atomOk(page)],
+        [`${ITEM_LOG}?page=3`, atomOk(page)],
+        [`${ITEM_LOG}?page=4`, atomOk(page)],
+      ),
+    );
+    const result = await runToolContract(trackChangesTool, {
+      ...itemLogBase,
+      start_date: '2026-01-20',
+      end_date: '2026-02-19',
+    });
+    expect(result.isError).toBeFalsy();
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured).toMatchObject({ mode: 'item_log', events: [], has_more: true });
+    expect(structured).not.toHaveProperty('read_back_to');
+    expect(structured.notice).toEqual(expect.any(String));
+    expect(structured.notice).not.toContain('<b>');
+    expect(contentText(result)).not.toContain('<b>');
+    expect(up.paths()).toEqual([
+      ITEM_LOG,
+      `${ITEM_LOG}?page=2`,
+      `${ITEM_LOG}?page=3`,
+      `${ITEM_LOG}?page=4`,
+    ]);
+  });
+
+  it('format() renders read_back_to through the inline escaper', () => {
+    const output: z.infer<typeof trackChangesTool.output> = {
+      events: [],
+      window: { start_date: '2026-01-20', end_date: '2026-02-19' },
+      filters: { new_only: false },
+      mode: 'item_log',
+      days: [],
+      read_back_to: '**<img src',
+      has_more: false,
+      attribution: [ATTRIBUTION_LINES.ogl],
+    };
+    const text = (trackChangesTool.format?.(output) ?? [])
+      .map((block) => (block.type === 'text' ? block.text : ''))
+      .join('\n');
+    expect(text).toContain('read back to \\*\\*&lt;img src');
+    expect(text).not.toContain('**<img');
+  });
 });
 
 describe('errors', () => {
@@ -443,6 +788,7 @@ describe('errors', () => {
       data: { reason },
     });
     expect(up.paths()).toEqual([]);
+    expect(up.unhandled).toEqual([]);
   });
 
   it('accepts a 31-day window', async () => {
@@ -467,6 +813,69 @@ describe('errors', () => {
         data: { reason: 'invalid_cursor' },
       });
     }
+  });
+
+  /** Expects `invalid_cursor` for each forged cursor, with no upstream request. */
+  async function expectRefused(
+    input: TrackInput,
+    minted: string,
+    changes: Record<string, unknown>[],
+    clock = testClock(),
+  ) {
+    for (const change of changes) {
+      const up = createUpstream([], { clock });
+      await expect(
+        failure({ ...input, cursor: forgeCursor(minted, change) }),
+      ).resolves.toMatchObject({
+        code: JsonRpcErrorCode.ValidationError,
+        data: { reason: 'invalid_cursor' },
+      });
+      expect(up.paths()).toEqual([]);
+    }
+  }
+
+  it('rejects a day walk cursor holding a position no walk over its window produces, before any request', async () => {
+    createUpstream(dayRoutes(), { clock: testClock() });
+    const window: TrackInput = { start_date: '2026-09-23', end_date: '2026-09-24', limit: 5 };
+    const minted = (await track(window)).output.next_cursor as string;
+    expect(JSON.parse(Buffer.from(minted, 'base64url').toString())).toMatchObject({
+      p: 1,
+      o: 5,
+      d: '2026-09-24',
+    });
+    await expectRefused(window, minted, [
+      // Upstream answers an impossible date with the whole log (Design Decision 20).
+      { d: '2026-13-45' },
+      { d: '2026-09-25' },
+      { d: '2026-09-22' },
+      { d: undefined },
+      { p: 10_001 },
+      // Publication Log pages hold 20 events.
+      { o: 20 },
+    ]);
+  });
+
+  it('rejects a day walk cursor on a day after today, which the walk never reads', async () => {
+    const clock = testClock('2026-09-24T12:00:00Z');
+    createUpstream(dayRoutes(), { clock });
+    const window: TrackInput = { start_date: '2026-09-23', end_date: '2026-09-30', limit: 5 };
+    const minted = (await track(window)).output.next_cursor as string;
+    expect(JSON.parse(Buffer.from(minted, 'base64url').toString())).toMatchObject({
+      d: '2026-09-24',
+    });
+    await expectRefused(window, minted, [{ d: '2026-09-25' }], clock);
+  });
+
+  it('rejects an item-log cursor holding a day, a page past 10,000, or an offset past the page, before any request', async () => {
+    createUpstream(routes([ITEM_LOG, feed('update-changes-affected-ukpga-2018-12.feed')]));
+    const window: TrackInput = {
+      ...itemLogBase,
+      start_date: '2026-01-20',
+      end_date: '2026-02-19',
+      limit: 2,
+    };
+    const minted = (await track(window)).output.next_cursor as string;
+    await expectRefused(window, minted, [{ d: '2026-02-01' }, { o: 20 }, { p: 10_001 }]);
   });
 
   it('maps a 403 to upstream_refused', async () => {

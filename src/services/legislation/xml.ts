@@ -80,7 +80,8 @@ function convert(nodes: OrderedNode[]): XmlChild[] {
 /**
  * Parses an XML payload (CLML or Atom) into its root element. Refuses any
  * payload carrying a DOCTYPE before the parser sees it — legislation.gov.uk's
- * XML never declares one, and the only bodies that do are HTML pages.
+ * XML never declares one, and the only bodies that do are HTML pages. A parser
+ * error is replaced by a fixed message: the parser's own quotes the body.
  */
 export function parseXml(body: string, what: string): XmlElement {
   if (/<!DOCTYPE/i.test(body)) {
@@ -88,9 +89,17 @@ export function parseXml(body: string, what: string): XmlElement {
       `legislation.gov.uk returned ${what} carrying a DOCTYPE declaration; it was refused before parsing. Retry shortly — an HTML page in place of XML usually means a transient upstream fault.`,
     );
   }
-  const root = convert(parser.parse(body) as OrderedNode[]).find(
-    (child): child is XmlElement => typeof child !== 'string',
-  );
+  let nodes: OrderedNode[];
+  try {
+    nodes = parser.parse(body) as OrderedNode[];
+  } catch (cause) {
+    throw serviceUnavailable(
+      `legislation.gov.uk returned ${what} that could not be parsed as XML; it was refused.`,
+      undefined,
+      { cause },
+    );
+  }
+  const root = convert(nodes).find((child) => typeof child !== 'string');
   if (!root) {
     throw serviceUnavailable(`legislation.gov.uk returned ${what} with no XML root element.`);
   }
@@ -105,7 +114,7 @@ export function localName(name: string): string {
 
 /** Element children only. */
 export function elements(node: XmlElement): XmlElement[] {
-  return node.children.filter((c): c is XmlElement => typeof c !== 'string');
+  return node.children.filter((c) => typeof c !== 'string');
 }
 
 /** First child element with the given qualified name. */
@@ -166,10 +175,16 @@ export function findDescendants(
   return out;
 }
 
+/**
+ * A run of whitespace, NEL (U+0085) included: the regex `\s` class omits NEL,
+ * which Unicode counts as a line break, and a decoded `&#133;` is a real one.
+ */
+export const WHITESPACE_RUN = /[\s\u0085]+/g;
+
 /** Concatenated text content of a node, whitespace collapsed and trimmed. */
 export function textOf(node: XmlChild | undefined): string {
   if (node === undefined) return '';
-  return rawText(node).replace(/\s+/g, ' ').trim();
+  return rawText(node).replace(WHITESPACE_RUN, ' ').trim();
 }
 
 /** Concatenated text content with whitespace kept as written. */

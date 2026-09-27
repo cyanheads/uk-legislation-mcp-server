@@ -3,7 +3,8 @@
  * per-kind status accept-list, identifying User-Agent, the process-wide pacer,
  * the shared response cache with `If-Modified-Since` revalidation, manual
  * redirect following (each hop paced and budgeted, at most two), a per-call
- * request budget and deadline, and upstream error mapping.
+ * request budget and deadline, a response body size cap, and upstream error
+ * mapping.
  * @module services/legislation/legislation-client
  */
 
@@ -39,6 +40,24 @@ const MAX_TTL_S = 3_600;
 const UPDATE_FEED_TTL_S = 300;
 const NOT_FOUND_TTL_S = 600;
 const BLOCK_RETRY_AFTER_S = 300;
+/** Shortest `Retry-After` passed on to the caller: the pacer's cooldown after a 429 is at least this long. */
+const MIN_RETRY_AFTER_S = 60;
+/** Longest `Retry-After` passed on to the caller, in seconds. */
+const MAX_RETRY_AFTER_S = 3_600;
+
+/** Origins a redirect may name. Only its path and query are kept, fetched from {@link ORIGIN}. */
+const REDIRECT_ORIGINS: ReadonlySet<string> = new Set([
+  'https://www.legislation.gov.uk',
+  'http://www.legislation.gov.uk',
+  'https://legislation.gov.uk',
+  'http://legislation.gov.uk',
+]);
+
+/**
+ * Largest response body read, in bytes after decompression. The largest
+ * measured fragment (the Companies Act 2006 `body`) decodes to about 13.5 MB.
+ */
+export const MAX_BODY_BYTES = 24 * 1024 * 1024;
 
 /** Reasons that mean a request could not start (as opposed to failing upstream). */
 const CANNOT_START_REASONS = new Set([
@@ -111,15 +130,57 @@ function parseMaxAge(cacheControl: string | null): number | undefined {
   return match ? Number(match[1]) : undefined;
 }
 
-/** Resolves a `Location` header to an origin-relative path; undefined for a foreign host. */
+/**
+ * Reads a response body as UTF-8 text, refusing it past `maxBytes`: a declared
+ * `Content-Length` over the cap cancels the body unread, and otherwise the
+ * streamed bytes are counted and the stream cancelled at the first chunk past
+ * it. Undefined when refused. Counting the stream is what enforces the cap:
+ * legislation.gov.uk sends chunked gzip with no `Content-Length`.
+ */
+export async function readTextWithin(
+  response: Response,
+  maxBytes: number,
+): Promise<string | undefined> {
+  if (Number(response.headers.get('content-length')) > maxBytes) {
+    await response.body?.cancel();
+    return;
+  }
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return text + decoder.decode();
+    bytes += value.byteLength;
+    if (bytes > maxBytes) {
+      await reader.cancel();
+      return;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+}
+
+/**
+ * Resolves a `Location` header to an origin-relative path; undefined when it
+ * does not parse or names any other origin (another host, scheme or port).
+ */
 function resolveLocation(location: string, from: string): string | undefined {
-  const url = new URL(location, `${ORIGIN}${from}`);
-  if (!/(^|\.)legislation\.gov\.uk$/i.test(url.hostname)) return;
+  const url = URL.parse(location, `${ORIGIN}${from}`);
+  if (!url || !REDIRECT_ORIGINS.has(url.origin)) return;
   return `${url.pathname}${url.search}`;
 }
 
-function isHtml(body: string): boolean {
-  return /^\s*<(?:!doctype\s+html|html[\s>])/i.test(body);
+/**
+ * A `Retry-After` in delay-seconds, clamped to 60 s – 1 h; undefined for any
+ * other form (an HTTP date, a negative or fractional value), which the caller
+ * treats as absent.
+ */
+function retryAfterSeconds(header: string | null): number | undefined {
+  const value = header?.trim();
+  if (!value || !/^\d+$/.test(value)) return;
+  return Math.min(Math.max(Number(value), MIN_RETRY_AFTER_S), MAX_RETRY_AFTER_S);
 }
 
 /** Paced, cached, budgeted HTTP client for legislation.gov.uk. */
@@ -337,9 +398,8 @@ export class LegislationClient {
       if (status === 403 || status === 429) {
         await response.body?.cancel();
         const retryAfter =
-          status === 429
-            ? Number(response.headers.get('retry-after')) || BLOCK_RETRY_AFTER_S
-            : BLOCK_RETRY_AFTER_S;
+          (status === 429 ? retryAfterSeconds(response.headers.get('retry-after')) : undefined) ??
+          BLOCK_RETRY_AFTER_S;
         ctx.log.warning('legislation.gov.uk refused a request; closing the request gate', {
           url,
           status,
@@ -356,8 +416,19 @@ export class LegislationClient {
         });
       }
       if (status === 200 || status === 300) {
-        const body = await response.text();
-        if (status === 200 && (isHtml(body) || /<!DOCTYPE/i.test(body))) {
+        const body = await readTextWithin(response, MAX_BODY_BYTES);
+        if (body === undefined) {
+          throw serviceUnavailable(
+            `legislation.gov.uk returned more than ${MAX_BODY_BYTES / 1024 ** 2} MB for ${url}; the response was refused before parsing.`,
+            {
+              retryable: false,
+              recovery: {
+                hint: 'Read a smaller part: pass one provision (a Part, Chapter, section or Schedule) rather than the whole item or a large fragment.',
+              },
+            },
+          );
+        }
+        if (status === 200 && /<!DOCTYPE|^\s*<html[\s>]/i.test(body)) {
           throw serviceUnavailable(
             `legislation.gov.uk returned an HTML page where XML was expected for ${url}; it was refused before parsing.`,
           );

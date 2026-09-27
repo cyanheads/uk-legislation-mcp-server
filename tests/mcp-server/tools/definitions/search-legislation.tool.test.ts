@@ -12,7 +12,12 @@ import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createMockContext, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { describe, expect, it } from 'vitest';
 import { searchLegislationTool } from '@/mcp-server/tools/definitions/search-legislation.tool.js';
-import { ATTRIBUTION_LINES } from '@/services/legislation/reference-data.js';
+import {
+  ATTRIBUTION_LINES,
+  EXTENTS,
+  TYPE_CODES,
+  TYPE_GROUPS,
+} from '@/services/legislation/reference-data.js';
 import {
   contentText,
   createUpstream,
@@ -29,6 +34,9 @@ import {
 
 type SearchInput = z.input<typeof searchLegislationTool.input>;
 
+/** Every value `types` accepts. */
+const TYPE_VALUES = [...TYPE_GROUPS, ...TYPE_CODES];
+
 async function search(input: SearchInput) {
   const ctx = createMockContext({ errors: searchLegislationTool.errors });
   return searchLegislationTool.handler(searchLegislationTool.input.parse(input), ctx);
@@ -38,6 +46,8 @@ const TITLE_2018 = '/ukpga/2018/data.feed?title=data&results-count=3';
 const TEXT = '/all/data.feed?text=processor&results-count=3';
 const TITLE_ALL = '/all/data.feed?title=data%20protection&results-count=3';
 const ZERO = '/ukpga/2018/=scotland/data.feed?results-count=20';
+const PAST_END_9 =
+  'Page 9 is past the last page of results; call again with page 1 or a lower page.';
 
 describe('results', () => {
   it('lists a type and year with facets and the applied scope', async () => {
@@ -156,8 +166,38 @@ describe('empty results and pages past the end', () => {
     expect(result.structuredContent).toMatchObject({ results: [], has_more: false, page: 9 });
     expect(result.structuredContent).not.toHaveProperty('facets');
     const text = contentText(result);
-    expect(text).toContain('Page is past the last page; start again from page 1.');
     expect(text).not.toContain('Facets');
+    /** The query matched; only the page is out of range, so no filter advice follows. */
+    const notice = (result.structuredContent as { notice: string }).notice;
+    for (const surface of [notice, text]) {
+      expect(surface).toContain(PAST_END_9);
+      expect(surface).not.toContain('No legislation matched');
+      expect(surface).not.toContain('Widen types');
+      expect(surface).not.toContain('Title search');
+    }
+    expect(notice).toBe(PAST_END_9);
+  });
+
+  it('a later page of a query that matched nothing keeps the no-match notice and its filter hints', async () => {
+    createUpstream(
+      routes([
+        '/ukpga/2018/=scotland/data.feed?results-count=20&page=2',
+        feed('search-zero-hits.feed'),
+      ]),
+    );
+    const result = await runToolContract(searchLegislationTool, {
+      types: ['ukpga'],
+      year: 2018,
+      extent: ['scotland'],
+      extent_match: 'exact',
+      page: 2,
+    });
+    const notice = (result.structuredContent as { notice: string }).notice;
+    for (const surface of [notice, contentText(result)]) {
+      expect(surface).toContain('No legislation matched.');
+      expect(surface).toContain('Widen types');
+      expect(surface).not.toContain('past the last page');
+    }
   });
 
   it('a feed 404 fails filter_refused naming the refused path, not zero hits, on both surfaces', async () => {
@@ -199,6 +239,7 @@ describe('errors', () => {
       searchLegislationTool.handler(searchLegislationTool.input.parse(input), ctx),
     ).rejects.toMatchObject({ code: JsonRpcErrorCode.ValidationError, data: { reason } });
     expect(up.paths()).toEqual([]);
+    expect(up.unhandled).toEqual([]);
   });
 
   it('accepts an empty extent list as unset alongside as_of', async () => {
@@ -248,6 +289,76 @@ describe('errors', () => {
     const error = errorOf(await runToolContract(searchLegislationTool, input as SearchInput));
     expect(error.code).toBe(JsonRpcErrorCode.InvalidParams);
     expect(error.data?.reason).toBe('invalid_arguments');
+  });
+
+  it.each([
+    ['page 10,001', { page: 10_001 }],
+    ['page 2^53 - 1', { page: Number.MAX_SAFE_INTEGER }],
+    ['more types than there are type values', { types: Array(TYPE_VALUES.length + 1).fill('all') }],
+    ['more extents than there are extents', { extent: [...EXTENTS, 'england'] }],
+    ['text with an unpaired surrogate', { text: 'data \ud800' }],
+    ['title with an unpaired surrogate', { title: '\udc00 protection' }],
+  ])('rejects %s at the schema, on both surfaces, before any request', async (_name, input) => {
+    const up = createUpstream([]);
+    const result = await runToolContract(searchLegislationTool, input as SearchInput);
+    const error = errorOf(result);
+    expect(error.code).toBe(JsonRpcErrorCode.InvalidParams);
+    expect(error.data?.reason).toBe('invalid_arguments');
+    expect(contentText(result)).toContain('invalid_arguments');
+    expect(up.paths()).toEqual([]);
+  });
+
+  it('accepts page 10,000 with each type value and each extent once', async () => {
+    const up = createUpstream(
+      routes([
+        '/all/england+wales+scotland+ni/data.feed?text=x&results-count=20&page=10000',
+        feed('search-zero-hits.feed'),
+      ]),
+    );
+    const result = await runToolContract(searchLegislationTool, {
+      text: 'x',
+      page: 10_000,
+      types: [...TYPE_VALUES],
+      extent: [...EXTENTS],
+    });
+    expect(result.isError).toBeFalsy();
+    expect(up.paths()).toHaveLength(1);
+  });
+
+  it('sends text holding a character outside the BMP, percent-encoded', async () => {
+    const up = createUpstream(
+      routes([
+        '/all/data.feed?text=data%20%F0%9F%98%80&results-count=20',
+        feed('search-zero-hits.feed'),
+      ]),
+    );
+    const result = await runToolContract(searchLegislationTool, { text: 'data 😀' });
+    expect(result.isError).toBeFalsy();
+    expect(up.paths()).toHaveLength(1);
+  });
+
+  it('refuses a redirect to another legislation.gov.uk host, on both surfaces', async () => {
+    const path = '/all/data.feed?text=x&results-count=20';
+    const up = createUpstream(
+      routes([path, redirect(301, `https://other.legislation.gov.uk${path}`)]),
+    );
+    const result = await runToolContract(searchLegislationTool, { text: 'x' });
+    expect(errorOf(result)).toMatchObject({
+      code: JsonRpcErrorCode.ServiceUnavailable,
+      message: expect.stringMatching(/without a usable Location/),
+    });
+    expect(contentText(result)).toMatch(/without a usable Location/);
+    expect(up.paths()).toEqual([path]);
+  });
+
+  it('passes on a 429 Retry-After clamped to one hour, on both surfaces', async () => {
+    createUpstream(routes([TEXT, status(429, { 'retry-after': '99999999' })]));
+    const result = await runToolContract(searchLegislationTool, { text: 'processor', limit: 3 });
+    expect(errorOf(result)).toMatchObject({
+      code: JsonRpcErrorCode.RateLimited,
+      data: { reason: 'upstream_refused', retryAfter: 3_600 },
+    });
+    expect(contentText(result)).toContain('upstream_refused');
   });
 });
 
@@ -373,9 +484,8 @@ describe('both surfaces and enrichment', () => {
       title: 'data protection',
       page: 9,
     });
-    expect((result.structuredContent as { notice: string }).notice).toContain(
-      'Page is past the last page; start again from page 1.',
-    );
+    expect((result.structuredContent as { notice: string }).notice).toBe(PAST_END_9);
+    expect(contentText(result)).toContain(PAST_END_9);
     expect(result.structuredContent).not.toHaveProperty('total');
   });
 

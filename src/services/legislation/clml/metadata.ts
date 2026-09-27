@@ -1,9 +1,11 @@
 /**
  * @fileoverview Reads CLML document metadata: identity, title, language,
- * publishers, editorial status, versions, links, and unapplied effects.
+ * publishers, editorial status, made/enactment date, versions, links, and
+ * unapplied effects.
  * @module services/legislation/clml/metadata
  */
 
+import { isCalendarDate } from '../provision-path.js';
 import type { EffectRecord } from '../types.js';
 import {
   attr,
@@ -25,6 +27,8 @@ export interface DocumentMetadata {
   identifier?: string;
   idUri?: string;
   language?: string;
+  /** `ukm:Made` or `ukm:EnactmentDate` — the date the item was made or enacted; absent unless a calendar date. */
+  madeDate?: string;
   mainType?: string;
   modified?: string;
   number?: string;
@@ -61,12 +65,15 @@ export function readMetadata(root: XmlElement): DocumentMetadata {
   const title = titles.find((t) => t.attrs['xml:lang'] !== 'cy') ?? titles[0];
   const titleCy = titles.find((t) => t.attrs['xml:lang'] === 'cy');
   const links = childrenNamed(metadata, 'atom:link');
-  const akn = links.find((l) => attr(l, 'type') === 'application/akn+xml');
+  const aknLink = links.find((l) => attr(l, 'type') === 'application/akn+xml');
   const pdfLink = links.find((l) => attr(l, 'type') === 'application/pdf');
   const alternative = childrenNamed(child(metadata, 'ukm:Alternatives'), 'ukm:Alternative')[0];
   const year = Number(attr(child(typed, 'ukm:Year'), 'Value'));
   const provisions = Number(attr(root, 'NumberOfProvisions'));
+  const akn = attr(aknLink, 'href');
   const pdf = attr(alternative, 'URI') ?? attr(pdfLink, 'href');
+  const made =
+    attr(child(typed, 'ukm:Made'), 'Date') ?? attr(child(typed, 'ukm:EnactmentDate'), 'Date');
   const optional = {
     identifier: textOf(child(metadata, 'dc:identifier')) || undefined,
     idUri: attr(root, 'IdURI'),
@@ -77,10 +84,12 @@ export function readMetadata(root: XmlElement): DocumentMetadata {
     mainType: attr(child(classification, 'ukm:DocumentMainType'), 'Value'),
     status: attr(child(classification, 'ukm:DocumentStatus'), 'Value'),
     number: attr(child(typed, 'ukm:Number'), 'Value'),
+    /** Kept only as a calendar date: a notice quotes it and dated reads compare against it (Design Decision 74). */
+    madeDate: made && isCalendarDate(made) ? made : undefined,
     restrictExtent: attr(root, 'RestrictExtent'),
     restrictStartDate: attr(root, 'RestrictStartDate'),
     restrictEndDate: attr(root, 'RestrictEndDate'),
-    aknUri: attr(akn, 'href') ? toHttps(attr(akn, 'href') as string) : undefined,
+    aknUri: akn ? toHttps(akn) : undefined,
     pdfUri: pdf ? toHttps(pdf) : undefined,
     titleCy: titleCy ? textOf(titleCy) : undefined,
   };

@@ -106,6 +106,40 @@ export function status(code: number, headers: Record<string, string> = {}): Resp
   });
 }
 
+/** A streamed body and what its reader did to it. */
+export interface StreamedBody {
+  state: { cancelled: boolean; pulled: number };
+  stream: ReadableStream<Uint8Array>;
+}
+
+/**
+ * A body of `total` bytes of `x`, produced 1 MiB per pull only as the reader
+ * asks, recording the bytes pulled and whether the reader cancelled it.
+ */
+export function streamedBody(total: number): StreamedBody {
+  const chunkBytes = 1024 * 1024;
+  const chunk = new Uint8Array(chunkBytes).fill(0x78);
+  const state = { cancelled: false, pulled: 0 };
+  const stream = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        const size = Math.min(chunkBytes, total - state.pulled);
+        if (size === 0) {
+          controller.close();
+          return;
+        }
+        state.pulled += size;
+        controller.enqueue(chunk.slice(0, size));
+      },
+      cancel() {
+        state.cancelled = true;
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  return { stream, state };
+}
+
 /** A pacer that starts every request immediately. */
 export function openPacer(): Pacer {
   return createPacer({ name: 'test', minStartGapMs: 0 });
@@ -242,6 +276,15 @@ export async function thrown(run: () => unknown): Promise<McpError> {
     return error as McpError;
   }
   throw new Error('Expected the call to throw');
+}
+
+/**
+ * A minted cursor with fields of its payload replaced, keeping its query
+ * fingerprint; a field set to `undefined` is removed.
+ */
+export function forgeCursor(cursor: string, change: Record<string, unknown>): string {
+  const payload = { ...JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')), ...change };
+  return Buffer.from(JSON.stringify(payload)).toString('base64url');
 }
 
 /** A tool result as `runToolContract` returns it. */
