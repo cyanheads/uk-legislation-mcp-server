@@ -689,7 +689,13 @@ const ALL_CHECKS: Check[] = [
     // Success if output is empty OR only contains safe patterns.
     isSuccess: (result, _mode) => {
       if (result.exitCode !== 0) return false;
-      const SAFE_PATTERNS = ['.env.example', '.env.template', '.env.sample'];
+      // `.github/secret_scanning.yml` is GitHub's secret scanning config, matched by `**/secret*`.
+      const SAFE_PATTERNS = [
+        '.env.example',
+        '.env.template',
+        '.env.sample',
+        '.github/secret_scanning.yml',
+      ];
       const files = result.stdout.trim().split('\n').filter(Boolean);
       const dangerous = files.filter((f) => !SAFE_PATTERNS.some((safe) => f.endsWith(safe)));
       return dangerous.length === 0;
