@@ -165,9 +165,14 @@ function annotatedTable(rows: number): string {
   ].join('');
 }
 
+/** `value` as a regular expression that matches it literally. */
+function literal(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** The cut notice: the provision's full rendered size, and the size returned. */
 const CUT_NOTICE = new RegExp(
-  `renders to (\\d+) characters and has no smaller child provisions, so its text is cut to (\\d+) characters to fit the ${TEXT_CEILING_CHARS}-character ceiling, keeping only the annotations that text references\\. The full text is at ${SCH1_WEB}, and its XML at ${SCH1_WEB}/data\\.xml\\.`,
+  `renders to (\\d+) characters and has no smaller child provisions, so its text is cut to (\\d+) characters to fit the ${TEXT_CEILING_CHARS}-character ceiling, keeping only the annotations that text references\\. The full text is at ${literal(SCH1_WEB)}, and its XML at ${literal(`${SCH1_WEB}/data.xml`)}\\.`,
 );
 
 describe('provision reads', () => {
