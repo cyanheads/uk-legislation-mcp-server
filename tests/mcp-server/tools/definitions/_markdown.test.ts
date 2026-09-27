@@ -49,6 +49,12 @@ describe('inline', () => {
     expect(cell('a | b\nc')).toBe('a \\| b c');
     expect(cell('a\u0085|b')).toBe('a \\|b');
   });
+
+  it('escapes backslashes so upstream text cannot cancel an escape', () => {
+    expect(inline('a\\*b* c\\_')).toBe('a\\\\\\*b\\* c\\\\\\_');
+    expect(cell('a\\|b')).toBe('a\\\\\\|b');
+    expect(cell('a\\\\|b')).toBe('a\\\\\\\\\\|b');
+  });
 });
 
 describe('uri', () => {

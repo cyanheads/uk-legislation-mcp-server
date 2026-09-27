@@ -115,9 +115,13 @@ const CHARACTERS: ReadonlyMap<string, string> = new Map([
   ['Ellipsis', '…'],
 ]);
 
-/** Escapes Markdown/HTML openers in upstream text placed in the rendered body. */
+/**
+ * Escapes Markdown/HTML openers in upstream text placed in the rendered body.
+ * Backslashes are escaped in the same pass, so upstream text cannot cancel an
+ * escape, including the pipe escape a table cell adds.
+ */
 function escapeBodyText(value: string): string {
-  return value.replace(/[*`]/g, (c) => `\\${c}`).replace(/<(?=[A-Za-z/!?])/g, '&lt;');
+  return value.replace(/[\\*`]/g, (c) => `\\${c}`).replace(/<(?=[A-Za-z/!?])/g, '&lt;');
 }
 
 interface Line {

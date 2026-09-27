@@ -7,6 +7,7 @@
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { cell } from '@/mcp-server/tools/definitions/_markdown.js';
 import { listReferenceTool } from '@/mcp-server/tools/definitions/list-reference.tool.js';
 import { REFERENCE_TOPICS, referenceEntries } from '@/services/legislation/reference-data.js';
 import { contentText, createUpstream, errorOf, type Upstream } from '../../../helpers/upstream.js';
@@ -27,11 +28,7 @@ describe('uklaw_list_reference', () => {
       const text = contentText(result);
       expect(text).toContain(`## Reference: ${topic}`);
       expect(text).toContain('| Key | Label | Description | Details |');
-      for (const entry of referenceEntries(topic)) {
-        expect(text).toContain(
-          entry.key.replace(/\|/g, '\\|').replace(/[*`[\]]/g, (c) => `\\${c}`),
-        );
-      }
+      for (const entry of referenceEntries(topic)) expect(text).toContain(cell(entry.key));
       expect(up.paths()).toEqual([]);
       expect(up.unhandled).toEqual([]);
     },

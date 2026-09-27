@@ -18,14 +18,28 @@ const SEPARATORS = String.fromCodePoint(0x0085, 0x2028, 0x2029);
 const LINE_BREAKS = new RegExp(`[\\r\\n${SEPARATORS}]+`, 'g');
 const LINE_SPLIT = new RegExp(`\\r\\n|[\\r\\n${SEPARATORS}]`);
 
-/** Flattens line breaks to a space and escapes Markdown/HTML openers for an inline slot. */
-export function inline(value: string | number | boolean | undefined): string {
+/** Characters backslash-escaped in an inline slot; the backslash itself is one, so upstream text cannot cancel an escape. */
+const INLINE_SPECIALS = /[\\*`[\]]/g;
+/** The inline specials plus the pipe, which would otherwise split a table cell. */
+const CELL_SPECIALS = /[\\*`[\]|]/g;
+
+/**
+ * Flattens line breaks to a space and backslash-escapes `specials` in one pass,
+ * so an inserted escape is never itself escaped, then escapes `_` at word
+ * edges and `<` before a tag opener.
+ */
+function escapeInline(value: string | number | boolean | undefined, specials: RegExp): string {
   if (value === undefined) return '';
   return String(value)
     .replace(LINE_BREAKS, ' ')
-    .replace(/[*`[\]]/g, (c) => `\\${c}`)
+    .replace(specials, (c) => `\\${c}`)
     .replace(/(^|[^A-Za-z0-9])_|_(?=[^A-Za-z0-9]|$)/g, (m) => m.replace('_', '\\_'))
     .replace(/<(?=[A-Za-z/!?])/g, '&lt;');
+}
+
+/** Flattens line breaks to a space and escapes Markdown/HTML openers for an inline slot. */
+export function inline(value: string | number | boolean | undefined): string {
+  return escapeInline(value, INLINE_SPECIALS);
 }
 
 /** Whitespace (line separators and NEL included) and the characters RFC 3986 bars from a URI unencoded. */
@@ -42,7 +56,7 @@ export function uri(value: string): string {
 
 /** Inline text for a Markdown table cell (pipes escaped too). */
 export function cell(value: string | number | boolean | undefined): string {
-  return inline(value).replace(/\|/g, '\\|');
+  return escapeInline(value, CELL_SPECIALS);
 }
 
 /** Blockquotes multi-line upstream text line by line. */

@@ -708,6 +708,23 @@ describe('both surfaces', () => {
     expect(text).toContain('**Guidance:**');
   });
 
+  it('keeps a backslash before a pipe in a candidate title inside its table cell', async () => {
+    const injected = fixture('feeds/number-ukpga-1955-19.feed').replace(
+      '<title>Air Force Act 1955 (repealed)</title>',
+      '<title>Air Force Act\\|1955</title>',
+    );
+    createUpstream([{ path: '/ukpga/1955/data.feed?number=19', respond: ok(injected) }]);
+    const result = await runToolContract(lookupCitationTool, { citation: '1955 c. 19' });
+    expect(result.structuredContent).toMatchObject({
+      candidates: expect.arrayContaining([
+        expect.objectContaining({ title: 'Air Force Act\\|1955' }),
+      ]),
+    });
+    expect(contentText(result)).toContain(
+      '| `ukpga/Eliz2/3-4/19` | Air Force Act\\\\\\|1955 | https://www.legislation.gov.uk/id/ukpga/Eliz2/3-4/19 |',
+    );
+  });
+
   it('keeps injected line breaks and HTML in upstream paths, URIs and dates inside their slot', async () => {
     const injected = fixture('feeds/number-ukpga-2018-12.feed')
       .replace(

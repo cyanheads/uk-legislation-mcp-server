@@ -227,6 +227,13 @@ describe('renderNodes — CLML constructs', () => {
     expect(result.simplifiedTable).toBe(false);
   });
 
+  it('escapes backslashes in text so a backslash before a pipe cannot split a table cell', () => {
+    const result = render(
+      '<Tabular><table><tr><th>Head</th><th>Other</th></tr><tr><td>a\\|b</td><td>c\\*d*</td></tr></table></Tabular>',
+    );
+    expect(result.text).toBe('| Head | Other |\n| --- | --- |\n| a\\\\\\|b | c\\\\\\*d\\* |');
+  });
+
   it('flags a table with a merged cell as simplified', () => {
     const result = render(
       '<Tabular><table><tr><th colspan="2">Head</th></tr><tr><td>a</td><td>b</td></tr></table></Tabular>',
