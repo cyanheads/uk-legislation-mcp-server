@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "uk-legislation-mcp-server",
   "version": "0.1.0",
-  "description": "UK statute book — revised and as-enacted legislation for the UK, Scotland, Wales, and Northern Ireland, with point-in-time versions, amendment tracking, and the publication change log.",
+  "description": "Search and read UK legislation at any date, resolve citations, list amendments, track changes.",
   "author": { "name": "cyanheads" },
   "homepage": "https://github.com/cyanheads/uk-legislation-mcp-server#readme",
   "license": "Apache-2.0",

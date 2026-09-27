@@ -11,19 +11,6 @@
 
 ---
 
-## First Session
-
-This project was just scaffolded with `bunx @cyanheads/mcp-ts-core init`. You're holding a production-grade MCP framework with the hard parts already solved — error handling, telemetry, auth, transport, validation, lifecycle. What's missing is the **domain**. Your job: design the tool, resource, and service surface with the user, then implement it as small pure handlers that throw — the framework catches, classifies, and instruments the rest. Design before code; the user's first messages set direction, so wait for them before scaffolding definitions.
-
-> **Remove this section** from CLAUDE.md / AGENTS.md after completing these steps. The skills and conventions below remain — this block is one-time onboarding only.
-
-1. **Get your bearings.** Take stock of the project tree, the skills in `framework-skills/`, and the tools/MCP servers available. Light tool use is fine for context-building — you're mapping the territory, not committing yet.
-2. **Read the framework docs** — `node_modules/@cyanheads/mcp-ts-core/CLAUDE.md` (builders, Context, errors, exports, conventions)
-3. **Run the `setup` skill** — read `framework-skills/setup/SKILL.md` and follow its checklist (project orientation, agent protocol file selection, echo definition cleanup, skill sync)
-4. **Design the server** — read `framework-skills/design-mcp-server/SKILL.md` and work through it with the user to map the domain into tools, resources, and services before scaffolding
-
----
-
 ## What's Next?
 
 When the user asks what's next or needs direction, suggest options based on the current project state. Common next steps:
@@ -59,75 +46,97 @@ Tailor suggestions to what's actually missing or stale — don't recite the full
 
 ### Tool
 
+Abridged from `src/mcp-server/tools/definitions/search-legislation.tool.ts` — the shape every `uklaw_*` tool follows:
+
 ```ts
 import { tool, z } from '@cyanheads/mcp-ts-core';
+import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { getLegislationService } from '@/services/legislation/legislation-service.js';
+import { isCalendarDate } from '@/services/legislation/provision-path.js';
+import { attributionLines, inline, uri } from './_markdown.js';
+import { AttributionSchema, blankAsUnset, DateInput } from './_schemas.js';
 
-export const searchItems = tool('search_items', {
-  description: 'Search inventory items by query.',
-  annotations: { readOnlyHint: true },
+export const searchLegislationTool = tool('uklaw_search_legislation', {
+  title: 'Search UK legislation',
+  description: 'Search the UK statute book on legislation.gov.uk by full text or title, …',
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+  auth: ['tool:uklaw_search_legislation:read'],
   input: z.object({
-    query: z.string().describe('Search terms'),
-    limit: z.number().int().min(1).max(100).default(10).describe('Max results (1–100)'),
+    text: blankAsUnset(z.string().max(500).optional()).describe('Full-text query. …'),
+    as_of: blankAsUnset(DateInput.optional()).describe('Point in time YYYY-MM-DD: …'),
+    limit: z.number().int().min(1).max(50).default(20).describe('Results per page (1–50).'),
+    page: z.number().int().min(1).default(1).describe('Page number, from 1.'),
   }),
   output: z.object({
-    items: z.array(z.object({
-      id: z.string().describe('Item ID'),
-      name: z.string().describe('Item name'),
-    })).describe('Matching items'),
+    results: z
+      .array(
+        z
+          .object({
+            item: z.string().describe('Item path to pass to uklaw_get_document, e.g. ukpga/2018/12.'),
+            title: z.string().describe('Title (English).'),
+          })
+          .describe('One result.'),
+      )
+      .describe('Matching items on this page.'),
+    has_more: z.boolean().describe('True when a further page exists (call again with page + 1).'),
+    attribution: AttributionSchema,
   }),
-  auth: ['inventory:read'],
+  enrichment: {
+    notice: z.string().optional().describe('Guidance when nothing matched, or how to fetch the next page.'),
+  },
+  errors: [
+    {
+      reason: 'invalid_date',
+      code: JsonRpcErrorCode.ValidationError,
+      severity: 'notice',
+      when: 'as_of is shaped YYYY-MM-DD but is not a real calendar date.',
+      recovery: 'Pass as_of as a calendar date such as 2020-01-31, or omit it to search current law.',
+    },
+    {
+      reason: 'upstream_refused',
+      code: JsonRpcErrorCode.RateLimited,
+      when: 'legislation.gov.uk answered 403 or 429 (its fair use rate limit or a block).',
+      recovery: 'Wait the retryAfter seconds in the error data (five minutes after a block) before calling again; …',
+      thrownBy: 'service',
+    },
+  ],
 
   async handler(input, ctx) {
-    const items = await findItems(input.query, input.limit);
-    ctx.log.info('Search completed', { query: input.query, count: items.length });
-    return { items };
+    if (input.as_of !== undefined && !isCalendarDate(input.as_of)) {
+      throw ctx.fail('invalid_date', `as_of ${input.as_of} is not a real calendar date.`, ctx.recoveryFor('invalid_date'));
+    }
+    const outcome = await getLegislationService().search(
+      {
+        types: ['all'],
+        extentMatch: 'applicable',
+        limit: input.limit,
+        page: input.page,
+        ...(input.text ? { text: input.text } : {}),
+        ...(input.as_of ? { asOf: input.as_of } : {}),
+      },
+      ctx,
+    );
+    if (outcome.results.length === 0) ctx.enrich.notice('No legislation matched. …');
+    return { results: outcome.results, has_more: outcome.hasMore, attribution: outcome.attribution };
   },
 
-  // format() populates content[] — the markdown twin of structuredContent.
-  // Different clients read different surfaces (Claude Code → structuredContent,
-  // Claude Desktop → content[]); both must carry the same data.
-  // Enforced at lint time: every field in `output` must appear in the rendered text.
+  // content[] twin of structuredContent: upstream values pass through the _markdown.ts escapers.
   format: (result) => [{
     type: 'text',
-    text: result.items.map(i => `**${i.id}**: ${i.name}`).join('\n'),
+    text: [
+      ...result.results.map((r) => `### ${inline(r.title)}\n- Item: \`${uri(r.item)}\``),
+      `has_more: ${result.has_more}`,
+      attributionLines(result.attribution),
+    ].join('\n'),
   }],
 });
 ```
 
-### Resource
+- Optional string inputs are wrapped in `blankAsUnset` (form clients send `""` for every blank field); shared input shapes (`FullItemInput`, `ItemInput`, `ProvisionInput`, `CursorInput`, `DateInput`) and the `EffectRecordSchema` / `AttributionSchema` outputs live in `_schemas.ts`.
+- Input errors are declared reasons with `severity: 'notice'`; `filter_refused`, `upstream_refused`, and `pacer_shed` are thrown by the service layer and declared on each tool with `thrownBy: 'service'`.
+- `format()` renders upstream text only through `_markdown.ts`: `blockquote` for multi-line text, `inline` / `cell` for inline slots, `uri` for URIs and paths.
 
-```ts
-import { resource, z } from '@cyanheads/mcp-ts-core';
-import { notFound } from '@cyanheads/mcp-ts-core/errors';
-
-export const itemData = resource('inventory://{itemId}', {
-  description: 'Fetch an inventory item by ID.',
-  params: z.object({ itemId: z.string().describe('Item identifier') }),
-  auth: ['inventory:read'],
-  async handler(params, ctx) {
-    const item = await ctx.state.get(`item/${params.itemId}`);
-    if (!item) throw notFound(`Item ${params.itemId} not found`, { itemId: params.itemId });
-    return item;
-  },
-});
-```
-
-### Prompt
-
-```ts
-import { prompt, z } from '@cyanheads/mcp-ts-core';
-
-export const reviewCode = prompt('review_code', {
-  description: 'Review code for issues and best practices.',
-  args: z.object({
-    code: z.string().describe('Code to review'),
-    language: z.string().optional().describe('Programming language'),
-  }),
-  generate: (args) => [
-    { role: 'user', content: { type: 'text', text: `Review this ${args.language ?? ''} code:\n${args.code}` } },
-  ],
-});
-```
+**No resources or prompts.** `createApp()` registers `resources: []` and `prompts: []`. The `add-resource` and `add-prompt` skills carry those patterns if one is ever added.
 
 ### Server config
 
@@ -137,76 +146,76 @@ import { z } from '@cyanheads/mcp-ts-core';
 import { parseEnvConfig } from '@cyanheads/mcp-ts-core/config';
 
 const ServerConfigSchema = z.object({
-  apiKey: z.string().describe('External API key'),
-  maxResults: z.coerce.number().default(100),
-  verboseLogging: z.stringbool().default(false).describe('Enable verbose logging'),
+  contact: z.string().trim().optional()
+    .describe('Email or URL appended to the User-Agent so legislation.gov.uk can reach the operator'),
+  minRequestGapMs: z.coerce.number().int().min(250).default(1000)
+    .describe('Minimum gap between upstream request starts, in ms (process-wide)'),
+  cacheMaxMb: z.coerce.number().int().min(8).max(1024).default(64)
+    .describe('Response cache size bound, in MB'),
 });
 
 let _config: z.infer<typeof ServerConfigSchema> | undefined;
 export function getServerConfig() {
   _config ??= parseEnvConfig(ServerConfigSchema, {
-    apiKey: 'MY_API_KEY',
-    maxResults: 'MY_MAX_RESULTS',
-    verboseLogging: 'MY_VERBOSE_LOGGING',
+    contact: 'UK_LEGISLATION_CONTACT',
+    minRequestGapMs: 'UK_LEGISLATION_MIN_REQUEST_GAP_MS',
+    cacheMaxMb: 'UK_LEGISLATION_CACHE_MAX_MB',
   });
   return _config;
 }
 ```
 
-`parseEnvConfig` maps Zod schema paths → env var names so errors name the variable (`MY_API_KEY`) not the path (`apiKey`). Throws `ConfigurationError`, which the framework prints as a clean startup banner.
+`parseEnvConfig` maps Zod schema paths → env var names so errors name the variable (`UK_LEGISLATION_MIN_REQUEST_GAP_MS`) not the path (`minRequestGapMs`). Throws `ConfigurationError`, which the framework prints as a clean startup banner. An empty value and a whole-value `${…}` placeholder (what an MCPB or plugin host forwards when a user leaves an option blank) read as unset, so each field falls through to its default.
 
 For env booleans use `z.stringbool()`, never `z.coerce.boolean()` — `Boolean("false")` is `true`, so a coerced flag can't be disabled through the environment. `z.stringbool()` parses `true/false/1/0/yes/no/on/off` and rejects anything else, so `=false` actually disables.
 
 ### Server identity and instructions
 
-`createApp()` accepts optional identity fields forwarded to the SDK's `initialize` response and the server manifest (`/.well-known/mcp.json`):
+`src/index.ts` passes identity, the tool list, and session-level `instructions` to `createApp()`, and wires the legislation.gov.uk client in `setup()`:
 
 ```ts
 await createApp({
-  name: 'my-mcp-server',
-  title: 'My Server',                         // human-readable display name
-  websiteUrl: 'https://github.com/owner/repo', // canonical homepage URL
-  description: 'One-line description.',        // wins over MCP_SERVER_DESCRIPTION
-  icons: [{ src: 'https://example.com/icon.png', sizes: ['48x48'], mimeType: 'image/png' }],
-  instructions: 'Use shortcut alpha for the most common case.', // session-level context
+  name: 'uk-legislation-mcp-server',
+  title: 'uk-legislation-mcp-server', // must match the unscoped package name — enforced by lint:packaging
+  tools: allToolDefinitions,
+  resources: [],
+  prompts: [],
+  instructions: INSTRUCTIONS,
+  async setup(core) {
+    // robots.txt crawl delay (when longer than UK_LEGISLATION_MIN_REQUEST_GAP_MS) → createPacer()
+    // → ResponseCache → LegislationClient (identifying User-Agent) → initLegislationService()
+  },
+  teardown() {
+    pacer?.dispose();
+    cache?.clear();
+  },
 });
 ```
 
-`instructions` is optional server-level orientation, sent on every `initialize` as session-level context. Use it for deployment guidance (connection aliases, regional notes, scope hints) instead of repeating the same context across tool descriptions. Client adoption is uneven, but there's no downside when set.
+`description` is never set here — the framework derives it from `package.json`. `instructions` is sent on every `initialize`: addressing (item and provision paths), the tool workflow, and how far to trust revised text and upstream content. Keep it in step with the tool surface, and with the copy under "Server Instructions" in `docs/design.md`.
 
 ### Session posture and shutdown
 
-Two more `createApp()` options shape how the server runs rather than how it presents itself:
+This server declares no `sessionMode`: no tool asks the caller for input mid-handler, and `.env.example` and the `Dockerfile` set `MCP_SESSION_MODE=stateless`, which a deployment's own value overrides. If a tool ever calls `ctx.requestInput`, declare `sessionMode: { default: 'stateful', require: 'stateful' }` so startup fails with a `ConfigurationError` rather than serving a mode in which a 2025-era client can never answer the prompt.
 
-```ts
-await createApp({
-  sessionMode: 'stateless',          // or { default: 'stateful', require: 'stateful' }
-  setup(core) { startMyWatcher(core.config); },
-  async teardown() { await stopMyWatcher(); },
-});
-```
-
-`sessionMode` declares the HTTP session posture in `src/` instead of leaving it to a deployment's `MCP_SESSION_MODE`, which still wins whenever it carries a meaningful value (an empty string and an unsubstituted `${…}` placeholder read as unset and fall through to the option). Add `require: 'stateful'` when a tool asks the caller for input mid-handler via `ctx.requestInput`: startup then fails with a `ConfigurationError` rather than serving a mode in which a 2025-era client can never answer the prompt. Stdio is never refused.
-
-`teardown(core)` is the `setup()` counterpart — release a watcher, socket, or non-`unref()`'d timer there. It runs after the transport stops and before the logger closes, on every shutdown path, and a signal-triggered shutdown then exits the process explicitly (0, or 1 if a step never settles within the framework's 10 s ceiling).
+`teardown()` is the `setup()` counterpart: it disposes the shared pacer and clears the response cache. It runs after the transport stops and before the logger closes, on every shutdown path, and a signal-triggered shutdown then exits the process explicitly (0, or 1 if a step never settles within the framework's 10 s ceiling).
 
 ---
 
 ## Context
 
-Handlers receive a unified `ctx` object. Key properties:
+Handlers receive a unified `ctx` object. The properties this server uses:
 
 | Property | Description |
 |:---------|:------------|
 | `ctx.log` | Request-scoped logger — `.debug()`, `.info()`, `.notice()`, `.warning()`, `.error()`. Auto-correlates requestId, traceId, tenantId. Dual-sink: Pino **and** `notifications/message` to the client, so treat it as client-visible. |
-| `ctx.state` | Tenant-scoped KV — `.get(key)`, `.set(key, value, { ttl? })`, `.delete(key)`, `.getMany(keys)`, `.list(prefix, { cursor, limit })`. Accepts any JSON-serializable value; reads return its JSON form (a `Date` comes back as an ISO string). |
-| `ctx.requestInput` | Suspend and ask the caller for more input — `return ctx.requestInput({ inputRequests: { key: inputRequired.elicit({ message, requestedSchema }) } })`. Never returns; the handler is re-entered with the answers. Always present. |
-| `ctx.inputs` | Reader over a retried request's responses — `.accepted(key, schema)`, `.view(key)`, `.state()`, `.dropped`. Empty on the first round. |
-| `ctx.enrich` | Success-path agent context (empty-result notices, query echo, pagination totals) — `ctx.enrich(...)` or `.notice()` / `.total()` / `.echo()` / `.truncated()`. Reaches `structuredContent` and `content[]`; lands only when the definition declares an `enrichment` block (no-op otherwise). |
-| `ctx.content` | Non-text content blocks — `.image(data, mimeType)`, `.audio(data, mimeType)`, or `ctx.content(block)` for a raw block. Prepended to `content[]` after `format()`; never enters `structuredContent`. |
-| `ctx.signal` | `AbortSignal` for cancellation. |
+| `ctx.fail(reason, message, data?)` | Builds the typed error for a reason declared in the tool's `errors[]`; `throw` it. |
+| `ctx.recoveryFor(reason)` | Typed lookup of the contract `recovery` for a declared reason. Returns `{ recovery: { hint } }`; pass it as `ctx.fail` data to put the hint on the wire. |
+| `ctx.enrich` | Success-path agent context (empty-result notices, pagination totals) — `ctx.enrich(...)` or `.notice()` / `.total()` / `.truncated()`. Reaches `structuredContent` and `content[]`; lands only when the definition declares an `enrichment` block (no-op otherwise). |
+| `ctx.signal` | `AbortSignal` for cancellation; `LegislationClient` passes it to every upstream `fetch`. |
 | `ctx.requestId` | Unique request ID. |
-| `ctx.tenantId` | Tenant ID from JWT; `'default'` for stdio or HTTP with auth off. |
+
+No handler uses `ctx.state`, `ctx.requestInput`, or `ctx.content`; the framework CLAUDE.md documents them.
 
 ---
 
@@ -258,20 +267,32 @@ See framework CLAUDE.md and the `api-errors` skill for the full auto-classificat
 
 ```text
 src/
-  index.ts                              # createApp() entry point
+  index.ts                              # createApp() entry point; setup() wires pacer, cache, client, service
   config/
-    server-config.ts                    # Server-specific env vars (Zod schema)
+    server-config.ts                    # UK_LEGISLATION_* env vars (Zod schema)
   services/
-    [domain]/
-      [domain]-service.ts               # Domain service (init/accessor pattern)
+    legislation/
+      legislation-service.ts            # LegislationService (init/accessor) — one method per tool
+      legislation-client.ts             # HTTP client: pacer, per-call budget, cache, redirects, 403/429 handling
+      response-cache.ts                 # Process-wide response cache with If-Modified-Since revalidation
+      robots.ts                         # robots.txt crawl-delay reader
+      urls.ts                           # legislation.gov.uk URL builders
+      citations.ts                      # Citation parser (uklaw_lookup_citation)
+      provision-path.ts                 # Item/provision path parsing and shorthand normalization
+      reference-data.ts                 # Type codes, extents, vocabularies (uklaw_list_reference), attribution lines
+      attribution.ts                    # Attribution lines a response needs
+      cursor.ts                         # Opaque next_cursor encode/decode
+      xml.ts                            # XML parsing helpers
       types.ts                          # Domain types
+      atom/                             # Atom feed parsers: search, changes, Publication Log
+      clml/                             # CLML parsers: metadata, effects, outline, Markdown render
   mcp-server/
     tools/definitions/
-      [tool-name].tool.ts               # Tool definitions
-    resources/definitions/
-      [resource-name].resource.ts       # Resource definitions
-    prompts/definitions/
-      [prompt-name].prompt.ts           # Prompt definitions
+      *.tool.ts                         # The six uklaw_* tool definitions
+      _schemas.ts                       # Shared input shapes and output schemas
+      _markdown.ts                      # Escaping and rendering helpers for format()
+      index.ts                          # allToolDefinitions barrel
+tests/                                  # Vitest suites mirroring src/, plus fixtures/ (recorded CLML, Atom, HTML)
 ```
 
 ---
@@ -280,10 +301,11 @@ src/
 
 | What | Convention | Example |
 |:-----|:-----------|:--------|
-| Files | kebab-case with suffix | `search-docs.tool.ts` |
-| Tool/resource/prompt names | snake_case | `search_docs` |
-| Directories | kebab-case | `src/services/doc-search/` |
-| Descriptions | Single string or template literal, no `+` concatenation | `'Search items by query and filter.'` |
+| Files | kebab-case with suffix | `search-legislation.tool.ts` |
+| Tool names | snake_case, `uklaw_` prefix | `uklaw_search_legislation` |
+| Input and output fields | snake_case | `year_from`, `has_more`, `next_cursor` |
+| Directories | kebab-case | `src/services/legislation/` |
+| Descriptions | Single string or template literal, no `+` concatenation | `'Resolve a citation or short title to the canonical legislation.gov.uk item and provision: …'` |
 
 ---
 
@@ -356,11 +378,14 @@ When you complete a skill's checklist, check the boxes and add a completion time
 | `bun run format` | Auto-fix formatting (safe fixes only) |
 | `bun run format:unsafe` | Also apply Biome's unsafe autofixes — review the diff; they can change behavior |
 | `bun run test` | Run tests (Vitest — use `bun run test`, not `bun test`) |
+| `bun run test:coverage` | Run tests with coverage (writes `coverage/`) |
+| `bun run start` | Run the built server with `node` (transport from `MCP_TRANSPORT_TYPE`, default stdio) |
 | `bun run start:stdio` | Production mode (stdio) |
 | `bun run start:http` | Production mode (HTTP) |
 | `bun run changelog:build` | Regenerate `CHANGELOG.md` from `changelog/*.md` |
 | `bun run changelog:check` | Verify `CHANGELOG.md` is in sync (used by devcheck) |
 | `bun run bundle` | Build, pack, and clean a `.mcpb` for one-click Claude Desktop install |
+| `bun run release:github` | Create the GitHub Release from an annotated tag and attach the `.mcpb` bundle |
 
 **CI is one file.** `.github/workflows/codeql.yml` (scaffolded) is the only GitHub Actions workflow: CodeQL is GitHub-owned end to end, and the file runs only while the repo's CodeQL *default setup* is turned off. Verification — `devcheck`, tests, the release gates — runs locally; don't add a workflow that re-runs it.
 
@@ -368,11 +393,11 @@ When you complete a skill's checklist, check the boxes and add a completion time
 
 ## Bundling
 
-`npm run bundle` produces a `.mcpb` extension bundle for one-click install in Claude Desktop. The pack step is followed by `scripts/clean-mcpb.ts`, which prunes dev dependencies (`mcpb clean`) and strips two classes of `node_modules/**` content that root-anchored `.mcpbignore` patterns cannot reach: dependency-shipped agent docs (`framework-skills/`, `skills/`, `.claude/`, `.agents/`, `SKILL.md`) and platform-specific native bindings, which would otherwise lock the bundle to the platform it was packed on. A server using DataCanvas therefore ships a portable bundle without the DuckDB native — `@duckdb/node-api` is an optional peer loaded lazily, so canvas tools report an actionable install hint and every other tool works normally. MCPB is stdio-only — HTTP and Cloudflare Workers deployments are unaffected. Consumers who don't need it can delete `manifest.json` and `.mcpbignore`; `lint:packaging` skips cleanly.
+`bun run bundle` produces `dist/uk-legislation-mcp-server.mcpb` for one-click install in Claude Desktop. The pack step is followed by `scripts/clean-mcpb.ts`, which prunes dev dependencies (`mcpb clean`) and strips two classes of `node_modules/**` content that root-anchored `.mcpbignore` patterns cannot reach: dependency-shipped agent docs (`framework-skills/`, `skills/`, `.claude/`, `.agents/`, `SKILL.md`) and platform-specific native bindings, which would otherwise lock the bundle to the platform it was packed on. MCPB is stdio-only — HTTP and Docker deployments are unaffected. The `release-and-publish` skill attaches the bundle to the GitHub Release at the stable `releases/latest/download/uk-legislation-mcp-server.mcpb` URL behind the README's Claude Desktop install badge.
 
-**Adding an env var requires both files:** `server.json` (registry discovery, `environmentVariables[]`) and `manifest.json` (bundle install UX, `mcp_config.env` + `user_config`). `lint:packaging` (run by `devcheck`) verifies the env var names match, that every `user_config` option is wired into `mcp_config.env` as `"X": "${user_config.X}"` (the host substitutes nothing else — `"${X}"` reaches the server as that literal string), and that an optional string option carries `"default": ""`.
+**Adding an env var touches every surface that lists one:** `src/config/server-config.ts`, `.env.example`, the README Configuration table, `server.json` (registry discovery, `environmentVariables[]` in both package entries), and `manifest.json` (bundle install UX, `mcp_config.env` + `user_config`). `lint:packaging` (run by `devcheck`) verifies the `server.json` / `manifest.json` env var names match, that every `user_config` option is wired into `mcp_config.env` as `"X": "${user_config.X}"` (the host substitutes nothing else — `"${X}"` reaches the server as that literal string), and that an optional string option carries `"default": ""`. A user-supplied value such as `UK_LEGISLATION_CONTACT` also goes into the plugin manifests — `.claude-plugin/plugin.json` `userConfig` + `env`, `.codex-plugin/mcp.json` `env_vars` (see Checklist).
 
-**README install badges** (Claude Desktop `.mcpb`, Cursor, VS Code) and the `base64` / `encodeURIComponent` config-generation commands are ship-time concerns — run the `polish-docs-meta` skill, which carries the badge format, layout, and generation snippets in `framework-skills/polish-docs-meta/references/readme.md`.
+**README install badges** (Claude Desktop `.mcpb`, Cursor, VS Code) carry no `env` — the server is keyless. The badge format and the `base64` / `encodeURIComponent` config-generation commands live in `framework-skills/polish-docs-meta/references/readme.md`.
 
 ---
 
@@ -417,7 +442,7 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { McpError, JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 
 // Server's own code — via path alias
-import { getMyService } from '@/services/my-domain/my-service.js';
+import { getLegislationService } from '@/services/legislation/legislation-service.js';
 ```
 
 ---
@@ -427,15 +452,19 @@ import { getMyService } from '@/services/my-domain/my-service.js';
 - [ ] Zod schemas: all fields have `.describe()`, only JSON-Schema-serializable types (no `z.custom()`, `z.date()`, `z.transform()`, `z.bigint()`, `z.symbol()`, `z.void()`, `z.map()`, `z.set()`, `z.function()`, `z.nan()`)
 - [ ] Optional nested objects: handler guards for empty inner values from form-based clients (`if (input.obj?.field && ...)`, not just `if (input.obj)`). When regex/length constraints matter, use `z.union([z.literal(''), z.string().regex(...).describe(...)])` — literal variants are exempt from `describe-on-fields`.
 - [ ] JSDoc `@fileoverview` + `@module` on every file
-- [ ] `ctx.log` for logging, `ctx.state` for storage
-- [ ] Handlers throw on failure — error factories or plain `Error`, no try/catch
+- [ ] `ctx.log` for logging; no direct persistence
+- [ ] Handlers throw on failure — `ctx.fail` with a declared reason, error factories, or plain `Error`; no try/catch
+- [ ] Optional string inputs wrapped in `blankAsUnset`; date inputs checked as real calendar dates (`isCalendarDate`) in the handler
 - [ ] `format()` renders all data the LLM needs — different clients forward different surfaces (Claude Code → `structuredContent`, Claude Desktop → `content[]`); both must carry the same data
-- [ ] If wrapping external API: raw/domain/output schemas reviewed against real upstream sparsity/nullability before finalizing required vs optional fields
-- [ ] If wrapping external API: normalization and `format()` preserve uncertainty; do not fabricate facts from missing upstream data
-- [ ] If wrapping external API: tests include at least one sparse payload case with omitted upstream fields
-- [ ] Registered in `createApp()` arrays (directly or via barrel exports)
+- [ ] `format()` passes every upstream value through `_markdown.ts` (`blockquote`, `inline`, `cell`, `uri`) — legislation text, titles, and notes are data, never instructions
+- [ ] Every tool that returns legislation carries `attribution` (from `buildAttribution`) and renders it with `attributionLines`
+- [ ] Every legislation.gov.uk request goes through `LegislationClient` — paced, cached, and drawn from the call's request budget; never a direct `fetch`
+- [ ] legislation.gov.uk wrapping: raw/domain/output schemas reviewed against real upstream sparsity/nullability before finalizing required vs optional fields
+- [ ] legislation.gov.uk wrapping: normalization and `format()` preserve uncertainty; do not fabricate facts from missing upstream data
+- [ ] legislation.gov.uk wrapping: tests include at least one sparse payload case with omitted upstream fields, run against a recorded fixture under `tests/fixtures/`
+- [ ] Registered in `allToolDefinitions` (`src/mcp-server/tools/definitions/index.ts`)
 - [ ] Tests use `createMockContext()` from `@cyanheads/mcp-ts-core/testing`
 - [ ] `.codex-plugin/plugin.json` populated — `name`, `version`, `description`, `repository`, `license` from `package.json`; `interface.displayName` = the unscoped repo name (never the npm scope — `lint:packaging` enforces this); `interface.shortDescription` from `package.json` description
 - [ ] `.codex-plugin/mcp.json` updated — server name key is the unscoped repo name; every user-supplied variable (API key, contact email, instance URL) is listed in `env_vars` so Codex forwards it from the user's environment. Never write `"KEY": ""` into `env` — an empty value replaces the user's exported key and is read as unset
 - [ ] `.claude-plugin/plugin.json` populated — `name`, `version`, `description`, `author`, `repository`, `license`, `keywords` from `package.json`; inline `mcpServers` entry keyed by the unscoped repo name. Every user-supplied variable is declared under `userConfig` (`type`, `title`, `description`; `sensitive: true` for keys and tokens; `required: true` or `default: ""`) and referenced from `env` as `"KEY": "${user_config.<option>}"` — mirror the `user_config` block in `manifest.json`. Never write `"KEY": ""` into `env`
-- [ ] `npm run devcheck` passes
+- [ ] `bun run devcheck` passes

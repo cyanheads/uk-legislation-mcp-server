@@ -1,7 +1,7 @@
 {
   "name": "uk-legislation-mcp-server",
   "version": "0.1.0",
-  "description": "UK statute book — revised and as-enacted legislation for the UK, Scotland, Wales, and Northern Ireland, with point-in-time versions, amendment tracking, and the publication change log.",
+  "description": "Search and read UK legislation at any date, resolve citations, list amendments, track changes.",
   "author": {
     "name": "cyanheads",
     "email": "casey@caseyjhand.com",
@@ -29,8 +29,8 @@
   "mcpServers": "./.codex-plugin/mcp.json",
   "interface": {
     "displayName": "uk-legislation-mcp-server",
-    "shortDescription": "UK statute book — revised and as-enacted legislation for the UK, Scotland, Wales, and Northern Ireland, with point-in-time versions, amendment tracking, and the publication change log.",
-    "longDescription": "Search and read legislation.gov.uk, The National Archives' statute book: primary and secondary legislation for the UK, Scotland, Wales, and Northern Ireland, in revised and as-enacted form. Read any provision as it stood on a given date, see which amendments affect it and which are still outstanding, resolve citations to the canonical document, and follow newly published and amended legislation through the publication change log. Keyless; content is published under the Open Government Licence v3.0.",
+    "shortDescription": "Search and read UK legislation at any date, resolve citations, list amendments, track changes.",
+    "longDescription": "Search and read UK legislation at any date, resolve citations, list amendments, track changes via MCP. STDIO or Streamable HTTP.",
     "developerName": "cyanheads",
     "category": "research",
     "capabilities": [
