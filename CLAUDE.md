@@ -2,9 +2,9 @@
 
 **Server:** uk-legislation-mcp-server
 **Version:** 0.1.1
-**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.13.8`
+**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.13.14`
 **Engines:** Bun ≥1.4.0, Node ≥24.0.0
-**MCP SDK:** `@modelcontextprotocol/server` ^2.0.0
+**MCP SDK:** `@modelcontextprotocol/server` ^2.2.0
 **Zod:** ^4.6.5
 
 > **Read the framework docs first:** `node_modules/@cyanheads/mcp-ts-core/CLAUDE.md` contains the full API reference — builders, Context, error codes, exports, patterns. This file covers server-specific conventions only.
@@ -103,7 +103,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
 
   async handler(input, ctx) {
     if (input.as_of !== undefined && !isCalendarDate(input.as_of)) {
-      throw ctx.fail('invalid_date', `as_of ${input.as_of} is not a real calendar date.`, ctx.recoveryFor('invalid_date'));
+      throw ctx.fail('invalid_date', `as_of ${input.as_of} is not a real calendar date.`);
     }
     const outcome = await getLegislationService().search(
       {
@@ -181,6 +181,7 @@ await createApp({
   resources: [],
   prompts: [],
   instructions: INSTRUCTIONS,
+  sessionMode: 'stateless',
   async setup(core) {
     // robots.txt crawl delay (when longer than UK_LEGISLATION_MIN_REQUEST_GAP_MS) → createPacer()
     // → ResponseCache → LegislationClient (identifying User-Agent) → initLegislationService()
@@ -196,7 +197,7 @@ await createApp({
 
 ### Session posture and shutdown
 
-This server declares no `sessionMode`: no tool asks the caller for input mid-handler, and `.env.example` and the `Dockerfile` set `MCP_SESSION_MODE=stateless`, which a deployment's own value overrides. If a tool ever calls `ctx.requestInput`, declare `sessionMode: { default: 'stateful', require: 'stateful' }` so startup fails with a `ConfigurationError` rather than serving a mode in which a 2025-era client can never answer the prompt.
+`createApp()` declares `sessionMode: 'stateless'`: no tool asks the caller for input mid-handler, so the server keeps no session store. `.env.example` and the `Dockerfile` set `MCP_SESSION_MODE=stateless` to match; a deployment's `MCP_SESSION_MODE` still wins whenever it carries a meaningful value (an empty string and an unsubstituted `${…}` placeholder read as unset and fall through to the option). If a tool ever calls `ctx.requestInput`, change it to `sessionMode: { default: 'stateful', require: 'stateful' }` so startup fails with a `ConfigurationError` rather than serving a mode in which a 2025-era client can never answer the prompt. Stdio is never refused.
 
 `teardown()` is the `setup()` counterpart: it disposes the shared pacer and clears the response cache. It runs after the transport stops and before the logger closes, on every shutdown path, and a signal-triggered shutdown then exits the process explicitly (0, or 1 if a step never settles within the framework's 10 s ceiling).
 
@@ -209,11 +210,10 @@ Handlers receive a unified `ctx` object. The properties this server uses:
 | Property | Description |
 |:---------|:------------|
 | `ctx.log` | Request-scoped logger — `.debug()`, `.info()`, `.notice()`, `.warning()`, `.error()`. Auto-correlates requestId, traceId, tenantId. Dual-sink: Pino **and** `notifications/message` to the client, so treat it as client-visible. |
-| `ctx.fail(reason, message, data?)` | Builds the typed error for a reason declared in the tool's `errors[]`; `throw` it. |
-| `ctx.recoveryFor(reason)` | Typed lookup of the contract `recovery` for a declared reason. Returns `{ recovery: { hint } }`; pass it as `ctx.fail` data to put the hint on the wire. |
+| `ctx.fail(reason, message, data?)` | Builds the typed error for a reason declared in the tool's `errors[]`; `throw` it. The framework puts the declared `recovery` on the wire; pass `{ recovery: { hint } }` only to override it with runtime context. |
 | `ctx.enrich` | Success-path agent context (empty-result notices, pagination totals) — `ctx.enrich(...)` or `.notice()` / `.total()` / `.truncated()`. Reaches `structuredContent` and `content[]`; lands only when the definition declares an `enrichment` block (no-op otherwise). |
 | `ctx.signal` | `AbortSignal` for cancellation; `LegislationClient` passes it to every upstream `fetch`. |
-| `ctx.requestId` | Unique request ID. |
+| `ctx.requestId` | Request ID — the one every log record of the call carries and its error envelope returns as `data.requestId`. |
 
 No handler uses `ctx.state`, `ctx.requestInput`, or `ctx.content`; the framework CLAUDE.md documents them.
 
@@ -223,7 +223,7 @@ No handler uses `ctx.state`, `ctx.requestInput`, or `ctx.content`; the framework
 
 Handlers throw — the framework catches, classifies, and formats.
 
-**Recommended: typed error contract.** Declare `errors: [{ reason, code, when, recovery, retryable?, severity?, thrownBy? }]` on `tool()` / `resource()` to receive `ctx.fail(reason, …)` typed against the reason union. TypeScript catches typos at compile time, `data.reason` is auto-populated for observability, linter enforces conformance against the handler body. `recovery` is required (≥ 5 words, lint-validated) — the single source of truth for the agent's next move. Pass `ctx.recoveryFor('reason')` as the throw's data to put it on the wire (`data.recovery.hint`, mirrored into `content[]` text unless the message already contains it verbatim); override with an explicit `{ recovery: { hint: '...' } }` when dynamic runtime context matters. Forwarding it is lint-enforced per throw site (`error-contract-recovery-unforwarded`). Mark an entry the service layer throws with `thrownBy: 'service'` so `error-contract-unthrown` skips it — lint-only metadata, nothing at runtime reads it. Baseline codes (`InternalError`, `ServiceUnavailable`, `Timeout`, `ValidationError`, `SerializationError`, `RequestCancelled`) bubble freely and don't need declaring.
+**Recommended: typed error contract.** Declare `errors: [{ reason, code, when, recovery, retryable?, severity?, thrownBy? }]` on `tool()` / `resource()` to receive `ctx.fail(reason, …)` typed against the reason union. TypeScript catches typos at compile time, `data.reason` is auto-populated for observability, linter enforces conformance against the handler body. `recovery` is required (≥ 5 words, lint-validated) — the single source of truth for the agent's next move. The framework puts it on the wire whenever a failure carrying that `reason` arrives without a hint — a bare `ctx.fail('reason')` or a service throw with `data: { reason }` — as `data.recovery.hint`, mirrored into `content[]` text unless the message already contains it verbatim; override with an explicit `{ recovery: { hint: '...' } }` when dynamic runtime context matters. Every error envelope also carries `data.requestId`, the id the server's log records for that call carry, and `content[]` closes with `(reason … · request <id>)`. Mark an entry the service layer throws with `thrownBy: 'service'` so `error-contract-unthrown` skips it — lint-only metadata, nothing at runtime reads it. Baseline codes (`InternalError`, `ServiceUnavailable`, `Timeout`, `ValidationError`, `SerializationError`, `RequestCancelled`) bubble freely and don't need declaring.
 
 ```ts
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
@@ -235,7 +235,7 @@ errors: [
 ],
 async handler(input, ctx) {
   const item = await db.find(input.id);
-  if (!item) throw ctx.fail('no_match', `No item ${input.id}`, ctx.recoveryFor('no_match'));
+  if (!item) throw ctx.fail('no_match', `No item ${input.id}`);
   return item;
 }
 ```
@@ -431,7 +431,7 @@ security: false                            # optional — true ONLY for a source
 
 ## Publishing
 
-**Every release goes through a release PR, straight-through** — `git-wrapup`'s "Release PR mode", mode `straight-through`. One run: `git-wrapup` lands the commit stack on `release/<version>`, pushes it, and opens the PR (title = the release commit subject, body = the changelog entry plus a gates section); `release-and-publish` then fast-forwards `main` locally with `git merge --ff-only`, creates the tag on `main`'s tip, pushes `main` and the tag, deletes the branch, and publishes. A caller's brief may run a given release as `gated` instead — a `release-pr-review` pass on the open PR before `release-and-publish`. **Never merge through the GitHub UI or `gh pr merge`**: squash and rebase-merge are disabled in the repo settings because both rewrite the stack (rebase-merge also strips the SSH signatures), and a merge commit breaks the linear history.
+**Every release goes through a release PR, straight-through** — `git-wrapup`'s "Release PR mode", mode `straight-through`. One run: `git-wrapup` lands the commit stack on `release/<version>`, pushes it, and opens the PR (title = the release commit subject, body = the release digest: theme line, `## Changes`, `## Gates`, changelog link last); `release-and-publish` then fast-forwards `main` locally with `git merge --ff-only`, creates the tag on `main`'s tip, pushes `main` and the tag, deletes the branch, and publishes. A caller's brief may run a given release as `gated` instead — a `release-pr-review` pass on the open PR before `release-and-publish`. **Never merge through the GitHub UI or `gh pr merge`**: squash and rebase-merge are disabled in the repo settings because both rewrite the stack (rebase-merge also strips the SSH signatures), and a merge commit breaks the linear history.
 
 ---
 
