@@ -168,6 +168,9 @@ export function recordingPacer(inner: Pacer): Pacer & { starts: PacerStart[] } {
   const starts: PacerStart[] = [];
   return {
     starts,
+    get cooldown() {
+      return inner.cooldown;
+    },
     run<T>(task: (signal: AbortSignal) => Promise<T>, options?: PacerRunOptions): Promise<T> {
       starts.push({ maxWaitMs: options?.maxWaitMs });
       return inner.run(task, options);
