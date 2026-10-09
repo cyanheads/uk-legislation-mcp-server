@@ -245,7 +245,7 @@ export class LegislationClient {
         if (kind === 'feed') {
           throw validationError(
             `legislation.gov.uk refused ${url} (HTTP ${status}) — a filter combination it does not accept.`,
-            { status, reason: 'filter_refused', ...ctx.recoveryFor('filter_refused') },
+            { status, reason: 'filter_refused' },
           );
         }
         return { kind: 'not_found', status, url };
@@ -309,7 +309,7 @@ export class LegislationClient {
    * draws a budget unit when it starts and waits in the queue no longer than
    * the call deadline allows.
    */
-  private async request(
+  private request(
     url: string,
     budget: CallBudget,
     ctx: Context,
@@ -321,50 +321,39 @@ export class LegislationClient {
         retryable: false,
       });
     }
-    try {
-      return await withRetry(
-        (attempt) =>
-          this.pacer.run(
-            (signal) => {
-              budget.draw();
-              return this.send(
-                url,
-                signal,
-                Math.min(PER_ATTEMPT_TIMEOUT_MS, attempt.remainingMs),
-                ctx,
-                ifModifiedSince,
-              );
-            },
-            {
-              signal: attempt.signal,
-              maxWaitMs: Math.max(0, budget.remainingMs() - RESPONSE_MARGIN_MS),
-            },
-          ),
-        {
-          operation: 'legislation.gov.uk request',
-          context: ctx,
-          signal: ctx.signal,
-          maxRetries: 1,
-          baseDelayMs: 2_000,
-          deadlineMs: budget.remainingMs(),
-          isTransient: (error) =>
-            error instanceof McpError &&
-            (error.code === JsonRpcErrorCode.ServiceUnavailable ||
-              error.code === JsonRpcErrorCode.Timeout) &&
-            defaultIsTransient(error) &&
-            budget.canStart(),
-        },
-      );
-    } catch (error) {
-      if (error instanceof McpError && error.data?.reason === 'pacer_shed') {
-        throw rateLimited(
-          error.message,
-          { ...error.data, ...ctx.recoveryFor('pacer_shed') },
-          { cause: error },
-        );
-      }
-      throw error;
-    }
+    return withRetry(
+      (attempt) =>
+        this.pacer.run(
+          (signal) => {
+            budget.draw();
+            return this.send(
+              url,
+              signal,
+              Math.min(PER_ATTEMPT_TIMEOUT_MS, attempt.remainingMs),
+              ctx,
+              ifModifiedSince,
+            );
+          },
+          {
+            signal: attempt.signal,
+            maxWaitMs: Math.max(0, budget.remainingMs() - RESPONSE_MARGIN_MS),
+          },
+        ),
+      {
+        operation: 'legislation.gov.uk request',
+        context: ctx,
+        signal: ctx.signal,
+        maxRetries: 1,
+        baseDelayMs: 2_000,
+        deadlineMs: budget.remainingMs(),
+        isTransient: (error) =>
+          error instanceof McpError &&
+          (error.code === JsonRpcErrorCode.ServiceUnavailable ||
+            error.code === JsonRpcErrorCode.Timeout) &&
+          defaultIsTransient(error) &&
+          budget.canStart(),
+      },
+    );
   }
 
   /** One HTTP exchange, bounded by its own timeout and the caller's signal. */
@@ -406,7 +395,7 @@ export class LegislationClient {
         });
         throw rateLimited(
           `legislation.gov.uk refused the request (HTTP ${status}) — the fair use rate limit or a block. Requests are paused for every caller of this server.`,
-          { reason: 'upstream_refused', retryAfter, ...ctx.recoveryFor('upstream_refused') },
+          { reason: 'upstream_refused', retryAfter },
         );
       }
       if (status >= 500) {

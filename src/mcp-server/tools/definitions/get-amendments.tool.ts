@@ -235,7 +235,6 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       throw ctx.fail(
         'invalid_item',
         `"${input.item}" is not a legislation item path or legislation.gov.uk URI.`,
-        ctx.recoveryFor('invalid_item'),
       );
     }
     const counterpart =
@@ -246,7 +245,6 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       throw ctx.fail(
         'invalid_item',
         `counterpart "${input.counterpart}" is not a legislation item path or URI.`,
-        ctx.recoveryFor('invalid_item'),
       );
     }
     const counterpartSide = input.direction === 'affected' ? 'affecting' : 'affected';
@@ -268,7 +266,6 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
         throw ctx.fail(
           'invalid_provision',
           `"${input.provision}" is not a provision path or citation shorthand.`,
-          ctx.recoveryFor('invalid_provision'),
         );
       }
       provision = normalized;
@@ -281,7 +278,6 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       throw ctx.fail(
         'draft_item',
         `item "${parsed.item.path}" is draft legislation; ${DRAFTS_UNINDEXED}`,
-        ctx.recoveryFor('draft_item'),
       );
     }
     if (counterpart?.item.regnal) {
@@ -303,7 +299,6 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       throw ctx.fail(
         'provision_needs_full_item',
         `provision needs a full item path; "${parsed.item.path}" is partial.`,
-        ctx.recoveryFor('provision_needs_full_item'),
       );
     }
     const queryKey = [
@@ -326,7 +321,6 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       throw ctx.fail(
         'invalid_cursor',
         'cursor does not decode, belongs to a different query, or holds a position no call over this query reaches.',
-        ctx.recoveryFor('invalid_cursor'),
       );
     }
 

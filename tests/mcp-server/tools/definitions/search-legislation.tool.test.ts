@@ -42,6 +42,10 @@ async function search(input: SearchInput) {
   return searchLegislationTool.handler(searchLegislationTool.input.parse(input), ctx);
 }
 
+/** The `recovery` the tool's contract declares for a reason. */
+const declaredRecovery = (reason: string) =>
+  searchLegislationTool.errors?.find((e) => e.reason === reason)?.recovery;
+
 const TITLE_2018 = '/ukpga/2018/data.feed?title=data&results-count=3';
 const TEXT = '/all/data.feed?text=processor&results-count=3';
 const TITLE_ALL = '/all/data.feed?title=data%20protection&results-count=3';
@@ -257,6 +261,7 @@ describe('errors', () => {
     );
     expect(error.code).toBe(JsonRpcErrorCode.RateLimited);
     expect(error.data?.reason).toBe('upstream_refused');
+    expect(error.data?.recovery).toEqual({ hint: declaredRecovery('upstream_refused') });
   });
 
   it('fails pacer_shed when its only request cannot start', async () => {
@@ -269,6 +274,7 @@ describe('errors', () => {
     expect(error.code).toBe(JsonRpcErrorCode.RateLimited);
     expect(error.data?.reason).toBe('pacer_shed');
     expect(error.data?.retryAfter).toEqual(expect.any(Number));
+    expect(error.data?.recovery).toEqual({ hint: declaredRecovery('pacer_shed') });
   });
 
   it.each([

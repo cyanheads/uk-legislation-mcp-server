@@ -246,11 +246,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
       input.year !== undefined &&
       (input.year_from !== undefined || input.year_to !== undefined)
     ) {
-      throw ctx.fail(
-        'invalid_year_range',
-        'year cannot be combined with year_from or year_to.',
-        ctx.recoveryFor('invalid_year_range'),
-      );
+      throw ctx.fail('invalid_year_range', 'year cannot be combined with year_from or year_to.');
     }
     if (
       input.year_from !== undefined &&
@@ -260,22 +256,16 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
       throw ctx.fail(
         'invalid_year_range',
         `year_from ${input.year_from} is after year_to ${input.year_to}.`,
-        ctx.recoveryFor('invalid_year_range'),
       );
     }
     if (input.as_of !== undefined && !isCalendarDate(input.as_of)) {
-      throw ctx.fail(
-        'invalid_date',
-        `as_of ${input.as_of} is not a real calendar date.`,
-        ctx.recoveryFor('invalid_date'),
-      );
+      throw ctx.fail('invalid_date', `as_of ${input.as_of} is not a real calendar date.`);
     }
     const extent = input.extent && input.extent.length > 0 ? [...new Set(input.extent)] : undefined;
     if (extent && input.as_of) {
       throw ctx.fail(
         'extent_with_as_of',
         'extent and as_of cannot be combined — legislation.gov.uk refuses the combination.',
-        ctx.recoveryFor('extent_with_as_of'),
       );
     }
     const types =

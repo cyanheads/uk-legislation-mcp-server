@@ -739,7 +739,8 @@ describe('errors', () => {
 
   it('a changes-feed 404 fails filter_refused with its recovery, not an empty list', async () => {
     createUpstream(routes([AFFECTED, status(404)]));
-    await expect(failure({ item: 'ukpga/2018/12', limit: 3 })).resolves.toMatchObject({
+    const result = await runToolContract(getAmendmentsTool, { item: 'ukpga/2018/12', limit: 3 });
+    expect(errorOf(result)).toMatchObject({
       code: JsonRpcErrorCode.ValidationError,
       data: {
         reason: 'filter_refused',

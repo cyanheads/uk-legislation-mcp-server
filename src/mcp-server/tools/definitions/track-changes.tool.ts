@@ -280,11 +280,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
     const endDate = input.end_date ?? input.start_date;
     for (const date of [input.start_date, endDate]) {
       if (!isCalendarDate(date)) {
-        throw ctx.fail(
-          'invalid_date',
-          `${date} is not a real calendar date.`,
-          ctx.recoveryFor('invalid_date'),
-        );
+        throw ctx.fail('invalid_date', `${date} is not a real calendar date.`);
       }
     }
     const span = daysBetween(input.start_date, endDate);
@@ -294,15 +290,10 @@ export const trackChangesTool = tool('uklaw_track_changes', {
         span < 0
           ? `end_date ${endDate} is before start_date ${input.start_date}.`
           : `The window ${input.start_date} to ${endDate} spans ${span + 1} days; the limit is ${MAX_WINDOW_DAYS}.`,
-        ctx.recoveryFor('invalid_window'),
       );
     }
     if (input.direction && input.content_type !== 'changes') {
-      throw ctx.fail(
-        'direction_needs_changes',
-        'direction filters changes events only.',
-        ctx.recoveryFor('direction_needs_changes'),
-      );
+      throw ctx.fail('direction_needs_changes', 'direction filters changes events only.');
     }
     if (
       input.category &&
@@ -312,7 +303,6 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       throw ctx.fail(
         'category_needs_content_type',
         'category applies only after content_type legislation or associated-documents; elsewhere legislation.gov.uk answers zero events.',
-        ctx.recoveryFor('category_needs_content_type'),
       );
     }
     const parsedItem =
@@ -321,7 +311,6 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       throw ctx.fail(
         'invalid_item',
         `"${input.item}" is not a legislation item path, type, or type and year.`,
-        ctx.recoveryFor('invalid_item'),
       );
     }
     const item = parsedItem?.item;
@@ -355,7 +344,6 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       throw ctx.fail(
         'invalid_cursor',
         'cursor does not decode, belongs to a different window, or holds a position no call over this window reaches.',
-        ctx.recoveryFor('invalid_cursor'),
       );
     }
 

@@ -387,7 +387,8 @@ describe('day walk', () => {
 
   it('a feed 404 fails filter_refused with its recovery, not a quiet window', async () => {
     createUpstream(routes([DAY, status(404)]));
-    await expect(failure({ start_date: '2026-09-24' })).resolves.toMatchObject({
+    const result = await runToolContract(trackChangesTool, { start_date: '2026-09-24' });
+    expect(errorOf(result)).toMatchObject({
       code: JsonRpcErrorCode.ValidationError,
       data: {
         reason: 'filter_refused',

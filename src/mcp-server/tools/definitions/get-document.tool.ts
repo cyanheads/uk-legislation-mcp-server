@@ -366,7 +366,6 @@ export const getDocumentTool = tool('uklaw_get_document', {
       throw ctx.fail(
         'invalid_item',
         `"${input.item}" is not a legislation item path or legislation.gov.uk URI.`,
-        ctx.recoveryFor('invalid_item'),
       );
     }
     let provision = parsed.provision;
@@ -376,14 +375,12 @@ export const getDocumentTool = tool('uklaw_get_document', {
         throw ctx.fail(
           'invalid_provision',
           `"${input.provision}" is not a provision path or citation shorthand.`,
-          ctx.recoveryFor('invalid_provision'),
         );
       }
       if (provision && provision !== normalized) {
         throw ctx.fail(
           'invalid_provision',
           `item carries provision ${provision} but provision is ${normalized}; pass one of them.`,
-          ctx.recoveryFor('invalid_provision'),
         );
       }
       provision = normalized;
@@ -393,14 +390,12 @@ export const getDocumentTool = tool('uklaw_get_document', {
       throw ctx.fail(
         'invalid_version',
         `version ${version} is not supported: use current, enacted, or a real calendar date.`,
-        ctx.recoveryFor('invalid_version'),
       );
     }
     if (input.match_text !== undefined && provision) {
       throw ctx.fail(
         'match_text_needs_item_level',
         "match_text searches an item's table of contents and cannot combine with provision.",
-        ctx.recoveryFor('match_text_needs_item_level'),
       );
     }
     const language = input.language ?? parsed.language ?? 'en';
@@ -423,14 +418,12 @@ export const getDocumentTool = tool('uklaw_get_document', {
         throw ctx.fail(
           'provision_not_found',
           `${parsed.item.path} exists but has no document at ${provision} (version ${version}).`,
-          ctx.recoveryFor('provision_not_found'),
         );
       }
       if (outcome.which === 'version') {
         throw ctx.fail(
           'version_not_found',
           `${parsed.item.path} exists but has no version at ${version}.`,
-          ctx.recoveryFor('version_not_found'),
         );
       }
       if (!outcome.checkRan) {
@@ -447,7 +440,6 @@ export const getDocumentTool = tool('uklaw_get_document', {
       throw ctx.fail(
         'document_not_found',
         `legislation.gov.uk has no item at ${parsed.item.path}.`,
-        ctx.recoveryFor('document_not_found'),
       );
     }
 

@@ -12,7 +12,6 @@ import { JsonRpcErrorCode, McpError, rateLimited } from '@cyanheads/mcp-ts-core/
 import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
 import { createPacer } from '@cyanheads/mcp-ts-core/utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { searchLegislationTool } from '@/mcp-server/tools/definitions/search-legislation.tool.js';
 import { isCannotStart, MAX_BODY_BYTES } from '@/services/legislation/legislation-client.js';
 import { ResponseCache } from '@/services/legislation/response-cache.js';
 import {
@@ -33,7 +32,7 @@ import {
   USER_AGENT,
 } from '../../helpers/upstream.js';
 
-const ctx = () => createMockContext({ errors: searchLegislationTool.errors });
+const ctx = () => createMockContext();
 const S45 = '/ukpga/2018/12/section/45/data.xml';
 const LAST_MODIFIED = 'Mon, 14 Sep 2026 16:04:15 GMT';
 
@@ -466,7 +465,7 @@ describe('LegislationClient — refusals, retries, budget', () => {
     expect(error).toBeInstanceOf(McpError);
     expect(error).toMatchObject({
       code: JsonRpcErrorCode.RateLimited,
-      data: { reason: 'upstream_refused', retryAfter: 300, recovery: { hint: expect.any(String) } },
+      data: { reason: 'upstream_refused', retryAfter: 300 },
     });
     expect(up.paths()).toHaveLength(1);
   });
@@ -527,18 +526,14 @@ describe('LegislationClient — refusals, retries, budget', () => {
     },
   );
 
-  it('sheds a request that cannot start within the call deadline as pacer_shed with a recovery', async () => {
+  it('sheds a request that cannot start within the call deadline as pacer_shed', async () => {
     const up = createUpstream(routes([S45, clml('ukpga-2018-12-section-45.xml')]), {
       pacer: await gatedPacer(0),
     });
     const error = await up.client.get(S45, 'document', up.client.budget(4), ctx()).catch((e) => e);
     expect(error).toMatchObject({
       code: JsonRpcErrorCode.RateLimited,
-      data: {
-        reason: 'pacer_shed',
-        retryAfter: expect.any(Number),
-        recovery: { hint: expect.any(String) },
-      },
+      data: { reason: 'pacer_shed', retryAfter: expect.any(Number) },
     });
     expect(error.data.retryAfter).toBeGreaterThan(0);
     expect(isCannotStart(error)).toBe(true);
