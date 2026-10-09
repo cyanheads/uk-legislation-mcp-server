@@ -31,6 +31,7 @@ await createApp({
   resources: [],
   prompts: [],
   instructions: INSTRUCTIONS,
+  sessionMode: 'stateless',
 
   async setup(core) {
     const config = getServerConfig();

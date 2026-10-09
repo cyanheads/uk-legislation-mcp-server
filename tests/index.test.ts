@@ -129,12 +129,14 @@ describe('createApp options', () => {
       'name',
       'prompts',
       'resources',
+      'sessionMode',
       'setup',
       'teardown',
       'title',
       'tools',
     ]);
     expect(options.name).toBe('uk-legislation-mcp-server');
+    expect(options.sessionMode).toBe('stateless');
     expect(options.title).toBe('uk-legislation-mcp-server');
     expect(options.tools).toBe(allToolDefinitions);
     expect(options.tools).toHaveLength(6);
