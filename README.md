@@ -7,7 +7,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/Version-0.1.1-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/uk-legislation-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^2.0.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/uk-legislation-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/uk-legislation-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.4.0-blueviolet.svg?style=flat-square)](https://bun.sh/)
+[![Version](https://img.shields.io/badge/Version-0.1.1-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/uk-legislation-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^2.2.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/uk-legislation-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/uk-legislation-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.4.2-blueviolet.svg?style=flat-square)](https://bun.sh/)
 
 </div>
 
@@ -19,11 +19,17 @@
 
 </div>
 
+<div align="center">
+
+**Public Hosted Server:** [https://uk-legislation.caseyjhand.com/mcp](https://uk-legislation.caseyjhand.com/mcp)
+
+</div>
+
 ---
 
 ## Overview
 
-The National Archives publishes the UK statute book on [legislation.gov.uk](https://www.legislation.gov.uk/): primary, secondary, and EU-origin legislation for the UK, England, Scotland, Wales, and Northern Ireland. This server resolves citations and searches the statute book by text or title. It reads any provision as it stands now, as enacted or made, or as it stood on a date; lists the amendments made to or by an item; and follows what legislation.gov.uk publishes day to day. The API needs no key or account. The server runs as a stdio process or a local Streamable HTTP server.
+The National Archives publishes the UK statute book on [legislation.gov.uk](https://www.legislation.gov.uk/): primary, secondary, and EU-origin legislation for the UK, England, Scotland, Wales, and Northern Ireland. This server resolves citations and searches the statute book by text or title. It reads any provision as it stands now, as enacted or made, or as it stood on a date; lists the amendments made to or by an item; and follows what legislation.gov.uk publishes day to day. The API needs no key or account. The server runs as a stdio process, a local Streamable HTTP server, or the public hosted endpoint above.
 
 ### Tools
 
@@ -118,6 +124,25 @@ Agent-friendly output:
 - Upstream text is treated as data: legislation text, annotations, and effect notes are blockquoted in `content[]`, inline values are escaped, and URIs are percent-encoded
 
 ## Getting started
+
+### Public Hosted Instance
+
+A public instance is available at `https://uk-legislation.caseyjhand.com/mcp` — no installation required. Point any MCP client at it via Streamable HTTP:
+
+```json
+{
+  "mcpServers": {
+    "uk-legislation-mcp-server": {
+      "type": "streamable-http",
+      "url": "https://uk-legislation.caseyjhand.com/mcp"
+    }
+  }
+}
+```
+
+Every caller of the hosted instance shares one request queue, paced at one legislation.gov.uk request per second under its fair use policy. For sustained use, run your own instance.
+
+### Self-Hosted / Local
 
 Add the following to your MCP client configuration file.
 
