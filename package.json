@@ -1,6 +1,6 @@
 {
   "name": "@cyanheads/uk-legislation-mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "mcpName": "io.github.cyanheads/uk-legislation-mcp-server",
   "description": "Search and read UK legislation at any date, resolve citations, list amendments, track changes via MCP. STDIO or Streamable HTTP.",
   "type": "module",

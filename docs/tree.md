@@ -1,6 +1,6 @@
 # uk-legislation-mcp-server - Directory Structure
 
-Generated on: 2026-09-27 00:24:42
+Generated on: 2026-10-09 08:58:23
 
 ```text
 uk-legislation-mcp-server/
@@ -127,9 +127,11 @@ uk-legislation-mcp-server/
 │   ├── clean-mcpb.ts
 │   ├── clean.ts
 │   ├── devcheck.ts
+│   ├── install-otel.ts
 │   ├── lint-mcp.ts
 │   ├── lint-packaging.ts
 │   ├── list-skills.ts
+│   ├── prune-musl-packages.ts
 │   ├── release-github.ts
 │   └── tree.ts
 ├── src/
