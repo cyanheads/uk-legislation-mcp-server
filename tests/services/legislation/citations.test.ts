@@ -319,11 +319,13 @@ describe('extractTitleCandidates', () => {
       'one 190 KB anchor text of "<"',
       `<li><a href="/id/ukpga/2018/12">${'<'.repeat(190 * 1024)}</a>`,
     ],
-  ])('scans an adversarial page in linear time: %s', (_name, list) => {
+  ])('scans an adversarial page within its CPU budget: %s', (_name, list) => {
     const html = `<div id="content"><ul>${list}`;
-    const started = performance.now();
-    expect(extractTitleCandidates(html)).toEqual([]);
-    expect(performance.now() - started).toBeLessThan(25);
+    const started = process.threadCpuUsage();
+    const candidates = extractTitleCandidates(html);
+    const elapsed = process.threadCpuUsage(started);
+    expect(candidates).toEqual([]);
+    expect((elapsed.user + elapsed.system) / 1_000).toBeLessThan(25);
   });
 });
 
@@ -341,10 +343,12 @@ describe('normalizeTitle', () => {
     expect(normalizeTitle(input)).toBe(expected);
   });
 
-  it('runs in linear time on an unclosed status note repeated', () => {
+  it('normalizes repeated unclosed status notes within its CPU budget', () => {
     const title = '(repealed'.repeat(30_000);
-    const started = performance.now();
-    expect(normalizeTitle(title)).toBe(title);
-    expect(performance.now() - started).toBeLessThan(100);
+    const started = process.threadCpuUsage();
+    const normalized = normalizeTitle(title);
+    const elapsed = process.threadCpuUsage(started);
+    expect(normalized).toBe(title);
+    expect((elapsed.user + elapsed.system) / 1_000).toBeLessThan(100);
   });
 });
