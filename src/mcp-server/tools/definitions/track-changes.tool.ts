@@ -336,7 +336,12 @@ export const trackChangesTool = tool('uklaw_track_changes', {
         ? decodeCursor(input.cursor, queryKey, {
             pageSize: LOG_PAGE_SIZE,
             ...(mode === 'day_walk'
-              ? { days: { first: input.start_date, last: endDate < today ? endDate : today } }
+              ? {
+                  days: {
+                    first: input.start_date,
+                    last: endDate.localeCompare(today) < 0 ? endDate : today,
+                  },
+                }
               : {}),
           })
         : undefined;

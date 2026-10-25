@@ -758,7 +758,7 @@ describe('item log', () => {
     const text = (trackChangesTool.format?.(output) ?? [])
       .map((block) => (block.type === 'text' ? block.text : ''))
       .join('\n');
-    expect(text).toContain('read back to \\*\\*&lt;img src');
+    expect(text).toContain('read back to \\*\\*\\<img src');
     expect(text).not.toContain('**<img');
   });
 });

@@ -531,13 +531,13 @@ describe('both surfaces and enrichment', () => {
     const text = contentText(result);
     expect(text).not.toMatch(/[\r\u2028\u2029]/);
     expect(text.split('\n').filter((line) => /^#+ (Doc|Made)\b/.test(line))).toEqual([]);
-    expect(text).not.toMatch(/<(b|i)>/);
+    expect(text).not.toMatch(/(?<!\\)<(b|i)>/);
     expect(text).toContain('- Item: `ukpga/2018/12%60%3Cb%3E` · ukpga (UK Public General Acts)');
     expect(text).toContain(
       '· Document: https://www.legislation.gov.uk/ukpga/2018/12/2026-06-19%0D%0A##%20Doc%20%3Cb%3E',
     );
     expect(text).toContain(
-      'Made/enacted: 2018-05-23 ## Made · Updated: 2026-07-09T10:58:22+01:00 \\*\\*x\\*\\* &lt;i>',
+      'Made/enacted: 2018-05-23 ## Made · Updated: 2026-07-09T10:58:22+01:00 \\*\\*x\\*\\* \\<i>',
     );
   });
 

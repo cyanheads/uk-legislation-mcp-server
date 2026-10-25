@@ -6,6 +6,7 @@
  * @module tests/mcp-server/tools/definitions/_markdown.test
  */
 
+import MarkdownIt from 'markdown-it';
 import { describe, expect, it } from 'vitest';
 import {
   attributionLines,
@@ -21,6 +22,41 @@ import type { EffectRecord } from '@/services/legislation/types.js';
 import { fixture } from '../../../helpers/upstream.js';
 
 describe('inline', () => {
+  it('keeps a heading marker inside a paragraph when parsed as a block', () => {
+    const tokens = new MarkdownIt('commonmark').parse(inline('# Heading'), {});
+    expect(tokens.map((token) => token.type)).toEqual([
+      'paragraph_open',
+      'inline',
+      'paragraph_close',
+    ]);
+    expect(tokens[1]?.children?.map((token) => token.content).join('')).toBe('# Heading');
+  });
+
+  it('keeps literal pipes and Markdown inside one table cell', () => {
+    const value = 'A | `code` [link](https://example.com) &copy;';
+    const tokens = new MarkdownIt().parse(`| Value |\n| --- |\n| ${cell(value)} |`, {});
+    expect(tokens.filter((token) => token.type === 'td_open')).toHaveLength(1);
+    const row = tokens.filter((token) => token.type === 'inline').at(-1);
+    expect(row?.children?.map((token) => token.type)).toEqual(['text']);
+    expect(row?.children?.map((token) => token.content).join('')).toBe(value);
+  });
+
+  it.each([
+    '&copy; &#123;',
+    '# Heading',
+    '`code`',
+    '[link](https://example.com)',
+    '**bold** | ~~strike~~',
+    '<b>literal</b>',
+  ])('round-trips %j through CommonMark as literal text in inline and table slots', (value) => {
+    const parser = new MarkdownIt('commonmark');
+    for (const encode of [inline, cell]) {
+      const tokens = parser.parseInline(encode(value), {}).flatMap((token) => token.children ?? []);
+      expect(tokens.map((token) => token.type)).toEqual(['text']);
+      expect(tokens.map((token) => token.content).join('')).toBe(value);
+    }
+  });
+
   it('flattens every line break to a space', () => {
     expect(inline('a\r\nb\nc\rd\u2028e\u2029f')).toBe('a b c d e f');
   });
@@ -31,7 +67,7 @@ describe('inline', () => {
 
   it('escapes Markdown openers and HTML tags', () => {
     expect(inline('**bold** `code` [link](x) <img src=x> a < b')).toBe(
-      '\\*\\*bold\\*\\* \\`code\\` \\[link\\](x) &lt;img src=x> a < b',
+      '\\*\\*bold\\*\\* \\`code\\` \\[link\\](x) \\<img src=x> a < b',
     );
   });
 

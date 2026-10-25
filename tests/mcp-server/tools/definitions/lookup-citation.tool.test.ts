@@ -744,9 +744,9 @@ describe('both surfaces', () => {
     const text = contentText(result);
     expect(text).not.toMatch(/[\r\u2028\u2029]/);
     expect(text.split('\n').filter((line) => /^#+ Made\b/.test(line))).toEqual([]);
-    expect(text).not.toMatch(/<(b|i)>/);
+    expect(text).not.toMatch(/(?<!\\)<(b|i)>/);
     expect(text).toContain('- Item: `ukpga/2018/12%60%3Cb%3E`');
-    expect(text).toContain('Made/enacted: 2018-05-23 ## Made &lt;i>');
+    expect(text).toContain('Made/enacted: 2018-05-23 ## Made \\<i>');
     expect(text).toContain(
       '- Identifier: https://www.legislation.gov.uk/id/ukpga/2018/12%60%3Cb%3E',
     );

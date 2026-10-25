@@ -1040,7 +1040,8 @@ export class LegislationService {
     }
 
     const days = new Map<string, { date: string; pages_read: number; total?: number }>();
-    let date = query.position?.date ?? (query.endDate < today ? query.endDate : today);
+    let date =
+      query.position?.date ?? (query.endDate.localeCompare(today) < 0 ? query.endDate : today);
     let page = query.position?.page ?? 1;
     let offset = query.position?.offset ?? 0;
     let next: CursorPosition | undefined;
