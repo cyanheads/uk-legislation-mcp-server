@@ -122,7 +122,7 @@ async function boot(robots: Response) {
 }
 
 describe('createApp options', () => {
-  it('registers the six tools, no resources or prompts, under the repo name', async () => {
+  it('registers the six tools and the skills tree, no resource or prompt definitions, under the repo name', async () => {
     const { options, allToolDefinitions } = await boot(recordedRobots());
     expect(Object.keys(options).sort()).toEqual([
       'instructions',
@@ -131,10 +131,12 @@ describe('createApp options', () => {
       'resources',
       'sessionMode',
       'setup',
+      'skills',
       'teardown',
       'title',
       'tools',
     ]);
+    expect(options.skills).toBe('skills');
     expect(options.name).toBe('uk-legislation-mcp-server');
     expect(options.sessionMode).toBe('stateless');
     expect(options.title).toBe('uk-legislation-mcp-server');

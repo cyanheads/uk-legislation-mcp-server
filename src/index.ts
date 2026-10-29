@@ -30,6 +30,7 @@ await createApp({
   tools: allToolDefinitions,
   resources: [],
   prompts: [],
+  skills: 'skills',
   instructions: INSTRUCTIONS,
   sessionMode: 'stateless',
 
