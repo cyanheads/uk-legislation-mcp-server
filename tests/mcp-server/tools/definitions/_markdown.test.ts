@@ -57,6 +57,24 @@ describe('inline', () => {
     }
   });
 
+  it.each([
+    'Data Protection Act 2018',
+    'Schedule #',
+    'Part 2 ##',
+    ' Edge spaces ',
+    'C# 12 and a # b',
+  ])('round-trips %j through CommonMark as the text of an ATX heading', (value) => {
+    for (const marker of ['##', '###']) {
+      const tokens = new MarkdownIt('commonmark').parse(`${marker} ${inline(value)}`, {});
+      expect(tokens.map((token) => token.type)).toEqual([
+        'heading_open',
+        'inline',
+        'heading_close',
+      ]);
+      expect(tokens[1]?.children?.map((token) => token.content).join('')).toBe(value);
+    }
+  });
+
   it('flattens every line break to a space', () => {
     expect(inline('a\r\nb\nc\rd\u2028e\u2029f')).toBe('a b c d e f');
   });
