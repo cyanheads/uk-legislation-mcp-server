@@ -1,6 +1,6 @@
 {
   "name": "uk-legislation-mcp-server",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Search and read UK legislation at any date, resolve citations, list amendments, track changes.",
   "author": {
     "name": "cyanheads",
