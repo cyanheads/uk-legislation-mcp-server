@@ -1,0 +1,19 @@
+HTTP/1.1 303 See Other
+Content-Type: text/html;charset=utf-8
+Content-Length: 407
+Connection: keep-alive
+Date: Thu, 29 Oct 2026 10:10:38 GMT
+X-Frame-Options: sameorigin
+Server: Apache
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Last-Modified: Thu, 29 Oct 2026 10:10:38 GMT
+Expires: Thu, 05 Nov 2026 10:10:38 GMT
+Cache-Control: max-age=604800, s-maxage=604800, public, no-transform
+Pragma: 
+Location: /ukla/Eliz2/4-5/1/enacted
+Content-Security-Policy: frame-ancestors 'self';
+X-Cache: Miss from cloudfront
+Via: 1.1 ab46854462c3986bd1b6e6c909d2ad6e.cloudfront.net (CloudFront)
+X-Amz-Cf-Pop: SEA900-P5
+X-Amz-Cf-Id: datNr_4QgUzH7tmkA4kuZpX2Jcpwm2A3Gu8j2vwPWGH31znjGwm1qA==
+

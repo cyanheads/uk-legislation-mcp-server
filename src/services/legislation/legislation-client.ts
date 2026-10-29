@@ -208,7 +208,8 @@ export class LegislationClient {
    * Fetches an origin-relative path and classifies the answer by kind.
    * Documents and feeds follow redirects (each hop paced and budgeted); a feed
    * redirected off its `data.feed` path is past its last page. Identifier
-   * requests return their 300/301/303/404 as results without following.
+   * requests return their 300/301/303/404 as results without following, and a
+   * document's 300 (a path naming more than one item) is a result too.
    */
   async get(
     path: string,
@@ -221,8 +222,7 @@ export class LegislationClient {
       const answer = await this.fetchOne(url, budget, ctx);
       const { status } = answer;
       if (status === 200) return { kind: 'ok', body: answer.body ?? '', url };
-      if (status === 300 && kind === 'identifier')
-        return { kind: 'multiple', body: answer.body ?? '' };
+      if (status === 300 && kind !== 'feed') return { kind: 'multiple', body: answer.body ?? '' };
       if (status >= 300 && status < 400) {
         const location = answer.location ? resolveLocation(answer.location, url) : undefined;
         if (!location) {

@@ -64,7 +64,7 @@ The skill is served over MCP through the Agent Skills extension (`io.modelcontex
 
 - `item` is a full path (`ukpga/2018/12`, `uksi/2019/419`, `eur/2016/679`, regnal `ukpga/Eliz2/3-4/19`) or a legislation.gov.uk URI; `provision` a path (`section/45/2/f`, `schedule/2/paragraph/3`) or shorthand (`s. 45(2)(f)`, `Sch. 2 para. 3`); `version` `current` (default), `enacted` (or `made`, `adopted`, `created`), or a `YYYY-MM-DD` date; `language` `en` or `cy`
 - `kind` is `full` (Markdown `text` with its `annotations`), `outline` (provision paths to read next, 100 per call from `outline_offset`), or `pdf_only` (`links.pdf`); text over 20,000 characters, or an item with more than 25 leaf provisions, comes back as an outline (a provision with no smaller provisions to list is returned whole up to 40,000 characters and cut past that, with a notice linking the full text), and `match_text` lists an item's provisions that contain a term
-- `editorial` (`document_status`, `outstanding_effects`, `caveat`) and `unapplied_effects` (the first 20, at item or provision level) show how far the revised text can be relied on; `version.available` lists the versions to pass as `version`
+- `editorial` (`document_status`, `outstanding_effects`, `caveat`) and `unapplied_effects` (the first 20, at item or provision level; a provision read also lists the effects on its enclosing provisions and, on full text, the provisions inside it, and says when it could not check them) show how far the revised text can be relied on; `version.available` lists the versions to pass as `version`
 
 ---
 

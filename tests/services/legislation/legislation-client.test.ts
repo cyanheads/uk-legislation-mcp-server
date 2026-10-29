@@ -18,6 +18,7 @@ import {
   clml,
   createUpstream,
   feed,
+  fixture,
   gatedPacer,
   multipleChoices,
   notFound,
@@ -105,6 +106,34 @@ describe('LegislationClient — answers by kind', () => {
       status: 301,
     });
     expect(up.paths()).toHaveLength(4);
+  });
+
+  it('a document 300 is a multiple result carrying the page, never followed', async () => {
+    const path = '/ukpga/1955/19/section/1/data.xml';
+    const page = fixture('html/ukpga-1955-19-section-1-300.html.txt');
+    const up = createUpstream(
+      routes([
+        path,
+        new Response(page, {
+          status: 300,
+          headers: { 'content-type': 'text/html;charset=utf-8', 'cache-control': 'max-age=3600' },
+        }),
+      ]),
+    );
+    await expect(up.client.get(path, 'document', up.client.budget(4), ctx())).resolves.toEqual({
+      kind: 'multiple',
+      body: page,
+    });
+    expect(up.paths()).toEqual([path]);
+  });
+
+  it('a feed 300 without a Location still fails as an unusable redirect', async () => {
+    const path = '/ukpga/1955/data.feed?results-count=20';
+    const up = createUpstream(routes([path, redirect(300)]));
+    await expect(up.client.get(path, 'feed', up.client.budget(2), ctx())).rejects.toMatchObject({
+      code: JsonRpcErrorCode.ServiceUnavailable,
+      message: expect.stringMatching(/without a usable Location/),
+    });
   });
 
   it('refuses an HTML page served as a 200 before parsing', async () => {

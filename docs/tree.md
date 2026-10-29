@@ -1,6 +1,6 @@
 # uk-legislation-mcp-server - Directory Structure
 
-Generated on: 2026-10-29 02:17:38
+Generated on: 2026-10-29 10:18:34
 
 ```text
 uk-legislation-mcp-server/
@@ -186,29 +186,49 @@ uk-legislation-mcp-server/
 │   ├── fixtures/
 │   │   ├── clml/
 │   │   │   ├── anaw-2016-1-section-1-welsh.xml
+│   │   │   ├── apni-1954-33-section-1-2006-01-01.xml
 │   │   │   ├── eur-2016-679-article-28.xml
+│   │   │   ├── ukla-Eliz2-4-5-1-contents-enacted.xml
+│   │   │   ├── ukpga-1972-68-contents-1991-02-01.xml
+│   │   │   ├── ukpga-1972-68-section-2-1991-02-01.xml
 │   │   │   ├── ukpga-1998-29-section-1.xml
+│   │   │   ├── ukpga-2006-46-section-29.xml
 │   │   │   ├── ukpga-2018-12-contents-text-processor.xml
 │   │   │   ├── ukpga-2018-12-contents.xml
 │   │   │   ├── ukpga-2018-12-section-45-2018-05-24.xml
 │   │   │   ├── ukpga-2018-12-section-45-2019-01-01.xml
 │   │   │   ├── ukpga-2018-12-section-45-enacted.xml
 │   │   │   ├── ukpga-2018-12-section-45.xml
+│   │   │   ├── ukpga-2018-12-section-65.xml
+│   │   │   ├── ukpga-Geo5-15-16-20-contents.xml
+│   │   │   ├── ukpga-Geo5-15-16-20-section-1-1991-02-01.xml
+│   │   │   ├── ukpga-Geo5-15-16-20-section-205.xml
+│   │   │   ├── ukpga-Geo5-15-16-20-section-84.xml
 │   │   │   ├── uksi-1984-458-contents-made.xml
 │   │   │   ├── uksi-1984-458-made.xml
 │   │   │   ├── uksi-1985-2081-contents-made.xml
 │   │   │   ├── uksi-1986-1078-regulation-1.xml
+│   │   │   ├── uksi-1998-3132-part-77-crossheading-1.xml
+│   │   │   ├── uksi-1998-3132-rule-77.3.xml
 │   │   │   ├── uksi-2019-1434-regulation-2-made.xml
 │   │   │   ├── uksi-2019-419-contents-2020-12-31.xml
 │   │   │   ├── uksi-2019-419-contents.xml
-│   │   │   └── uksi-2019-419-regulation-5-2019-03-01.xml
+│   │   │   ├── uksi-2019-419-regulation-5-2019-03-01.xml
+│   │   │   ├── wsi-2002-808-contents.xml
+│   │   │   ├── wsi-2024-1337-article-1-made.xml
+│   │   │   ├── wsi-2024-1337-contents-made.xml
+│   │   │   └── wsi-2024-1337-made.xml
 │   │   ├── feeds/
 │   │   │   ├── changes-affected-ukpga-1925-20.feed
 │   │   │   ├── changes-affected-ukpga-2018-12-affecting-ukpga-2025-18.feed
 │   │   │   ├── changes-affected-ukpga-2018-12.feed
 │   │   │   ├── changes-affecting-uksi-2026.feed
 │   │   │   ├── changes-empty.feed
+│   │   │   ├── changes-unapplied-affected-ukpga-1925-20.feed
+│   │   │   ├── changes-unapplied-affected-ukpga-1955-19.feed
+│   │   │   ├── changes-unapplied-affected-ukpga-2006-46.feed
 │   │   │   ├── changes-unapplied-affected-ukpga-2018-12.feed
+│   │   │   ├── changes-unapplied-affected-uksi-1998-3132.feed
 │   │   │   ├── changes-unapplied-scan-page-1.feed
 │   │   │   ├── changes-unapplied-scan-page-2.feed
 │   │   │   ├── changes-unapplied-scan-page-3.feed
@@ -228,15 +248,27 @@ uk-legislation-mcp-server/
 │   │   │   ├── update-2026-09-24-legislation-new.feed
 │   │   │   ├── update-2026-09-24-page-2.feed
 │   │   │   ├── update-2026-09-24.feed
-│   │   │   └── update-changes-affected-ukpga-2018-12.feed
+│   │   │   ├── update-changes-affected-ukpga-2018-12.feed
+│   │   │   ├── update-ukpga-2018-12-page-1.feed
+│   │   │   ├── update-ukpga-2018-12-page-52.feed
+│   │   │   ├── update-ukpga-2018-12-page-53.feed
+│   │   │   ├── update-ukpga-2018-12-page-54.feed
+│   │   │   ├── update-ukpga-2018-12-page-55.feed
+│   │   │   ├── update-ukpga-2018-12-page-56.feed
+│   │   │   ├── update-ukpga-2018-12-page-57.feed
+│   │   │   ├── update-ukpga-2018-12-page-64.feed
+│   │   │   ├── update-ukpga-2018-12-page-72.feed
+│   │   │   └── update-ukpga-2018-12-page-73.feed
 │   │   ├── html/
 │   │   │   ├── id-item-303.html.txt
 │   │   │   ├── id-title-300.html.txt
 │   │   │   ├── id-title-301.html.txt
+│   │   │   ├── id-ukla-Eliz2-4-5-1.headers.txt
 │   │   │   ├── id-ukpga-1955-19-300.html.txt
 │   │   │   ├── not-found.html.txt
 │   │   │   ├── redirect-307.html.txt
 │   │   │   ├── search-page-beyond-307.html.txt
+│   │   │   ├── ukpga-1955-19-section-1-300.html.txt
 │   │   │   └── welsh-301.html.txt
 │   │   └── robots/
 │   │       └── robots.txt

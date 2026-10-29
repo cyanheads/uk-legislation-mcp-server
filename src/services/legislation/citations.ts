@@ -2,8 +2,8 @@
  * @fileoverview Citation grammar for `uklaw_lookup_citation` — numbered UK,
  * devolved, and EU-origin citations, legislation.gov.uk URIs, and short
  * titles, each with an optional provision tail or leading "section N of" —
- * plus the bounded text scan that reads candidates out of the `/id?title=`
- * 300 (Multiple Choices) page.
+ * plus the bounded text scan that reads candidates out of a 300 (Multiple
+ * Choices) page.
  * @module services/legislation/citations
  */
 
@@ -182,7 +182,7 @@ export function parseCitation(raw: string): ParsedCitation {
   };
 }
 
-/** One candidate from the `/id?title=` Multiple Choices page. */
+/** One candidate from a Multiple Choices (300) page. */
 export interface TitleCandidate {
   item: string;
   title: string;
@@ -217,12 +217,14 @@ const CANDIDATE_REGION_CHARS = 200_000;
 const MAX_CANDIDATE_TITLE_CHARS = 2_000;
 
 /**
- * Reads candidate items out of the 300 page by a bounded text scan of
- * `<li><a href="/id/…">title</a>` anchors inside `<div id="content">`. The page
- * is XHTML with a DOCTYPE, so it never reaches the XML parser. The scan is
- * linear in the region: each anchor's title runs to the next `</a>`, the next
- * anchor is sought after it, the first anchor with no `</a>` after it ends the
- * scan, and an anchor text too long to be a title is skipped unread.
+ * Reads candidate items out of a 300 page by a bounded text scan of
+ * `<li><a href="…">title</a>` anchors inside `<div id="content">`: the `/id`
+ * pages link `/id/{item}`, a document's 300 links `/{item}/{provision}`, and
+ * each candidate is the full item path its link parses to. The page is XHTML
+ * with a DOCTYPE, so it never reaches the XML parser. The scan is linear in
+ * the region: each anchor's title runs to the next `</a>`, the next anchor is
+ * sought after it, the first anchor with no `</a>` after it ends the scan, and
+ * an anchor text too long to be a title is skipped unread.
  */
 export function extractTitleCandidates(html: string, max = 20): TitleCandidate[] {
   const start = html.indexOf('id="content"');
@@ -234,15 +236,16 @@ export function extractTitleCandidates(html: string, max = 20): TitleCandidate[]
   );
   const out: TitleCandidate[] = [];
   const seen = new Set<string>();
-  const anchor = /<li>\s*<a href="\/id\/([^"#?]+)"[^>]*>/g;
+  const anchor = /<li>\s*<a href="(\/[^"#?]+)"[^>]*>/g;
   for (let m = anchor.exec(region); m && out.length < max; m = anchor.exec(region)) {
     const titleStart = anchor.lastIndex;
     const titleEnd = region.indexOf('</a>', titleStart);
     if (titleEnd === -1) break;
     anchor.lastIndex = titleEnd + '</a>'.length;
     if (titleEnd - titleStart > MAX_CANDIDATE_TITLE_CHARS) continue;
-    const item = (m[1] as string).replace(/\/+$/, '');
-    if (seen.has(item) || !parseItemInput(item)?.item.full) continue;
+    const parsed = parseItemInput(m[1] as string)?.item;
+    if (!parsed?.full || seen.has(parsed.path)) continue;
+    const item = parsed.path;
     seen.add(item);
     out.push({
       item,

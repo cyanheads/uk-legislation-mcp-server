@@ -26,8 +26,8 @@ import {
   ProvisionInput,
 } from './_schemas.js';
 
-/** Where a provision scan's misses usually are: effects that name the enclosing heading (Design Decision 49). */
-const HEADING_ROUTE = `An effect on a heading names the enclosing cross-heading or Part instead of the section (e.g. "s. 65 heading" names part/3/chapter/4/crossheading/general-obligations): read the enclosing Part with uklaw_get_document (its item-level outline lists the Parts), or pass the Part's path as provision to uklaw_get_amendments. The provision's applied history is in its annotations in uklaw_get_document.`;
+/** Where a provision scan's misses usually are: effects that name an enclosing heading or container, which a provision read matches (Design Decision 85). */
+const HEADING_ROUTE = `An effect on a heading names the enclosing cross-heading, Chapter or Part instead of the provision (e.g. "rule 77.3 heading" in uksi/1998/3132 names part/77/crossheading/1), which this URI match misses: a uklaw_get_document read of the provision lists the effects on its enclosing provisions, or pass the enclosing path as provision here. The provision's applied history is in its annotations in uklaw_get_document.`;
 
 /** Draft type codes, numbered by ISBN: the changes feeds index none of them (Design Decision 66). */
 const DRAFT_TYPES = codesIn('draft');
@@ -199,7 +199,7 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       reason: 'invalid_cursor',
       code: JsonRpcErrorCode.ValidationError,
       severity: 'notice',
-      when: 'cursor does not decode, belongs to a different query, or holds a position no call over that query reaches (a page past 10,000, or an offset past the end of its page).',
+      when: 'cursor does not decode, belongs to a different query, or holds a position no call over that query reaches (a page past 10,000, an offset past the end of its page, or a field only uklaw_track_changes writes).',
       recovery: 'Call uklaw_get_amendments again without cursor to start from the first page.',
     },
     {
@@ -394,15 +394,19 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
 
   format: (result) => {
     const q = result.query;
+    const more = `has_more: ${result.has_more}${result.next_cursor ? ` · next_cursor: \`${result.next_cursor}\`` : ''}`;
     const lines = [
       `## Effects ${q.direction === 'affected' ? 'on' : 'made by'} \`${q.item}\``,
       `**Query:** direction ${q.direction} · status ${q.status}${q.counterpart ? ` · counterpart \`${q.counterpart}\`` : ''}${q.provision ? ` · provision \`${q.provision}\`` : ''}`,
-      `**Total:** ${result.total} · shown ${result.effects.length} · has_more: ${result.has_more}${result.next_cursor ? ` · next_cursor: \`${result.next_cursor}\`` : ''}`,
     ];
+    // On a provision scan, total (= scan.total_effects) is the item's whole feed, not a match count, so it is labelled as the item's; scan figures cover this call only.
     if (result.scan) {
       lines.push(
-        `**Scan:** ${result.scan.effects_scanned} effects scanned over ${result.scan.pages_scanned} page(s) of ${result.scan.total_effects} total`,
+        `**Matched this call:** ${result.effects.length} · item total: ${result.total} · ${more}`,
+        `**Scan:** ${result.scan.effects_scanned} of ${result.scan.total_effects} effects held for the item scanned this call (${result.scan.pages_scanned} page(s))`,
       );
+    } else {
+      lines.push(`**Total:** ${result.total} · shown ${result.effects.length} · ${more}`);
     }
     lines.push('');
     for (const e of result.effects) lines.push(renderEffect(e));

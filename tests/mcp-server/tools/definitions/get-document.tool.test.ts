@@ -15,7 +15,8 @@
 import type { z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
-import { describe, expect, it } from 'vitest';
+import MarkdownIt from 'markdown-it';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getDocumentTool } from '@/mcp-server/tools/definitions/get-document.tool.js';
 import { MAX_BODY_BYTES } from '@/services/legislation/legislation-client.js';
 import {
@@ -26,24 +27,48 @@ import { ATTRIBUTION_LINES } from '@/services/legislation/reference-data.js';
 import {
   clml,
   contentText,
-  createUpstream,
   errorOf,
+  feed,
   fixture,
   gatedPacer,
   notFound,
   ok,
+  openPacer,
   type Route,
+  recordingPacer,
   redirect,
   routes,
   status,
   streamedBody,
+  testClock,
   thrown,
+  type Upstream,
+  createUpstream as wireUpstream,
 } from '../../../helpers/upstream.js';
 
 type DocumentInput = z.input<typeof getDocumentTool.input>;
 
+/** Every upstream a test wires: each request a read makes must have a route, the feed check included. */
+const wired: Upstream[] = [];
+const createUpstream: typeof wireUpstream = (...args) => {
+  const up = wireUpstream(...args);
+  wired.push(up);
+  return up;
+};
+afterEach(() => {
+  const unrouted = wired.flatMap((up) => up.unhandled);
+  wired.length = 0;
+  expect(unrouted).toEqual([]);
+});
+
 const S45 = '/ukpga/2018/12/section/45/data.xml';
 const ID_DPA = '/id/ukpga/2018/12';
+/** The unapplied changes feed a provision read checks for effects on enclosing provisions (Design Decision 85). */
+const unappliedFeed = (item: string) =>
+  `/changes/unapplied/affected/${item}/data.feed?results-count=500`;
+const DPA_FEED = unappliedFeed('ukpga/2018/12');
+/** An empty unapplied changes feed: the check finds nothing beyond the fragment's own effects. */
+const noneUnapplied = (): Response => feed('changes-empty.feed');
 const SI_1984 = {
   contents: '/uksi/1984/458/contents/data.xml',
   contentsMade: '/uksi/1984/458/contents/made/data.xml',
@@ -165,6 +190,23 @@ function annotatedTable(rows: number): string {
   ].join('');
 }
 
+/** Each source line of every paragraph, heading and list item in `text`, as plain text from a CommonMark parse. */
+function markdownLines(text: string): string[] {
+  const lines: string[] = [];
+  for (const token of new MarkdownIt('commonmark').parse(text, {})) {
+    if (token.type !== 'inline') continue;
+    let line = '';
+    for (const child of token.children ?? []) {
+      if (child.type === 'softbreak' || child.type === 'hardbreak') {
+        lines.push(line);
+        line = '';
+      } else line += child.content;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
 /** `value` as a regular expression that matches it literally. */
 function literal(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -177,9 +219,11 @@ const CUT_NOTICE = new RegExp(
 
 describe('provision reads', () => {
   it('reads current revised text with the effects touching the provision', async () => {
-    const up = createUpstream(routes([S45, clml('ukpga-2018-12-section-45.xml')]));
+    const up = createUpstream(
+      routes([S45, clml('ukpga-2018-12-section-45.xml')], [DPA_FEED, noneUnapplied]),
+    );
     const { output, notice } = await read({ item: 'ukpga/2018/12', provision: 's. 45' });
-    expect(up.paths()).toEqual([S45]);
+    expect(up.paths()).toEqual([S45, DPA_FEED]);
     expect(notice).toBeUndefined();
     expect(output).toMatchObject({
       kind: 'full',
@@ -251,10 +295,13 @@ describe('provision reads', () => {
     'lists the first 20 of %i unapplied effects touching a provision, on both surfaces',
     async (n, truncated) => {
       createUpstream(
-        routes([
-          S45,
-          ok(wholeItemEffects(fixture('clml/ukpga-2018-12-section-45.xml'), 'ukpga/2018/12', n)),
-        ]),
+        routes(
+          [
+            S45,
+            ok(wholeItemEffects(fixture('clml/ukpga-2018-12-section-45.xml'), 'ukpga/2018/12', n)),
+          ],
+          [DPA_FEED, noneUnapplied],
+        ),
       );
       const result = await runToolContract(getDocumentTool, {
         item: 'ukpga/2018/12',
@@ -262,7 +309,7 @@ describe('provision reads', () => {
       });
       expect(result.isError).toBeFalsy();
       const structured = result.structuredContent as {
-        editorial: { outstanding_effects: number };
+        editorial: { caveat: string; outstanding_effects: number };
         notice?: string;
         unapplied_effects: { effect_id: string }[];
       };
@@ -270,11 +317,14 @@ describe('provision reads', () => {
         Array.from({ length: 20 }, (_, i) => `whole-${i}`),
       );
       expect(structured.editorial.outstanding_effects).toBe(n);
+      const caveat = `Revised text: an editorial consolidation by legislation.gov.uk that can lag behind amendments; it is not the authoritative text. ${n} outstanding effects are recorded against this provision but not yet applied (${truncated ? '20 are listed in unapplied_effects; uklaw_get_amendments lists the rest' : 'see unapplied_effects'}).`;
+      expect(structured.editorial.caveat).toBe(caveat);
+      expect(markdownLines(contentText(result))).toContain(caveat);
       const text = contentText(result);
       expect(text).toContain('### Unapplied effects (20 listed)');
       expect(text).toContain('(effect whole-19)');
       expect(text).not.toContain('(effect whole-20)');
-      const notice = `${n} unapplied effects touch this provision, whole-item effects included; the first 20 are listed. Call uklaw_get_amendments with item ukpga/2018/12, provision section/45 and status "unapplied" for the full list.`;
+      const notice = `${n} unapplied effects touch this provision, whole-item effects included; the first 20 are listed. Call uklaw_get_amendments with item ukpga/2018/12 and status "unapplied", without provision, for the item's full list.`;
       if (truncated) {
         expect(structured.notice).toBe(notice);
         expect(text).toContain(notice);
@@ -287,15 +337,18 @@ describe('provision reads', () => {
   it('collapses U+0085 (NEL) in a heading and the text, on both surfaces', async () => {
     const heading = 'Right of access by the data subject';
     createUpstream(
-      routes([
-        S45,
-        ok(
-          fixture('clml/ukpga-2018-12-section-45.xml').replace(
-            `<Title>${heading}</Title>`,
-            '<Title>Right of access&#133;## by the data subject</Title>',
+      routes(
+        [
+          S45,
+          ok(
+            fixture('clml/ukpga-2018-12-section-45.xml').replace(
+              `<Title>${heading}</Title>`,
+              '<Title>Right of access&#133;## by the data subject</Title>',
+            ),
           ),
-        ),
-      ]),
+        ],
+        [DPA_FEED, noneUnapplied],
+      ),
     );
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
@@ -312,7 +365,9 @@ describe('provision reads', () => {
 
   it('reads the as-enacted text with a caveat that effects describe the revised text', async () => {
     const path = '/ukpga/2018/12/section/45/enacted/data.xml';
-    createUpstream(routes([path, clml('ukpga-2018-12-section-45-enacted.xml')]));
+    createUpstream(
+      routes([path, clml('ukpga-2018-12-section-45-enacted.xml')], [DPA_FEED, noneUnapplied]),
+    );
     const { output } = await read({
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -331,7 +386,9 @@ describe('provision reads', () => {
 
   it('reads a dated version with the provision’s own validity window', async () => {
     const path = '/ukpga/2018/12/section/45/2019-01-01/data.xml';
-    createUpstream(routes([path, clml('ukpga-2018-12-section-45-2019-01-01.xml')]));
+    createUpstream(
+      routes([path, clml('ukpga-2018-12-section-45-2019-01-01.xml')], [DPA_FEED, noneUnapplied]),
+    );
     const { output } = await read({
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -352,13 +409,18 @@ describe('provision reads', () => {
 
   it('asks an EU-origin item for /adopted directly and carries the EU line', async () => {
     const path = '/eur/2016/679/article/28/adopted/data.xml';
-    const up = createUpstream(routes([path, clml('eur-2016-679-article-28.xml')]));
+    const up = createUpstream(
+      routes(
+        [path, clml('eur-2016-679-article-28.xml')],
+        [unappliedFeed('eur/2016/679'), noneUnapplied],
+      ),
+    );
     const { output } = await read({
       item: 'eur/2016/679',
       provision: 'art. 28',
       version: 'enacted',
     });
-    expect(up.paths()).toEqual([path]);
+    expect(up.paths()).toEqual([path, unappliedFeed('eur/2016/679')]);
     expect(output.item).toMatchObject({ type: 'eur', category: 'euretained' });
     expect(output.provision).toMatchObject({ path: 'article/28', label: 'Article 28' });
     expect(output.attribution).toEqual([ATTRIBUTION_LINES.ogl, ATTRIBUTION_LINES.eu]);
@@ -366,7 +428,10 @@ describe('provision reads', () => {
 
   it('credits Westlaw on a Westlaw-contributed instrument', async () => {
     createUpstream(
-      routes(['/uksi/1986/1078/regulation/1/data.xml', clml('uksi-1986-1078-regulation-1.xml')]),
+      routes(
+        ['/uksi/1986/1078/regulation/1/data.xml', clml('uksi-1986-1078-regulation-1.xml')],
+        [unappliedFeed('uksi/1986/1078'), noneUnapplied],
+      ),
     );
     const { output } = await read({ item: 'uksi/1986/1078', provision: 'reg. 1' });
     expect(output.editorial.publisher).toEqual(['Westlaw', 'Statute Law Database']);
@@ -375,7 +440,10 @@ describe('provision reads', () => {
 
   it('marks a repealed provision', async () => {
     createUpstream(
-      routes(['/ukpga/1998/29/section/1/data.xml', clml('ukpga-1998-29-section-1.xml')]),
+      routes(
+        ['/ukpga/1998/29/section/1/data.xml', clml('ukpga-1998-29-section-1.xml')],
+        [unappliedFeed('ukpga/1998/29'), noneUnapplied],
+      ),
     );
     const { output } = await read({ item: 'ukpga/1998/29', provision: 'section/1' });
     expect(output.provision).toMatchObject({
@@ -394,7 +462,10 @@ describe('provision reads', () => {
       '<ukm:DocumentStatus Value="revised"/>',
       value ? `<ukm:DocumentStatus Value="${value}"/>` : '',
     );
-    createUpstream([{ path: S45, respond: ok(body) }]);
+    createUpstream([
+      { path: S45, respond: ok(body) },
+      { path: DPA_FEED, respond: noneUnapplied },
+    ]);
     const { output } = await read({ item: 'ukpga/2018/12', provision: 'section/45' });
     expect(output.editorial.document_status).toBe(reported);
     expect(output.editorial.caveat).toMatch(caveat);
@@ -406,7 +477,10 @@ describe('provision reads', () => {
       '<Text>That information is—</Text>',
       '<Text>That information is—</Text><Tabular><table><tr><th colspan="2">Merged</th></tr><tr><td>a</td><td>b</td></tr></table></Tabular>',
     );
-    createUpstream([{ path: S45, respond: ok(withTable) }]);
+    createUpstream([
+      { path: S45, respond: ok(withTable) },
+      { path: DPA_FEED, respond: noneUnapplied },
+    ]);
     const { output, notice } = await read({ item: 'ukpga/2018/12', provision: 'section/45' });
     expect(output.text).toContain('| Merged |');
     expect(notice).toBe(
@@ -420,7 +494,10 @@ describe('provision reads', () => {
       '<Text>That information is—</Text>',
       '<Text>That information is—</Text><Tabular><table><tr><th rowspan="1" colspan="1">Plain</th><th rowspan="1" colspan="1">Head</th></tr><tr><td rowspan="1" colspan="1">a</td><td rowspan="1" colspan="1">b</td></tr></table></Tabular>',
     );
-    createUpstream([{ path: S45, respond: ok(withTable) }]);
+    createUpstream([
+      { path: S45, respond: ok(withTable) },
+      { path: DPA_FEED, respond: noneUnapplied },
+    ]);
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -444,29 +521,35 @@ describe('provision reads', () => {
 
   it('splits a provision and version carried by an item URI', async () => {
     const path = '/ukpga/2018/12/section/45/enacted/data.xml';
-    const up = createUpstream(routes([path, clml('ukpga-2018-12-section-45-enacted.xml')]));
+    const up = createUpstream(
+      routes([path, clml('ukpga-2018-12-section-45-enacted.xml')], [DPA_FEED, noneUnapplied]),
+    );
     await read({ item: 'http://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted/data.xml' });
-    expect(up.paths()).toEqual([path]);
+    expect(up.paths()).toEqual([path, DPA_FEED]);
   });
 
   it('lets an explicit dated version override the version in the URI, and accepts a matching provision', async () => {
     const path = '/ukpga/2018/12/section/45/2019-01-01/data.xml';
-    const up = createUpstream(routes([path, clml('ukpga-2018-12-section-45-2019-01-01.xml')]));
+    const up = createUpstream(
+      routes([path, clml('ukpga-2018-12-section-45-2019-01-01.xml')], [DPA_FEED, noneUnapplied]),
+    );
     await read({
       item: 'https://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted',
       provision: 's. 45',
       version: '2019-01-01',
     });
-    expect(up.paths()).toEqual([path]);
+    expect(up.paths()).toEqual([path, DPA_FEED]);
   });
 
   it('lets an explicit version current override the version in the URI, on both surfaces', async () => {
-    const up = createUpstream(routes([S45, clml('ukpga-2018-12-section-45.xml')]));
+    const up = createUpstream(
+      routes([S45, clml('ukpga-2018-12-section-45.xml')], [DPA_FEED, noneUnapplied]),
+    );
     const result = await runToolContract(getDocumentTool, {
       item: 'https://www.legislation.gov.uk/ukpga/2018/12/section/45/enacted',
       version: 'current',
     });
-    expect(up.paths()).toEqual([S45]);
+    expect(up.paths()).toEqual([S45, DPA_FEED]);
     expect(result.structuredContent).toMatchObject({
       version: { requested: 'current', applied: '2026-06-19' },
     });
@@ -474,15 +557,593 @@ describe('provision reads', () => {
   });
 
   it('lets an explicit language en override /welsh in the URI, on both surfaces', async () => {
-    const up = createUpstream(routes([S45, clml('ukpga-2018-12-section-45.xml')]));
+    const up = createUpstream(
+      routes([S45, clml('ukpga-2018-12-section-45.xml')], [DPA_FEED, noneUnapplied]),
+    );
     const result = await runToolContract(getDocumentTool, {
       item: 'https://www.legislation.gov.uk/ukpga/2018/12/section/45/welsh',
       language: 'en',
     });
-    expect(up.paths()).toEqual([S45]);
+    expect(up.paths()).toEqual([S45, DPA_FEED]);
     expect(result.structuredContent).toMatchObject({ language: 'en' });
     expect(result.structuredContent).not.toHaveProperty('notice');
     expect(contentText(result)).toContain('language en');
+  });
+});
+
+describe('unapplied effects on enclosing and contained provisions', () => {
+  const CA_S29 = '/ukpga/2006/46/section/29/data.xml';
+  const CA_FEED = '/changes/unapplied/affected/ukpga/2006/46/data.feed?results-count=500';
+  const CPR_R77_3 = '/uksi/1998/3132/rule/77.3/data.xml';
+  const CPR_XH1 = '/uksi/1998/3132/part/77/crossheading/1/data.xml';
+  const CPR_FEED = '/changes/unapplied/affected/uksi/1998/3132/data.feed?results-count=500';
+  const caFeed = () => feed('changes-unapplied-affected-ukpga-2006-46.feed');
+  const cprFeed = () => feed('changes-unapplied-affected-uksi-1998-3132.feed');
+  const NOT_CHECKED_S29 =
+    'Unapplied effects on the provisions enclosing this one (part/3, part/3/chapter/3) were not checked: the item\'s unapplied changes feed could not be read within this call, so unapplied_effects lists only those legislation.gov.uk attaches to this provision. Call uklaw_get_amendments with item ukpga/2006/46 and status "unapplied", without provision, to list them.';
+  const UNCHECKED_CAVEAT =
+    'Revised text: an editorial consolidation by legislation.gov.uk that can lag behind amendments; it is not the authoritative text. No outstanding effects are recorded against this provision itself; effects on the provisions enclosing it were not checked.';
+
+  type Structured = {
+    editorial: { caveat: string; outstanding_effects: number };
+    kind: string;
+    notice?: string;
+    outline?: { provision: string }[];
+    unapplied_effects: { affected: { provisions_label?: string }; outstanding: boolean }[];
+  };
+  const labels = (s: Structured) => s.unapplied_effects.map((e) => e.affected.provisions_label);
+
+  /** A response that never arrives; it fails only when its request is aborted. */
+  const hang = (request: Request) =>
+    new Promise<Response>((_, reject) => {
+      request.signal.addEventListener('abort', () => reject(request.signal.reason), {
+        once: true,
+      });
+    });
+
+  it('lists the outstanding exclusion on the Chapter enclosing a section, on both surfaces', async () => {
+    const up = createUpstream(
+      routes([CA_S29, clml('ukpga-2006-46-section-29.xml')], [CA_FEED, caFeed]),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/2006/46',
+      provision: 'section/29',
+    });
+    expect(up.paths()).toEqual([CA_S29, CA_FEED]);
+    const s = result.structuredContent as Structured;
+    expect(s).not.toHaveProperty('notice');
+    expect(labels(s)).toEqual(['Pt. 3 Ch. 3', 'Act', 'Act']);
+    expect(s.unapplied_effects[0]).toMatchObject({ type: 'excluded', outstanding: true });
+    expect(s.editorial.outstanding_effects).toBe(1);
+    expect(s.editorial.caveat).toContain(
+      '1 outstanding effect is recorded against this provision but not yet applied (see unapplied_effects).',
+    );
+    expect(s.editorial.caveat).not.toContain('No outstanding effects');
+    const text = contentText(result);
+    expect(text).toContain('### Unapplied effects (3 listed)');
+    expect(text).toContain('- **excluded** — **outstanding**');
+    expect(text).toContain('outstanding effects 1');
+  });
+
+  it('lists a section heading’s effect, which names its cross-heading, and no sibling’s', async () => {
+    const S65 = '/ukpga/2018/12/section/65/data.xml';
+    /** The September recording of the Act's unapplied feed: the "s. 65 heading" effect has since been applied. */
+    createUpstream(
+      routes(
+        [S65, clml('ukpga-2018-12-section-65.xml')],
+        [DPA_FEED, feed('changes-unapplied-affected-ukpga-2018-12.feed')],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/2018/12',
+      provision: 'section/65',
+    });
+    const s = result.structuredContent as Structured;
+    expect(labels(s)).toEqual(['s. 65 heading']);
+    expect(s.editorial.outstanding_effects).toBe(1);
+    const notice =
+      'The item\'s unapplied changes feed holds 309 effects; the first 3 were checked against the provisions enclosing this one (part/3, part/3/chapter/4, part/3/chapter/4/crossheading/general-obligations). Call uklaw_get_amendments with item ukpga/2018/12 and status "unapplied", without provision, for the rest.';
+    expect(s.notice).toBe(notice);
+    expect(markdownLines(contentText(result))).toContain(notice);
+  });
+
+  it('lists the effects on a rule’s heading and on its Part', async () => {
+    createUpstream(routes([CPR_R77_3, clml('uksi-1998-3132-rule-77.3.xml')], [CPR_FEED, cprFeed]));
+    const result = await runToolContract(getDocumentTool, {
+      item: 'uksi/1998/3132',
+      provision: 'rule/77.3',
+    });
+    const s = result.structuredContent as Structured;
+    expect(new Set(labels(s))).toEqual(
+      new Set(['rule 77.3(b)', 'rule 77.3 heading', 'Pt. 77 Table of Contents']),
+    );
+    expect(labels(s)).toHaveLength(5);
+    expect(s.editorial.outstanding_effects).toBe(5);
+    expect(s).not.toHaveProperty('notice');
+  });
+
+  it('lists the effects on the rules a cross-heading read returns as full text', async () => {
+    createUpstream(
+      routes([CPR_XH1, clml('uksi-1998-3132-part-77-crossheading-1.xml')], [CPR_FEED, cprFeed]),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'uksi/1998/3132',
+      provision: 'part/77/crossheading/1',
+    });
+    const s = result.structuredContent as Structured;
+    expect(s.kind).toBe('full');
+    expect(labels(s).toSorted()).toEqual(
+      [
+        'Pt. 77 Table of Contents',
+        'Pt. 77 Table of Contents',
+        'Pt. 77 Table of Contents',
+        'rule 77.1A(a)',
+        'rule 77.1A(b)',
+        'rule 77.1A(c)',
+        'rule 77.3 heading',
+        'rule 77.3(b)',
+      ].toSorted(),
+    );
+    expect(s.editorial.outstanding_effects).toBe(8);
+    expect(contentText(result)).toContain('### Unapplied effects (8 listed)');
+  });
+
+  it('counts the effects inside an oversized container its outline does not list, on both surfaces', async () => {
+    const xml = inflate(
+      fixture('clml/uksi-1998-3132-part-77-crossheading-1.xml'),
+      'http://www.legislation.gov.uk/id/uksi/1998/3132/rule/77.3',
+      TEXT_BUDGET_CHARS,
+    );
+    createUpstream(routes([CPR_XH1, ok(xml)], [CPR_FEED, cprFeed]));
+    const result = await runToolContract(getDocumentTool, {
+      item: 'uksi/1998/3132',
+      provision: 'part/77/crossheading/1',
+    });
+    const s = result.structuredContent as Structured;
+    expect(s.kind).toBe('outline');
+    expect(s.outline?.map((e) => e.provision)).toContain('rule/77.3');
+    expect(labels(s).toSorted()).toEqual(
+      [
+        'Pt. 77 Table of Contents',
+        'Pt. 77 Table of Contents',
+        'Pt. 77 Table of Contents',
+        'rule 77.3 heading',
+      ].toSorted(),
+    );
+    expect(s.editorial.outstanding_effects).toBe(8);
+    const notice =
+      '4 more unapplied effects (4 outstanding) touch provisions inside Part 77 Cross-heading 1; the outline does not list them, and editorial.outstanding_effects counts the outstanding ones. Read a provision from the outline to list those on it, or call uklaw_get_amendments with item uksi/1998/3132 and status "unapplied", without provision, for the item\'s full list.';
+    expect(s.notice).toContain(notice);
+    expect(markdownLines(contentText(result)).join(' ')).toContain(notice);
+  });
+
+  describe('the caveat on a container outline', () => {
+    const REVISED =
+      'Revised text: an editorial consolidation by legislation.gov.uk that can lag behind amendments; it is not the authoritative text.';
+    /** Cross-heading 1 of Part 77, padded past the budget so the read answers with an outline. */
+    const oversized = (xml = fixture('clml/uksi-1998-3132-part-77-crossheading-1.xml')) =>
+      inflate(xml, 'http://www.legislation.gov.uk/id/uksi/1998/3132/rule/77.3', TEXT_BUDGET_CHARS);
+    /** `xml` with every effect labelled `label` marked as needing no change, so it is not outstanding. */
+    const settled = (xml: string, labels: string[]) =>
+      xml.replaceAll(/<ukm:(?:Unapplied)?Effect [^>]*>/g, (tag) =>
+        labels.some((label) => tag.includes(`AffectedProvisions="${label}"`))
+          ? tag.replace('RequiresApplied="true"', 'RequiresApplied="false"')
+          : tag,
+      );
+
+    it('says how many outstanding effects the list holds and routes to uklaw_get_amendments for the rest, on both surfaces', async () => {
+      createUpstream(routes([CPR_XH1, ok(oversized())], [CPR_FEED, cprFeed]));
+      const result = await runToolContract(getDocumentTool, {
+        item: 'uksi/1998/3132',
+        provision: 'part/77/crossheading/1',
+      });
+      const s = result.structuredContent as Structured;
+      expect(s.kind).toBe('outline');
+      expect(s.unapplied_effects.filter((e) => e.outstanding)).toHaveLength(4);
+      const caveat = `${REVISED} 8 outstanding effects are recorded against this provision but not yet applied (4 are listed in unapplied_effects; uklaw_get_amendments lists the rest).`;
+      expect(s.editorial.caveat).toBe(caveat);
+      expect(markdownLines(contentText(result))).toContain(caveat);
+    });
+
+    it('routes every outstanding effect to uklaw_get_amendments when the list holds none of them', async () => {
+      const labels = ['Pt. 77 Table of Contents', 'rule 77.3 heading'];
+      createUpstream(
+        routes(
+          [CPR_XH1, ok(settled(oversized(), labels))],
+          [
+            CPR_FEED,
+            () =>
+              ok(settled(fixture('feeds/changes-unapplied-affected-uksi-1998-3132.feed'), labels)),
+          ],
+        ),
+      );
+      const { output } = await read({
+        item: 'uksi/1998/3132',
+        provision: 'part/77/crossheading/1',
+      });
+      expect(output.kind).toBe('outline');
+      expect(output.unapplied_effects).toHaveLength(4);
+      expect(output.unapplied_effects?.some((e) => e.outstanding)).toBe(false);
+      expect(output.editorial.caveat).toBe(
+        `${REVISED} 4 outstanding effects are recorded against this provision but not yet applied (uklaw_get_amendments lists them).`,
+      );
+    });
+
+    it('keeps the caveat when the full text lists every outstanding effect', async () => {
+      createUpstream(
+        routes([CPR_XH1, clml('uksi-1998-3132-part-77-crossheading-1.xml')], [CPR_FEED, cprFeed]),
+      );
+      const { output } = await read({
+        item: 'uksi/1998/3132',
+        provision: 'part/77/crossheading/1',
+      });
+      expect(output.kind).toBe('full');
+      expect(output.editorial.caveat).toBe(
+        `${REVISED} 8 outstanding effects are recorded against this provision but not yet applied (see unapplied_effects).`,
+      );
+    });
+  });
+
+  it.each([
+    ['a sibling Chapter', ['part/3/chapter/4'], false],
+    ['a cross-heading of another Chapter', ['part/3/chapter/2/crossheading/x'], false],
+    [
+      'a range of Chapters covering the enclosing one',
+      ['part/3/chapter/2', 'part/3/chapter/4'],
+      true,
+    ],
+    ['a range ending inside the enclosing Part', ['part/2', 'part/3/chapter/2'], false],
+  ])('reaches the section from %s: %s', async (_case, refs, reaches) => {
+    const recorded = fixture('feeds/changes-unapplied-affected-ukpga-2006-46.feed');
+    const from = recorded.indexOf('EffectId="key-6b3979de1ad5a1fec0d1a0184fd99c90"');
+    const start = recorded.indexOf('<ukm:AffectedProvisions>', from);
+    const end =
+      recorded.indexOf('</ukm:AffectedProvisions>', start) + '</ukm:AffectedProvisions>'.length;
+    const id = (p: string) => `http://www.legislation.gov.uk/id/ukpga/2006/46/${p}`;
+    const provisions =
+      refs.length === 1
+        ? `<ukm:Section URI="${id(refs[0] as string)}">x</ukm:Section>`
+        : `<ukm:SectionRange Start="a" URI="${id(refs[0] as string)}" UpTo="${id(refs[1] as string)}">x</ukm:SectionRange>`;
+    const body = `${recorded.slice(0, start)}<ukm:AffectedProvisions>${provisions}</ukm:AffectedProvisions>${recorded.slice(end)}`;
+    createUpstream(routes([CA_S29, clml('ukpga-2006-46-section-29.xml')], [CA_FEED, ok(body)]));
+    const { output } = await read({ item: 'ukpga/2006/46', provision: 'section/29' });
+    expect(output.unapplied_effects?.some((e) => e.type === 'excluded')).toBe(reaches);
+    expect(output.editorial.outstanding_effects).toBe(reaches ? 1 : 0);
+  });
+
+  it('makes no feed request for a second provision of the item while the feed is cached', async () => {
+    const up = createUpstream(
+      routes(
+        [CPR_R77_3, clml('uksi-1998-3132-rule-77.3.xml')],
+        [CPR_XH1, clml('uksi-1998-3132-part-77-crossheading-1.xml')],
+        [CPR_FEED, cprFeed],
+      ),
+    );
+    await read({ item: 'uksi/1998/3132', provision: 'rule/77.3' });
+    const { output, notice } = await read({
+      item: 'uksi/1998/3132',
+      provision: 'part/77/crossheading/1',
+    });
+    expect(up.paths()).toEqual([CPR_R77_3, CPR_FEED, CPR_XH1]);
+    expect(notice).toBeUndefined();
+    expect(output.editorial.outstanding_effects).toBe(8);
+  });
+
+  it('checks the first page of a multi-page feed with the fragment’s own effects, saying how many were checked', async () => {
+    const paged = fixture('feeds/changes-unapplied-affected-ukpga-2006-46.feed')
+      .replace(
+        '<openSearch:totalResults>45</openSearch:totalResults>',
+        '<openSearch:totalResults>545</openSearch:totalResults>',
+      )
+      .replace(
+        '<link rel="first"',
+        '<link rel="next" type="application/atom+xml" href="http://www.legislation.gov.uk/changes/unapplied/affected/ukpga/2006/46/data.feed?results-count=500&amp;page=2"/><link rel="first"',
+      );
+    createUpstream(routes([CA_S29, clml('ukpga-2006-46-section-29.xml')], [CA_FEED, ok(paged)]));
+    const { output, notice } = await read({ item: 'ukpga/2006/46', provision: 'section/29' });
+    expect(output.unapplied_effects?.map((e) => e.affected.provisions_label)).toEqual([
+      'Pt. 3 Ch. 3',
+      'Act',
+      'Act',
+    ]);
+    expect(notice).toBe(
+      'The item\'s unapplied changes feed holds 545 effects; the first 45 were checked against the provisions enclosing this one (part/3, part/3/chapter/3). Call uklaw_get_amendments with item ukpga/2006/46 and status "unapplied", without provision, for the rest.',
+    );
+  });
+
+  it.each([
+    ['a 503', () => status(503)],
+    ['a 404 (a feed filter refused)', () => notFound()],
+    ['a 429', () => status(429, { 'retry-after': '120' })],
+    ['a 403', () => status(403)],
+    ['an HTML page', () => ok('<!DOCTYPE html><html><body>Error</body></html>')],
+    ['a feed stating no total', () => ok('<feed xmlns="http://www.w3.org/2005/Atom"></feed>')],
+    [
+      'a redirect off the feed path',
+      () => redirect(301, '/changes/unapplied/affected/ukpga/2006/46'),
+    ],
+  ])(
+    'reads the fragment’s own effects with a not-checked notice when the feed answers %s, on both surfaces',
+    async (_case, respond) => {
+      createUpstream(routes([CA_S29, clml('ukpga-2006-46-section-29.xml')], [CA_FEED, respond]));
+      const result = await runToolContract(getDocumentTool, {
+        item: 'ukpga/2006/46',
+        provision: 'section/29',
+      });
+      expect(result.isError).toBeFalsy();
+      const s = result.structuredContent as Structured;
+      expect(labels(s)).toEqual(['Act', 'Act']);
+      expect(s.editorial.outstanding_effects).toBe(0);
+      expect(s.editorial.caveat).toBe(UNCHECKED_CAVEAT);
+      expect(s.notice).toBe(NOT_CHECKED_S29);
+      const lines = markdownLines(contentText(result));
+      expect(lines).toContain(NOT_CHECKED_S29);
+      expect(lines).toContain(UNCHECKED_CAVEAT);
+    },
+  );
+
+  it('degrades with the not-checked notice when the shared queue sheds the feed request', async () => {
+    const up = createUpstream(
+      routes([CA_S29, clml('ukpga-2006-46-section-29.xml')], [CA_FEED, caFeed]),
+      { pacer: await gatedPacer(1) },
+    );
+    const { output, notice } = await read({ item: 'ukpga/2006/46', provision: 'section/29' });
+    expect(up.paths()).toEqual([CA_S29]);
+    expect(notice).toBe(NOT_CHECKED_S29);
+    expect(output.editorial.caveat).toBe(UNCHECKED_CAVEAT);
+  });
+
+  describe('within the read’s deadline', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /** Starts a read and reports whether it settled after each advance of the fake clock. */
+    function timed(input: DocumentInput) {
+      let settled = false;
+      const pending = runToolContract(getDocumentTool, input).finally(() => {
+        settled = true;
+      });
+      return { pending, settled: () => settled };
+    }
+
+    it('gives a hanging feed at most 10 s, then reads with the not-checked notice', async () => {
+      vi.useFakeTimers();
+      createUpstream(routes([CA_S29, clml('ukpga-2006-46-section-29.xml')], [CA_FEED, hang]));
+      const run = timed({ item: 'ukpga/2006/46', provision: 'section/29' });
+      await vi.advanceTimersByTimeAsync(9_900);
+      expect(run.settled()).toBe(false);
+      await vi.advanceTimersByTimeAsync(100);
+      expect(run.settled()).toBe(true);
+      const s = (await run.pending).structuredContent as Structured;
+      expect(s.notice).toBe(NOT_CHECKED_S29);
+      expect(s.editorial.caveat).toBe(UNCHECKED_CAVEAT);
+    });
+
+    it('gives the feed only what remains of the 45 s call deadline after a fragment answered at 40 s', async () => {
+      vi.useFakeTimers();
+      const clock = testClock();
+      const pacer = recordingPacer(openPacer());
+      createUpstream(
+        routes(
+          [
+            CA_S29,
+            () => {
+              clock.t += 40_000;
+              return clml('ukpga-2006-46-section-29.xml');
+            },
+          ],
+          [CA_FEED, hang],
+        ),
+        { clock, pacer },
+      );
+      const run = timed({ item: 'ukpga/2006/46', provision: 'section/29' });
+      await vi.advanceTimersByTimeAsync(4_900);
+      expect(run.settled()).toBe(false);
+      await vi.advanceTimersByTimeAsync(100);
+      expect(run.settled()).toBe(true);
+      expect(pacer.starts.map((s) => s.maxWaitMs)).toEqual([40_000, 0]);
+      expect(((await run.pending).structuredContent as Structured).notice).toBe(NOT_CHECKED_S29);
+    });
+
+    it('aborts the read when the caller cancels while the feed is pending', async () => {
+      let feedAsked: () => void = () => undefined;
+      const asked = new Promise<void>((resolve) => {
+        feedAsked = resolve;
+      });
+      createUpstream(
+        routes(
+          [CA_S29, clml('ukpga-2006-46-section-29.xml')],
+          [
+            CA_FEED,
+            (request) => {
+              feedAsked();
+              return hang(request);
+            },
+          ],
+        ),
+      );
+      const controller = new AbortController();
+      const ctx = createMockContext({ errors: getDocumentTool.errors, signal: controller.signal });
+      const pending = thrown(() =>
+        getDocumentTool.handler(
+          getDocumentTool.input.parse({ item: 'ukpga/2006/46', provision: 'section/29' }),
+          ctx,
+        ),
+      );
+      await asked;
+      controller.abort();
+      const error = await pending;
+      expect(error.name).toBe('AbortError');
+      expect(getEnrichment(ctx).notice).toBeUndefined();
+    });
+  });
+
+  it('skips the check for a draft, with no request and no notice', async () => {
+    const DRAFT = 'ukdsi/2026/9780348287233';
+    const path = `/${DRAFT}/regulation/1/data.xml`;
+    const xml = fixture('clml/uksi-1986-1078-regulation-1.xml').replaceAll('uksi/1986/1078', DRAFT);
+    const up = createUpstream([{ path, respond: ok(xml) }]);
+    const { notice } = await read({ item: DRAFT, provision: 'regulation/1' });
+    expect(up.paths()).toEqual([path]);
+    expect(notice).toBeUndefined();
+  });
+
+  describe('on a regnal path', () => {
+    const LPA = 'ukpga/Geo5/15-16/20';
+    const S84 = `/${LPA}/section/84/data.xml`;
+    /** The feeds index the Act by the calendar year its fragment records (`ukm:Year` 1925). */
+    const LPA_FEED = unappliedFeed('ukpga/1925/20');
+    const recorded = () => fixture('feeds/changes-unapplied-affected-ukpga-1925-20.feed');
+    /** The recorded feed's first effect on s. 52(3) (`key-e643…`), moved to Part II, which encloses s. 84. */
+    const PART_II_EFFECT = 'key-e643b6fe6d6485cf348c6057af12ca5d';
+    const onPartII = (xml: string) => xml.replace(`${LPA}/section/52/3"`, `${LPA}/part/II"`);
+
+    it('checks the calendar-year feed and lists an effect on the enclosing Part, on both surfaces', async () => {
+      const up = createUpstream(
+        routes(
+          [S84, clml('ukpga-Geo5-15-16-20-section-84.xml')],
+          [LPA_FEED, ok(onPartII(recorded()))],
+        ),
+      );
+      const result = await runToolContract(getDocumentTool, { item: LPA, provision: 'section/84' });
+      expect(up.paths()).toEqual([S84, LPA_FEED]);
+      const s = result.structuredContent as Structured;
+      expect(s).not.toHaveProperty('notice');
+      const ids = (
+        result.structuredContent as { unapplied_effects: { effect_id: string }[] }
+      ).unapplied_effects.map((e) => e.effect_id);
+      expect(ids).toContain(PART_II_EFFECT);
+      expect(s.unapplied_effects).toHaveLength(2);
+      expect(s.editorial.outstanding_effects).toBe(2);
+      expect(s.editorial.caveat).toContain(
+        '2 outstanding effects are recorded against this provision but not yet applied (see unapplied_effects).',
+      );
+      expect(contentText(result)).toContain('### Unapplied effects (2 listed)');
+    });
+
+    it('keeps only the served Act’s effects from a calendar path two Acts share', async () => {
+      /** The other Act at ukpga/1955/19 (the Friendly Societies Act 1955), on the Law of Property Act s. 84 fragment's shape. */
+      const FSA = 'ukpga/Eliz2/4-5/19';
+      const path = `/${FSA}/section/84/data.xml`;
+      const fragment = fixture('clml/ukpga-Geo5-15-16-20-section-84.xml')
+        .replaceAll(LPA, FSA)
+        .replace('<ukm:Year Value="1925"/>', '<ukm:Year Value="1955"/>')
+        .replace('<ukm:Number Value="20"/>', '<ukm:Number Value="19"/>');
+      /**
+       * The recorded ukpga/1955/19 feed holds the Air Force Act 1955's effects only
+       * (ukpga/Eliz2/3-4/19, some recorded at ukpga/1955/19). One more names the Air
+       * Force Act as affected but cites this Act's Part II: only affected.item tells them apart.
+       */
+      const one = recorded();
+      const start = one.lastIndexOf('<entry>', one.indexOf(PART_II_EFFECT));
+      const entry = onPartII(one.slice(start, one.indexOf('</entry>', start) + '</entry>'.length))
+        .replaceAll(`${LPA}/part/II`, `${FSA}/part/II`)
+        .replaceAll(LPA, 'ukpga/Eliz2/3-4/19');
+      const shared = fixture('feeds/changes-unapplied-affected-ukpga-1955-19.feed').replace(
+        '</feed>',
+        `${entry}</feed>`,
+      );
+      const FEED_1955 = unappliedFeed('ukpga/1955/19');
+      const up = createUpstream(routes([path, ok(fragment)], [FEED_1955, ok(shared)]));
+      const { output, notice } = await read({ item: FSA, provision: 'section/84' });
+      expect(up.paths()).toEqual([path, FEED_1955]);
+      expect(notice).toBeUndefined();
+      expect(output.unapplied_effects?.map((e) => e.affected.item)).toEqual([FSA]);
+      expect(output.editorial.outstanding_effects).toBe(1);
+    });
+
+    describe('an effect the fragment carries whose feed copy differs', () => {
+      /** The s. 84 exclusion (`key-591e…`), which both the fragment and the feed record. */
+      const S84_EFFECT = 'key-591e1c02c3b4f907745f3414cfd18879';
+      const S84_REF = `<ukm:Section Ref="section-84" URI="http://www.legislation.gov.uk/id/${LPA}/section/84">s. 84</ukm:Section>`;
+      const ref = (p: string) =>
+        `<ukm:Section URI="http://www.legislation.gov.uk/id/${LPA}/${p}">x</ukm:Section>`;
+      const range = (from: string, upTo: string) =>
+        `<ukm:SectionRange URI="http://www.legislation.gov.uk/id/${LPA}/${from}" UpTo="http://www.legislation.gov.uk/id/${LPA}/${upTo}">x</ukm:SectionRange>`;
+      /** `xml` with the s. 84 effect's record passed through `edit`, in a fragment or a feed. */
+      const onS84Effect = (xml: string, edit: (record: string) => string) => {
+        const at = xml.indexOf(`EffectId="${S84_EFFECT}"`);
+        const start = Math.max(
+          xml.lastIndexOf('<ukm:UnappliedEffect ', at),
+          xml.lastIndexOf('<ukm:Effect ', at),
+        );
+        const close = xml.startsWith('<ukm:Effect ', start)
+          ? '</ukm:Effect>'
+          : '</ukm:UnappliedEffect>';
+        const end = xml.indexOf(close, at) + close.length;
+        return `${xml.slice(0, start)}${edit(xml.slice(start, end))}${xml.slice(end)}`;
+      };
+      /** A `Modified` stamp the fragment's copy lacks: the feed's record no longer parses to the fragment's. */
+      const stamped = (record: string) =>
+        record.replace(
+          `EffectId="${S84_EFFECT}"`,
+          `EffectId="${S84_EFFECT}" Modified="2026-07-01T09:00:00Z"`,
+        );
+
+      it.each([
+        ['naming the provision itself', S84_REF],
+        ['naming a provision nested below it', ref('section/84/2')],
+        ['a range starting at it', range('section/84', 'section/86')],
+        ['a whole-item effect', ''],
+      ])('lists it once, %s, on both surfaces', async (_case, provisions) => {
+        const place = (record: string) => record.replace(S84_REF, provisions);
+        const fragment = onS84Effect(fixture('clml/ukpga-Geo5-15-16-20-section-84.xml'), place);
+        const body = onS84Effect(recorded(), (r) => stamped(place(r)));
+        createUpstream(routes([S84, ok(fragment)], [LPA_FEED, ok(body)]));
+        const result = await runToolContract(getDocumentTool, {
+          item: LPA,
+          provision: 'section/84',
+        });
+        const s = result.structuredContent as Omit<Structured, 'unapplied_effects'> & {
+          unapplied_effects: { effect_id: string }[];
+        };
+        expect(s.unapplied_effects.map((e) => e.effect_id)).toEqual([S84_EFFECT]);
+        expect(s.editorial.outstanding_effects).toBe(1);
+        expect(s.editorial.caveat).toContain(
+          '1 outstanding effect is recorded against this provision but not yet applied (see unapplied_effects).',
+        );
+        expect(contentText(result)).toContain('### Unapplied effects (1 listed)');
+      });
+
+      it('adds a feed range covering the provision with neither end inside it, which the fragment does not carry', async () => {
+        const body = onS84Effect(recorded(), (r) =>
+          stamped(r.replace(S84_REF, range('section/80', 'section/90'))),
+        );
+        const fragment = onS84Effect(fixture('clml/ukpga-Geo5-15-16-20-section-84.xml'), () => '');
+        createUpstream(routes([S84, ok(fragment)], [LPA_FEED, ok(body)]));
+        const { output } = await read({ item: LPA, provision: 'section/84' });
+        expect(output.unapplied_effects?.map((e) => e.effect_id)).toEqual([S84_EFFECT]);
+        expect(output.editorial.outstanding_effects).toBe(1);
+      });
+    });
+
+    it('routes the not-checked notice to the calendar-year path when the feed cannot be read', async () => {
+      createUpstream(
+        routes([S84, clml('ukpga-Geo5-15-16-20-section-84.xml')], [LPA_FEED, () => status(503)]),
+      );
+      const { notice } = await read({ item: LPA, provision: 'section/84' });
+      expect(notice).toBe(
+        `Unapplied effects on the provisions enclosing this one (part/II, part/II/crossheading/covenants) were not checked: the item's unapplied changes feed could not be read within this call, so unapplied_effects lists only those legislation.gov.uk attaches to this provision. Call uklaw_get_amendments with item ukpga/1925/20 and status "unapplied", without provision, keeping the effects whose affected.item is ${LPA}, to list them.`,
+      );
+    });
+
+    it('skips the check before any request when the fragment records no calendar year', async () => {
+      const xml = fixture('clml/ukpga-Geo5-15-16-20-section-84.xml').replace(
+        '<ukm:Year Value="1925"/>',
+        '',
+      );
+      const up = createUpstream(routes([S84, ok(xml)]));
+      const result = await runToolContract(getDocumentTool, { item: LPA, provision: 'section/84' });
+      expect(up.paths()).toEqual([S84]);
+      const notice = `Unapplied effects on the provisions enclosing this one (part/II, part/II/crossheading/covenants) were not checked: legislation.gov.uk's changes feeds index ${LPA} by calendar year, which this document does not record. Call uklaw_get_amendments with item ukpga/YYYY/20, where YYYY is the Act's calendar year, and status "unapplied", without provision, keeping the effects whose affected.item is ${LPA}, to list them.`;
+      const s = result.structuredContent as Structured;
+      expect(s.notice).toBe(notice);
+      expect(s.editorial.caveat).toContain(
+        'Effects on the provisions enclosing it were not checked.',
+      );
+      expect(markdownLines(contentText(result))).toContain(notice);
+    });
   });
 });
 
@@ -490,7 +1151,12 @@ describe('Welsh', () => {
   const WELSH = '/anaw/2016/1/section/1/welsh/data.xml';
 
   it('reads Welsh text and keeps whole-item effects on the provision', async () => {
-    createUpstream(routes([WELSH, clml('anaw-2016-1-section-1-welsh.xml')]));
+    createUpstream(
+      routes(
+        [WELSH, clml('anaw-2016-1-section-1-welsh.xml')],
+        [unappliedFeed('anaw/2016/1'), noneUnapplied],
+      ),
+    );
     const { output, notice } = await read({
       item: 'anaw/2016/1',
       provision: 'section/1',
@@ -519,7 +1185,12 @@ describe('Welsh', () => {
   });
 
   it('does not list an effect on a section range elsewhere in the Act', async () => {
-    createUpstream(routes([WELSH, clml('anaw-2016-1-section-1-welsh.xml')]));
+    createUpstream(
+      routes(
+        [WELSH, clml('anaw-2016-1-section-1-welsh.xml')],
+        [unappliedFeed('anaw/2016/1'), noneUnapplied],
+      ),
+    );
     const { output } = await read({ item: 'anaw/2016/1', provision: 'section/1', language: 'cy' });
     expect(output.unapplied_effects?.map((e) => e.affected.provisions_label)).not.toContain(
       's. 186A-186C',
@@ -545,9 +1216,14 @@ describe('Welsh', () => {
   });
 
   it('takes the Welsh language from an item URI', async () => {
-    const up = createUpstream(routes([WELSH, clml('anaw-2016-1-section-1-welsh.xml')]));
+    const up = createUpstream(
+      routes(
+        [WELSH, clml('anaw-2016-1-section-1-welsh.xml')],
+        [unappliedFeed('anaw/2016/1'), noneUnapplied],
+      ),
+    );
     await read({ item: 'https://www.legislation.gov.uk/anaw/2016/1/section/1/welsh' });
-    expect(up.paths()).toEqual([WELSH]);
+    expect(up.paths()).toEqual([WELSH, unappliedFeed('anaw/2016/1')]);
   });
 
   it('returns English with a notice when upstream holds no Welsh text (301 to English)', async () => {
@@ -555,6 +1231,7 @@ describe('Welsh', () => {
       routes(
         ['/ukpga/2018/12/section/45/welsh/data.xml', redirect(301, S45)],
         [S45, clml('ukpga-2018-12-section-45.xml')],
+        [DPA_FEED, noneUnapplied],
       ),
     );
     const { output, notice } = await read({
@@ -562,7 +1239,7 @@ describe('Welsh', () => {
       provision: 'section/45',
       language: 'cy',
     });
-    expect(up.paths()).toEqual(['/ukpga/2018/12/section/45/welsh/data.xml', S45]);
+    expect(up.paths()).toEqual(['/ukpga/2018/12/section/45/welsh/data.xml', S45, DPA_FEED]);
     expect(output.language).toBe('en');
     expect(output.links.web).toBe('https://www.legislation.gov.uk/ukpga/2018/12/section/45');
     expect(notice).toBe('Welsh text is not held for this document; the English text is returned.');
@@ -576,7 +1253,10 @@ describe('oversized fragments', () => {
       'http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/g',
       TEXT_BUDGET_CHARS + 1_000,
     );
-    createUpstream([{ path: S45, respond: ok(big) }]);
+    createUpstream([
+      { path: S45, respond: ok(big) },
+      { path: DPA_FEED, respond: noneUnapplied },
+    ]);
     const { output } = await read({ item: 'ukpga/2018/12', provision: 'section/45' });
     expect(output.kind).toBe('outline');
     expect(output.text).toBeUndefined();
@@ -607,7 +1287,10 @@ describe('oversized fragments', () => {
       'http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/g',
       TEXT_BUDGET_CHARS + 1_000,
     );
-    createUpstream([{ path: '/ukpga/2018/12/section/45/2/g/data.xml', respond: ok(big) }]);
+    createUpstream([
+      { path: '/ukpga/2018/12/section/45/2/g/data.xml', respond: ok(big) },
+      { path: DPA_FEED, respond: noneUnapplied },
+    ]);
     const { output, notice } = await read({ item: 'ukpga/2018/12', provision: 's. 45(2)(g)' });
     expect(output.kind).toBe('full');
     expect(output.provision?.label).toBe('Section 45(2)(g)');
@@ -704,7 +1387,10 @@ describe('oversized fragments', () => {
       'http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/g',
       12_000,
     );
-    createUpstream([{ path: S45, respond: ok(big) }]);
+    createUpstream([
+      { path: S45, respond: ok(big) },
+      { path: DPA_FEED, respond: noneUnapplied },
+    ]);
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -972,6 +1658,49 @@ describe('match_text', () => {
     expect(notice).toContain('No provision of uksi/2019/419 matches "zzqx"');
   });
 
+  it.each([
+    ['emphasis', 'zz*q*'],
+    ['a code span, underscores and an HTML tag', '`x`_y_ <i>'],
+    ['a line break', 'zz\n# q'],
+  ])('quotes a term holding %s exactly on both surfaces when nothing matches', async (_, term) => {
+    const path = `/uksi/2019/419/contents/data.xml?text=${encodeURIComponent(term)}`;
+    createUpstream(routes([path, clml('uksi-2019-419-contents.xml')]));
+    const result = await runToolContract(getDocumentTool, {
+      item: 'uksi/2019/419',
+      match_text: term,
+    });
+    const notice = (result.structuredContent as { notice: string }).notice;
+    /** The enrichment trailer, the last content[] block. */
+    const trailer = result.content.at(-1) as { type: 'text'; text: string };
+    const tokens = new MarkdownIt('commonmark').parse(trailer.text, {});
+    expect(tokens.map((t) => t.type).filter((t) => !t.startsWith('blockquote'))).toEqual([
+      'paragraph_open',
+      'inline',
+      'paragraph_close',
+    ]);
+    expect(tokens.filter((t) => t.type === 'blockquote_open')).toHaveLength(1);
+    /** The block quote's text as a CommonMark parse reads it back, a break read as a line break. */
+    const quoted = tokens
+      .slice(
+        tokens.findIndex((t) => t.type === 'blockquote_open'),
+        tokens.findIndex((t) => t.type === 'blockquote_close'),
+      )
+      .filter((t) => t.type === 'inline')
+      .flatMap((t) => t.children ?? [])
+      .map((c) => (c.type === 'softbreak' || c.type === 'hardbreak' ? '\n' : c.content))
+      .join('');
+    expect(quoted).toContain(
+      `No provision of uksi/2019/419 matches "${term}" at this version. Try another term, or drop match_text to list the item's provisions.`,
+    );
+    /** structuredContent carries the string the trailer quotes, escapes included. */
+    expect(trailer.text).toContain(
+      notice
+        .split('\n')
+        .map((line) => `> ${line}`)
+        .join('\n'),
+    );
+  });
+
   describe('past one 100-entry window of matches', () => {
     /** The recorded "processor" contents with its section 3 hit repeated as sections 1000–1300: 303 hits in all. */
     const many303 = (): string => {
@@ -1128,7 +1857,10 @@ describe('outline_offset', () => {
       );
 
     it('returns the window from the offset, naming a provision inside it, on both surfaces', async () => {
-      createUpstream([{ path: S45, respond: ok(big()) }]);
+      createUpstream([
+        { path: S45, respond: ok(big()) },
+        { path: DPA_FEED, respond: noneUnapplied },
+      ]);
       const result = await runToolContract(getDocumentTool, {
         item: 'ukpga/2018/12',
         provision: 'section/45',
@@ -1156,7 +1888,10 @@ describe('outline_offset', () => {
     });
 
     it('returns an empty outline, not the full text, at an offset past the end, on both surfaces', async () => {
-      createUpstream([{ path: S45, respond: ok(big()) }]);
+      createUpstream([
+        { path: S45, respond: ok(big()) },
+        { path: DPA_FEED, respond: noneUnapplied },
+      ]);
       const result = await runToolContract(getDocumentTool, {
         item: 'ukpga/2018/12',
         provision: 'section/45',
@@ -1183,7 +1918,9 @@ describe('outline_offset', () => {
     });
 
     it('ignores the offset when the text fits', async () => {
-      createUpstream(routes([S45, clml('ukpga-2018-12-section-45.xml')]));
+      createUpstream(
+        routes([S45, clml('ukpga-2018-12-section-45.xml')], [DPA_FEED, noneUnapplied]),
+      );
       const { output } = await read({
         item: 'ukpga/2018/12',
         provision: 'section/45',
@@ -1215,7 +1952,7 @@ describe('item extent and version window', () => {
   });
 
   it('reports the item extent on a provision read, and no end date for the latest version', async () => {
-    createUpstream(routes([S45, clml('ukpga-2018-12-section-45.xml')]));
+    createUpstream(routes([S45, clml('ukpga-2018-12-section-45.xml')], [DPA_FEED, noneUnapplied]));
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -1234,7 +1971,9 @@ describe('item extent and version window', () => {
 
   it('dates the item version apart from the provision’s own window on a dated provision read', async () => {
     const path = '/ukpga/2018/12/section/45/2019-01-01/data.xml';
-    createUpstream(routes([path, clml('ukpga-2018-12-section-45-2019-01-01.xml')]));
+    createUpstream(
+      routes([path, clml('ukpga-2018-12-section-45-2019-01-01.xml')], [DPA_FEED, noneUnapplied]),
+    );
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -1252,7 +1991,9 @@ describe('item extent and version window', () => {
 
   it('reads an unrecorded provision window on enacted text as unrecorded, never as open to the present', async () => {
     const path = '/ukpga/2018/12/section/45/enacted/data.xml';
-    createUpstream(routes([path, clml('ukpga-2018-12-section-45-enacted.xml')]));
+    createUpstream(
+      routes([path, clml('ukpga-2018-12-section-45-enacted.xml')], [DPA_FEED, noneUnapplied]),
+    );
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -1267,7 +2008,7 @@ describe('item extent and version window', () => {
   });
 
   it('reads an open provision window on current revised text as running to the present', async () => {
-    createUpstream(routes([S45, clml('ukpga-2018-12-section-45.xml')]));
+    createUpstream(routes([S45, clml('ukpga-2018-12-section-45.xml')], [DPA_FEED, noneUnapplied]));
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -1299,7 +2040,9 @@ describe('item extent and version window', () => {
 
   it('takes a provision window from one element: an end with no start leaves the start unrecorded', async () => {
     const path = '/ukpga/2018/12/section/45/2018-05-24/data.xml';
-    createUpstream(routes([path, clml('ukpga-2018-12-section-45-2018-05-24.xml')]));
+    createUpstream(
+      routes([path, clml('ukpga-2018-12-section-45-2018-05-24.xml')], [DPA_FEED, noneUnapplied]),
+    );
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -1320,7 +2063,7 @@ describe('item extent and version window', () => {
       '<P1group RestrictEndDate="2018-05-25" RestrictStartDate="2020-12-31"',
     );
     expect(inverted).not.toBe(recorded);
-    createUpstream(routes([path, ok(inverted)]));
+    createUpstream(routes([path, ok(inverted)], [DPA_FEED, noneUnapplied]));
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -1349,7 +2092,7 @@ describe('item extent and version window', () => {
       '<P1group RestrictEndDate="2018-05-25&#10;## injected" RestrictStartDate="2020-12-31"',
     );
     expect(injected).not.toBe(recorded);
-    createUpstream(routes([path, ok(injected)]));
+    createUpstream(routes([path, ok(injected)], [DPA_FEED, noneUnapplied]));
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -1387,6 +2130,434 @@ describe('item extent and version window', () => {
     const text = contentText(result);
     expect(text).toContain('number 458 · extent not recorded · https://');
     expect(text).toContain('requested current, applied made · language en');
+  });
+});
+
+describe('redirected item paths', () => {
+  const LPA = 'ukpga/Geo5/15-16/20';
+  const S84 = `/${LPA}/section/84/data.xml`;
+  const S205 = `/${LPA}/section/205/data.xml`;
+  const WSI_CONTENTS = '/wsi/2002/808/contents/data.xml';
+  const AMBIGUOUS = '/ukpga/1955/19/section/1/data.xml';
+  const servedAt = (input: string, served: string) =>
+    `legislation.gov.uk serves ${input} at ${served}, which item.path reports.`;
+  /** The changes feeds index the Act by calendar year, so a regnal read checks the calendar-year feed (Design Decision 85). */
+  const LPA_FEED = unappliedFeed('ukpga/1925/20');
+  const lpaFeed = () => feed('changes-unapplied-affected-ukpga-1925-20.feed');
+
+  type Structured = Record<string, unknown> & {
+    item: { id_uri: string; path: string };
+    links: { web: string; xml: string };
+    notice?: string;
+  };
+
+  /** The fields a redirected read must share with a read of the path it is served at. */
+  const servedFields = (s: Record<string, unknown>) => ({
+    kind: s.kind,
+    provision: s.provision,
+    outline: s.outline,
+    outline_notice: s.outline_notice,
+    text: s.text,
+    annotations: s.annotations,
+    unapplied_effects: s.unapplied_effects,
+    editorial: s.editorial,
+    version: s.version,
+    links: s.links,
+  });
+
+  function multipleChoicesAt(body: string): Response {
+    return new Response(body, {
+      status: 300,
+      headers: {
+        'content-type': 'text/html;charset=utf-8',
+        'cache-control': 'max-age=3600, s-maxage=3600, public, no-transform',
+      },
+    });
+  }
+
+  it('reads a provision on its regnal path with its heading, window and outstanding effect, checked against the calendar-year feed', async () => {
+    const up = createUpstream(
+      routes([S84, clml('ukpga-Geo5-15-16-20-section-84.xml')], [LPA_FEED, lpaFeed]),
+    );
+    const result = await runToolContract(getDocumentTool, { item: LPA, provision: 'section/84' });
+    expect(up.paths()).toEqual([S84, LPA_FEED]);
+    expect(result.structuredContent).not.toHaveProperty('notice');
+    expect(result.structuredContent).toMatchObject({
+      kind: 'outline',
+      item: { path: LPA, id_uri: `https://www.legislation.gov.uk/id/${LPA}`, year: 1925 },
+      provision: {
+        path: 'section/84',
+        id_uri: `https://www.legislation.gov.uk/id/${LPA}/section/84`,
+        heading: 'Power to discharge or modify restrictive covenants affecting land.',
+        valid_from: '2024-11-04',
+      },
+      editorial: { outstanding_effects: 1 },
+      links: { web: `https://www.legislation.gov.uk/${LPA}/section/84` },
+    });
+    expect((result.structuredContent as { editorial: { caveat: string } }).editorial.caveat).toBe(
+      'Revised text: an editorial consolidation by legislation.gov.uk that can lag behind amendments; it is not the authoritative text. 1 outstanding effect is recorded against this provision but not yet applied (see unapplied_effects).',
+    );
+  });
+
+  it('reads a calendar-year path at the regnal path it is served at, with no extra request, on both surfaces', async () => {
+    createUpstream(routes([S84, clml('ukpga-Geo5-15-16-20-section-84.xml')], [LPA_FEED, lpaFeed]));
+    const regnal = (await runToolContract(getDocumentTool, { item: LPA, provision: 'section/84' }))
+      .structuredContent as Structured;
+
+    const up = createUpstream(
+      routes(
+        ['/ukpga/1925/20/section/84/data.xml', redirect(301, S84)],
+        [S84, clml('ukpga-Geo5-15-16-20-section-84.xml')],
+        [LPA_FEED, lpaFeed],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/1925/20',
+      provision: 'section/84',
+    });
+    expect(result.isError).toBeFalsy();
+    expect(up.paths()).toEqual(['/ukpga/1925/20/section/84/data.xml', S84, LPA_FEED]);
+    const structured = result.structuredContent as Structured;
+    expect(servedFields(structured)).toEqual(servedFields(regnal));
+    expect(structured.item).toEqual(regnal.item);
+    expect(structured).toMatchObject({
+      item: { path: LPA },
+      provision: { id_uri: `https://www.legislation.gov.uk/id/${LPA}/section/84` },
+      editorial: { outstanding_effects: 1 },
+    });
+    const notice = servedAt('ukpga/1925/20', LPA);
+    expect(structured.notice).toBe(notice);
+    const lines = markdownLines(contentText(result));
+    expect(lines).toContain(notice);
+    expect(lines.find((l) => l.startsWith('Item:'))).toMatch(
+      /^Item: ukpga\/Geo5\/15-16\/20 · ukpga /,
+    );
+    expect(lines.find((l) => l.startsWith('Provision:'))).toBe(
+      `Provision: Section 84 (section/84) — Power to discharge or modify restrictive covenants affecting land. · https://www.legislation.gov.uk/id/${LPA}/section/84`,
+    );
+  });
+
+  it('outlines an oversized fragment of a calendar-year path from the served path’s child provisions', async () => {
+    createUpstream(
+      routes([S205, clml('ukpga-Geo5-15-16-20-section-205.xml')], [LPA_FEED, lpaFeed]),
+    );
+    const regnal = (await runToolContract(getDocumentTool, { item: LPA, provision: 'section/205' }))
+      .structuredContent as Structured & { outline: { provision: string }[] };
+    expect(regnal.kind).toBe('outline');
+    expect(regnal.outline.map((e) => e.provision)).toEqual([
+      'section/205/1',
+      'section/205/1A',
+      'section/205/2',
+      'section/205/3',
+    ]);
+
+    const up = createUpstream(
+      routes(
+        ['/ukpga/1925/20/section/205/data.xml', redirect(301, S205)],
+        [S205, clml('ukpga-Geo5-15-16-20-section-205.xml')],
+        [LPA_FEED, lpaFeed],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/1925/20',
+      provision: 'section/205',
+    });
+    expect(up.paths()).toEqual(['/ukpga/1925/20/section/205/data.xml', S205, LPA_FEED]);
+    const structured = result.structuredContent as Structured;
+    expect(servedFields(structured)).toEqual(servedFields(regnal));
+    expect(structured.notice).toBe(servedAt('ukpga/1925/20', LPA));
+  });
+
+  it('outlines a Welsh SI read as uksi from the wsi table of contents it is served at', async () => {
+    createUpstream(routes([WSI_CONTENTS, clml('wsi-2002-808-contents.xml')]));
+    const direct = await runToolContract(getDocumentTool, { item: 'wsi/2002/808' });
+    const wsi = direct.structuredContent as Structured & { outline: unknown[] };
+    expect(wsi.kind).toBe('outline');
+    expect(wsi.outline).toHaveLength(41);
+    expect(wsi.notice ?? '').not.toContain('serves');
+
+    const up = createUpstream(
+      routes(
+        ['/uksi/2002/808/contents/data.xml', redirect(301, WSI_CONTENTS)],
+        [WSI_CONTENTS, clml('wsi-2002-808-contents.xml')],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, { item: 'uksi/2002/808' });
+    expect(up.paths()).toEqual(['/uksi/2002/808/contents/data.xml', WSI_CONTENTS]);
+    const structured = result.structuredContent as Structured;
+    expect(servedFields(structured)).toEqual(servedFields(wsi));
+    expect(structured.item).toEqual(wsi.item);
+    expect(structured.item).toMatchObject({
+      path: 'wsi/2002/808',
+      type: 'wsi',
+      type_label: 'Wales Statutory Instruments',
+    });
+    expect(structured.outline_notice).toContain('item wsi/2002/808');
+    const notice = servedAt('uksi/2002/808', 'wsi/2002/808');
+    expect(structured.notice).toBe(wsi.notice ? `${notice} ${wsi.notice}` : notice);
+    expect(markdownLines(contentText(result))).toContain(structured.notice);
+  });
+
+  describe('item-level routes to uklaw_get_amendments', () => {
+    const LPA_CONTENTS = `/${LPA}/contents/data.xml`;
+    const lpaContents = () => fixture('clml/ukpga-Geo5-15-16-20-contents.xml');
+    /** uklaw_get_amendments refuses a regnal path (Design Decision 64): every route names the calendar-year path and the regnal affected.item to keep. */
+    const KEEP = `keeping the effects whose affected.item is ${LPA}`;
+    const outlineNotice = (calendar: string) =>
+      `4 unapplied effects are recorded against this item (4 outstanding); an item outline does not list them. Call uklaw_get_amendments with item ${calendar} and status "unapplied", ${KEEP}, for the list.`;
+    const formatLine = (calendar: string) =>
+      `Not listed on an item outline; call uklaw_get_amendments with item ${calendar} and status "unapplied", ${KEEP}, for them.`;
+    /** The code spans of the content[] paragraph that opens `Not listed on an item outline`, from a CommonMark parse. */
+    const routeCodeSpans = (text: string) =>
+      new MarkdownIt('commonmark')
+        .parse(text, {})
+        .find((t) => t.type === 'inline' && t.content.startsWith('Not listed on an item outline'))
+        ?.children?.filter((c) => c.type === 'code_inline')
+        .map((c) => c.content);
+
+    it('routes a regnal item outline to the calendar-year path, keeping the regnal affected.item, on both surfaces', async () => {
+      const up = createUpstream(routes([LPA_CONTENTS, ok(lpaContents())]));
+      const result = await runToolContract(getDocumentTool, { item: LPA });
+      expect(up.paths()).toEqual([LPA_CONTENTS]);
+      const structured = result.structuredContent as Structured;
+      expect(structured).toMatchObject({
+        kind: 'outline',
+        item: { path: LPA, year: 1925 },
+        editorial: { outstanding_effects: 4 },
+      });
+      expect(structured).not.toHaveProperty('unapplied_effects');
+      expect(structured.notice).toBe(outlineNotice('ukpga/1925/20'));
+      const text = contentText(result);
+      const lines = markdownLines(text);
+      expect(lines).toContain(outlineNotice('ukpga/1925/20'));
+      expect(lines).toContain(formatLine('ukpga/1925/20'));
+      expect(routeCodeSpans(text)).toEqual(['ukpga/1925/20', LPA]);
+    });
+
+    it('routes a calendar-year item outline served at its regnal path the same way, after the served-path notice', async () => {
+      const up = createUpstream(
+        routes(
+          ['/ukpga/1925/20/contents/data.xml', redirect(301, LPA_CONTENTS)],
+          [LPA_CONTENTS, ok(lpaContents())],
+        ),
+      );
+      const result = await runToolContract(getDocumentTool, { item: 'ukpga/1925/20' });
+      expect(up.paths()).toEqual(['/ukpga/1925/20/contents/data.xml', LPA_CONTENTS]);
+      const structured = result.structuredContent as Structured;
+      expect(structured.item).toMatchObject({ path: LPA, year: 1925 });
+      const notice = `${servedAt('ukpga/1925/20', LPA)} ${outlineNotice('ukpga/1925/20')}`;
+      expect(structured.notice).toBe(notice);
+      const text = contentText(result);
+      expect(markdownLines(text)).toEqual(
+        expect.arrayContaining([notice, formatLine('ukpga/1925/20')]),
+      );
+      expect(routeCodeSpans(text)).toEqual(['ukpga/1925/20', LPA]);
+    });
+
+    it('names {type}/YYYY/{number} when the regnal item records no ukm:Year', async () => {
+      createUpstream(
+        routes([LPA_CONTENTS, ok(lpaContents().replace('<ukm:Year Value="1925"/>', ''))]),
+      );
+      const result = await runToolContract(getDocumentTool, { item: LPA });
+      const structured = result.structuredContent as Structured;
+      expect(structured.item).not.toHaveProperty('year');
+      const calendar = "ukpga/YYYY/20, where YYYY is the Act's calendar year,";
+      expect(structured.notice).toBe(outlineNotice(calendar));
+      const text = contentText(result);
+      expect(markdownLines(text)).toEqual(
+        expect.arrayContaining([outlineNotice(calendar), formatLine(calendar)]),
+      );
+      expect(routeCodeSpans(text)).toEqual(['ukpga/YYYY/20', LPA]);
+    });
+
+    it('routes the over-20 notice of a listed regnal item to the calendar-year path', async () => {
+      /** The recorded table of contents as a PDF-only item (no Contents, no provisions) with 22 effects, so the item's effects are listed and capped. */
+      const pdfOnly = cycleEffects(
+        lpaContents()
+          .replace(/<Contents>[\s\S]*<\/Contents>/, '')
+          .replace('NumberOfProvisions="245"', 'NumberOfProvisions="0"'),
+        22,
+      );
+      const up = createUpstream(routes([LPA_CONTENTS, ok(pdfOnly)]));
+      const result = await runToolContract(getDocumentTool, { item: LPA });
+      expect(up.paths()).toEqual([LPA_CONTENTS]);
+      const structured = result.structuredContent as Structured & { unapplied_effects: unknown[] };
+      expect(structured.kind).toBe('pdf_only');
+      expect(structured.unapplied_effects).toHaveLength(20);
+      const notice = `22 unapplied effects are recorded against this item; the first 20 are listed. Call uklaw_get_amendments with item ukpga/1925/20 and status "unapplied", ${KEEP}, for the full list.`;
+      expect(structured.notice).toBe(notice);
+      expect(markdownLines(contentText(result))).toContain(notice);
+    });
+
+    it('keeps the routes of a non-regnal item byte-identical', async () => {
+      createUpstream([
+        { path: SI_1984.contentsMade, respond: clml('uksi-1984-458-contents-made.xml') },
+        {
+          path: SI_1984.whole,
+          respond: ok(cycleEffects(fixture('clml/uksi-1984-458-made.xml'), 22)),
+        },
+      ]);
+      const listed = await runToolContract(getDocumentTool, {
+        item: 'uksi/1984/458',
+        version: 'made',
+      });
+      const notice =
+        '22 unapplied effects are recorded against this item; the first 20 are listed. Call uklaw_get_amendments with item uksi/1984/458 and status "unapplied" for the full list.';
+      expect((listed.structuredContent as Structured).notice).toBe(notice);
+      expect(markdownLines(contentText(listed))).toContain(notice);
+
+      createUpstream(
+        routes(['/uksi/2019/419/contents/data.xml', clml('uksi-2019-419-contents.xml')]),
+      );
+      const outline = await runToolContract(getDocumentTool, { item: 'uksi/2019/419' });
+      const { outstanding_effects } = (
+        outline.structuredContent as Structured & {
+          editorial: { outstanding_effects: number };
+        }
+      ).editorial;
+      const outlined = `3 unapplied effects are recorded against this item (${outstanding_effects} outstanding); an item outline does not list them. Call uklaw_get_amendments with item uksi/2019/419 and status "unapplied" for the list.`;
+      expect((outline.structuredContent as Structured).notice).toBe(outlined);
+      const text = contentText(outline);
+      expect(markdownLines(text)).toEqual(
+        expect.arrayContaining([
+          outlined,
+          'Not listed on an item outline; call uklaw_get_amendments with item uksi/2019/419 and status "unapplied" for them.',
+        ]),
+      );
+      expect(routeCodeSpans(text)).toEqual(['uksi/2019/419']);
+    });
+  });
+
+  it('fails ambiguous_item naming each candidate item path when a provision path names two Acts, with no further request', async () => {
+    const up = createUpstream(
+      routes([AMBIGUOUS, multipleChoicesAt(fixture('html/ukpga-1955-19-section-1-300.html.txt'))]),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/1955/19',
+      provision: 'section/1',
+    });
+    expect(up.paths()).toEqual([AMBIGUOUS]);
+    const error = errorOf(result);
+    expect(error.code).toBe(JsonRpcErrorCode.ValidationError);
+    expect(error.data).toMatchObject({
+      reason: 'ambiguous_item',
+      candidates: [
+        { item: 'ukpga/Eliz2/4-5/19', title: 'Friendly Societies Act 1955' },
+        { item: 'ukpga/Eliz2/3-4/19', title: 'Air Force Act 1955 (repealed)' },
+      ],
+    });
+    expect(error.message).toBe(
+      'legislation.gov.uk holds more than one item at ukpga/1955/19: ukpga/Eliz2/4-5/19 (Friendly Societies Act 1955), ukpga/Eliz2/3-4/19 (Air Force Act 1955 (repealed)).',
+    );
+    const lines = markdownLines(contentText(result));
+    expect(lines).toContain(`Error: ${error.message}`);
+    expect(lines.some((line) => line.includes('reason ambiguous_item'))).toBe(true);
+  });
+
+  it('fails ambiguous_item at item level from the table-of-contents 300', async () => {
+    const page = fixture('html/ukpga-1955-19-section-1-300.html.txt').replaceAll(
+      '/section/1"',
+      '/contents"',
+    );
+    const up = createUpstream(
+      routes(['/ukpga/1955/19/contents/data.xml', multipleChoicesAt(page)]),
+    );
+    const error = await failure({ item: 'ukpga/1955/19' });
+    expect(error).toMatchObject({
+      code: JsonRpcErrorCode.ValidationError,
+      data: {
+        reason: 'ambiguous_item',
+        candidates: [{ item: 'ukpga/Eliz2/4-5/19' }, { item: 'ukpga/Eliz2/3-4/19' }],
+      },
+    });
+    expect(up.paths()).toEqual(['/ukpga/1955/19/contents/data.xml']);
+  });
+
+  it('keeps Markdown and HTML in a candidate title inert on the text surface', async () => {
+    const page = fixture('html/ukpga-1955-19-section-1-300.html.txt').replace(
+      'Friendly Societies Act 1955',
+      '**Friendly** &lt;img src=x&gt; `Act`\n## 1955',
+    );
+    createUpstream(routes([AMBIGUOUS, multipleChoicesAt(page)]));
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/1955/19',
+      provision: 'section/1',
+    });
+    const error = errorOf(result);
+    expect(error.message).toContain('ukpga/Eliz2/4-5/19 (**Friendly** <img src=x> `Act` ## 1955)');
+    const tokens = new MarkdownIt('commonmark').parse(contentText(result), {});
+    expect(tokens.filter((t) => t.type === 'heading_open')).toEqual([]);
+    expect(markdownLines(contentText(result))).toContain(`Error: ${error.message}`);
+  });
+
+  it('fails ambiguous_item with no candidates when the 300 page lists none it can read', async () => {
+    createUpstream(routes([AMBIGUOUS, multipleChoicesAt('<html><body></body></html>')]));
+    const error = await failure({ item: 'ukpga/1955/19', provision: 'section/1' });
+    expect(error).toMatchObject({
+      code: JsonRpcErrorCode.ValidationError,
+      message: 'legislation.gov.uk holds more than one item at ukpga/1955/19.',
+      data: { reason: 'ambiguous_item', candidates: [] },
+    });
+  });
+
+  it('checks the served path, not the input, when a redirected provision 404s', async () => {
+    const up = createUpstream(
+      routes(
+        ['/ukpga/1925/20/section/999/data.xml', redirect(301, `/${LPA}/section/999/data.xml`)],
+        [`/${LPA}/section/999/data.xml`, notFound()],
+        [`/id/${LPA}`, redirect(303, `/${LPA}/contents`)],
+        ['/id/ukpga/1925/20', redirect(301, `/id/${LPA}`)],
+      ),
+    );
+    await expect(
+      failure({ item: 'ukpga/1925/20', provision: 'section/999' }),
+    ).resolves.toMatchObject({ data: { reason: 'provision_not_found' } });
+    expect(up.paths()).toEqual([
+      '/ukpga/1925/20/section/999/data.xml',
+      `/${LPA}/section/999/data.xml`,
+      `/id/${LPA}`,
+    ]);
+  });
+
+  it('re-reads a redirected dated read of an item held only as made at the served path (Design Decision 55)', async () => {
+    /** S.I. 2019/1434's made regulation 2, moved to a wsi path: the shape of a Welsh SI read as uksi. */
+    const made = fixture('clml/uksi-2019-1434-regulation-2-made.xml').replaceAll(
+      'uksi/2019/1434',
+      'wsi/2019/1434',
+    );
+    const up = createUpstream(
+      routes(
+        [
+          '/uksi/2019/1434/regulation/2/2020-01-01/data.xml',
+          redirect(301, '/wsi/2019/1434/regulation/2/2020-01-01/data.xml'),
+        ],
+        ['/wsi/2019/1434/regulation/2/2020-01-01/data.xml', notFound()],
+        ['/id/wsi/2019/1434', redirect(303, '/wsi/2019/1434/contents/made')],
+        ['/id/uksi/2019/1434', redirect(301, '/id/wsi/2019/1434')],
+        ['/wsi/2019/1434/regulation/2/made/data.xml', ok(made)],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'uksi/2019/1434',
+      provision: 'regulation/2',
+      version: '2020-01-01',
+    });
+    expect(result.isError).toBeFalsy();
+    expect(up.paths()).toEqual([
+      '/uksi/2019/1434/regulation/2/2020-01-01/data.xml',
+      '/wsi/2019/1434/regulation/2/2020-01-01/data.xml',
+      '/id/wsi/2019/1434',
+      '/wsi/2019/1434/regulation/2/made/data.xml',
+    ]);
+    const structured = result.structuredContent as Structured;
+    expect(structured).toMatchObject({
+      item: { path: 'wsi/2019/1434', type: 'wsi' },
+      version: { requested: '2020-01-01', applied: 'made' },
+      links: { web: 'https://www.legislation.gov.uk/wsi/2019/1434/regulation/2/made' },
+    });
+    expect(structured.notice).toBe(
+      `${servedAt('uksi/2019/1434', 'wsi/2019/1434')} legislation.gov.uk holds no revised versions of wsi/2019/1434, only its made text (made 2019-10-30), so that text is returned for 2020-01-01.`,
+    );
   });
 });
 
@@ -1688,6 +2859,444 @@ describe('dated reads of an item held only as made', () => {
     });
     expect(up.paths()).toEqual(['/ukpga/2018/12/contents/2010-01-01/data.xml', ID_DPA]);
   });
+
+  describe('when legislation.gov.uk 307s the date to the original text', () => {
+    /** S.I. 2024/1337 (W.), made 2024-12-13: its dated paths 307 to `…/made` (live, 2026-10-29). */
+    const WSI = {
+      id: '/id/wsi/2024/1337',
+      a1: (version: string) => `/wsi/2024/1337/article/1/${version}/data.xml`,
+      contents: (version: string) => `/wsi/2024/1337/contents/${version}/data.xml`,
+      whole: '/wsi/2024/1337/made/data.xml',
+    };
+    const MADE_NOTICE = (date: string) =>
+      `legislation.gov.uk holds no revised versions of wsi/2024/1337, only its made text (made 2024-12-13), so that text is returned for ${date}.`;
+    const ORIGINAL_CAVEAT =
+      'Original text as enacted or made: later amendments are not reflected. No revised version is held for this document, so the original text is served; check unapplied_effects and uklaw_get_amendments for changes made since.';
+
+    /** The provision read answered by a 307 to the made text. */
+    const by307 = (date: string) =>
+      createUpstream(
+        routes(
+          [WSI.a1(date), redirect(307, WSI.a1('made'))],
+          [WSI.a1('made'), clml('wsi-2024-1337-article-1-made.xml')],
+        ),
+      );
+    /** The same read answered as Design Decision 55's 404 route answers it. */
+    const by404 = (date: string) =>
+      createUpstream(
+        routes(
+          [WSI.a1(date), notFound()],
+          [WSI.id, redirect(303, '/wsi/2024/1337/contents/made')],
+          [WSI.a1('made'), clml('wsi-2024-1337-article-1-made.xml')],
+        ),
+      );
+
+    it('answers a provision dated after the item was made as the 404 route does, on both surfaces', async () => {
+      const input = { item: 'wsi/2024/1337', provision: 'article/1', version: '2025-06-01' };
+      const up = by307('2025-06-01');
+      const result = await runToolContract(getDocumentTool, input);
+      expect(up.paths()).toEqual([WSI.a1('2025-06-01'), WSI.a1('made')]);
+      const s = result.structuredContent as {
+        editorial: { caveat: string };
+        notice?: string;
+        version: unknown;
+      };
+      expect(s.version).toMatchObject({
+        requested: '2025-06-01',
+        applied: 'made',
+        available: ['made'],
+      });
+      expect(s.notice).toBe(MADE_NOTICE('2025-06-01'));
+      expect(s.editorial.caveat).toBe(ORIGINAL_CAVEAT);
+      expect(markdownLines(contentText(result))).toContain(MADE_NOTICE('2025-06-01'));
+
+      by404('2025-06-01');
+      const reread = await runToolContract(getDocumentTool, input);
+      expect(result.structuredContent).toEqual(reread.structuredContent);
+      expect(result.content).toEqual(reread.content);
+    });
+
+    it('keeps provision_not_found for a date before the item was made, as the 404 route does', async () => {
+      const input = { item: 'wsi/2024/1337', provision: 'article/1', version: '2020-01-01' };
+      const up = by307('2020-01-01');
+      const error = await failure(input);
+      expect(error).toMatchObject({
+        code: JsonRpcErrorCode.NotFound,
+        data: { reason: 'provision_not_found' },
+      });
+      expect(up.paths()).toEqual([WSI.a1('2020-01-01'), WSI.a1('made')]);
+      by404('2020-01-01');
+      expect(await failure(input)).toEqual(error);
+    });
+
+    it('answers an item-level date with the whole made item, as the 404 route does', async () => {
+      const input = { item: 'wsi/2024/1337', version: '2025-06-01' };
+      const up = createUpstream(
+        routes(
+          [WSI.contents('2025-06-01'), redirect(307, WSI.contents('made'))],
+          [WSI.contents('made'), clml('wsi-2024-1337-contents-made.xml')],
+          [WSI.whole, clml('wsi-2024-1337-made.xml')],
+        ),
+      );
+      const result = await runToolContract(getDocumentTool, input);
+      expect(up.paths()).toEqual([WSI.contents('2025-06-01'), WSI.contents('made'), WSI.whole]);
+      expect(result.structuredContent).toMatchObject({
+        kind: 'full',
+        version: { requested: '2025-06-01', applied: 'made' },
+        editorial: { caveat: ORIGINAL_CAVEAT },
+        notice: MADE_NOTICE('2025-06-01'),
+      });
+
+      createUpstream(
+        routes(
+          [WSI.contents('2025-06-01'), notFound()],
+          [WSI.id, redirect(303, '/wsi/2024/1337/contents/made')],
+          [WSI.contents('made'), clml('wsi-2024-1337-contents-made.xml')],
+          [WSI.whole, clml('wsi-2024-1337-made.xml')],
+        ),
+      );
+      const reread = await runToolContract(getDocumentTool, input);
+      expect(result.structuredContent).toEqual(reread.structuredContent);
+      expect(result.content).toEqual(reread.content);
+    });
+
+    it('keeps version_not_found for an item-level date before the item was made', async () => {
+      const up = createUpstream(
+        routes(
+          [WSI.contents('2020-01-01'), redirect(307, WSI.contents('made'))],
+          [WSI.contents('made'), clml('wsi-2024-1337-contents-made.xml')],
+        ),
+      );
+      await expect(
+        failure({ item: 'wsi/2024/1337', version: '2020-01-01' }),
+      ).resolves.toMatchObject({
+        code: JsonRpcErrorCode.NotFound,
+        data: { reason: 'version_not_found' },
+      });
+      expect(up.paths()).toEqual([WSI.contents('2020-01-01'), WSI.contents('made')]);
+    });
+
+    it('answers a Welsh read redirected to the Welsh made text the same way', async () => {
+      /** The recorded English article as its Welsh document, which names `…/made/welsh`. */
+      const welsh = fixture('clml/wsi-2024-1337-article-1-made.xml')
+        .replace('/wsi/2024/1337/article/1/made<', '/wsi/2024/1337/article/1/made/welsh<')
+        .replace('<dc:language>en', '<dc:language>cy');
+      const dated = '/wsi/2024/1337/article/1/2025-06-01/welsh/data.xml';
+      const made = '/wsi/2024/1337/article/1/made/welsh/data.xml';
+      createUpstream(routes([dated, redirect(307, made)], [made, ok(welsh)]));
+      const { output, notice } = await read({
+        item: 'wsi/2024/1337',
+        provision: 'article/1',
+        version: '2025-06-01',
+        language: 'cy',
+      });
+      expect(output).toMatchObject({
+        language: 'cy',
+        version: { requested: '2025-06-01', applied: 'made' },
+        editorial: { caveat: ORIGINAL_CAVEAT },
+      });
+      expect(notice).toBe(MADE_NOTICE('2025-06-01'));
+    });
+
+    it('names the served path when a uksi path is redirected to wsi and then to the made text', async () => {
+      const up = createUpstream(
+        routes(
+          ['/uksi/2024/1337/article/1/2025-06-01/data.xml', redirect(301, WSI.a1('2025-06-01'))],
+          [WSI.a1('2025-06-01'), redirect(307, WSI.a1('made'))],
+          [WSI.a1('made'), clml('wsi-2024-1337-article-1-made.xml')],
+        ),
+      );
+      const { output, notice } = await read({
+        item: 'uksi/2024/1337',
+        provision: 'article/1',
+        version: '2025-06-01',
+      });
+      expect(up.paths()).toHaveLength(3);
+      expect(output).toMatchObject({
+        item: { path: 'wsi/2024/1337' },
+        version: { requested: '2025-06-01', applied: 'made' },
+        links: { web: 'https://www.legislation.gov.uk/wsi/2024/1337/article/1/made' },
+      });
+      expect(notice).toBe(
+        `legislation.gov.uk serves uksi/2024/1337 at wsi/2024/1337, which item.path reports. ${MADE_NOTICE('2025-06-01')}`,
+      );
+    });
+
+    it('leaves a dated read served a revised item’s original text as read, since that item holds revised versions', async () => {
+      /** Not an observed route: it pins that only a document listing no revised version is taken for an original-only item. */
+      const enacted = '/ukpga/2018/12/section/45/enacted/data.xml';
+      createUpstream(
+        routes(
+          ['/ukpga/2018/12/section/45/2018-05-24/data.xml', redirect(307, enacted)],
+          [enacted, clml('ukpga-2018-12-section-45-enacted.xml')],
+          [DPA_FEED, noneUnapplied],
+        ),
+      );
+      const { output, notice } = await read({
+        item: 'ukpga/2018/12',
+        provision: 'section/45',
+        version: '2018-05-24',
+      });
+      expect(output.version).toMatchObject({ requested: '2018-05-24', applied: 'enacted' });
+      expect(output.editorial.caveat).toContain('Read version current for the revised text.');
+      expect(notice ?? '').not.toContain('holds no revised versions');
+    });
+  });
+
+  describe('an Act held only as a PDF of its original text', () => {
+    /** The British Transport Commission Order Confirmation Act 1955, served at its regnal path. */
+    const ACT = 'ukla/Eliz2/4-5/1';
+    const ID = `/id/${ACT}`;
+    const ENACTED = `/${ACT}/contents/enacted/data.xml`;
+    const dated = (date: string) => `/${ACT}/contents/${date}/data.xml`;
+    /** The recorded `/id` answer (live, 2026-10-29): a 303 to `…/enacted`, with no `/contents` segment. */
+    const recordedLocation = /^Location: (.+)$/m.exec(
+      fixture('html/id-ukla-Eliz2-4-5-1.headers.txt'),
+    )?.[1] as string;
+    const PDF_NOTICE = (date: string) =>
+      `legislation.gov.uk holds no revised versions of ${ACT}, only its enacted text (its enacted date is not recorded), so that text is returned for ${date}.`;
+
+    it('answers a dated read of the calendar-year path with the PDF-only original text, on both surfaces', async () => {
+      expect(recordedLocation).toBe(`/${ACT}/enacted`);
+      const up = createUpstream(
+        routes(
+          ['/ukla/1955/1/contents/2000-01-01/data.xml', redirect(301, dated('2000-01-01'))],
+          [dated('2000-01-01'), notFound()],
+          [ID, redirect(303, recordedLocation)],
+          [ENACTED, clml('ukla-Eliz2-4-5-1-contents-enacted.xml')],
+        ),
+      );
+      const result = await runToolContract(getDocumentTool, {
+        item: 'ukla/1955/1',
+        version: '2000-01-01',
+      });
+      expect(result.isError).toBeFalsy();
+      expect(up.paths()).toEqual([
+        '/ukla/1955/1/contents/2000-01-01/data.xml',
+        dated('2000-01-01'),
+        ID,
+        ENACTED,
+      ]);
+      const s = result.structuredContent as {
+        editorial: { caveat: string };
+        notice?: string;
+      };
+      expect(s).toMatchObject({
+        kind: 'pdf_only',
+        item: { path: ACT, year: 1955, number: '1' },
+        version: { requested: '2000-01-01', applied: 'enacted' },
+        editorial: { document_status: 'final', outstanding_effects: 0 },
+        links: { pdf: `https://www.legislation.gov.uk/${ACT}/pdfs/ukla_19550001_en.pdf` },
+        unapplied_effects: [],
+      });
+      expect(s.editorial.caveat).toBe(
+        'Original text as enacted or made: later amendments are not reflected. No revised version is held for this document, so the original text is served; check unapplied_effects and uklaw_get_amendments for changes made since.',
+      );
+      const notice = `legislation.gov.uk serves ukla/1955/1 at ${ACT}, which item.path reports. ${PDF_NOTICE('2000-01-01')}`;
+      expect(s.notice).toBe(notice);
+      const text = contentText(result);
+      expect(text).toContain('**Kind:** pdf_only');
+      expect(markdownLines(text).join(' ')).toContain(notice);
+    });
+
+    it.each([
+      ['…/{keyword}, as recorded', `/${ACT}/enacted`, true],
+      ['…/contents/{keyword}', `/${ACT}/contents/enacted`, true],
+      ['an absolute …/{keyword} URL', `https://www.legislation.gov.uk/${ACT}/enacted`, true],
+      ['…/contents, as for a revised item', `/${ACT}/contents`, false],
+      ['the bare item path', `/${ACT}`, false],
+    ])('reads an /id 303 to %s as %s', async (_case, location, original) => {
+      createUpstream(
+        routes(
+          [dated('2001-06-30'), notFound()],
+          [ID, redirect(303, location)],
+          [ENACTED, clml('ukla-Eliz2-4-5-1-contents-enacted.xml')],
+        ),
+      );
+      if (original) {
+        const { output, notice } = await read({ item: ACT, version: '2001-06-30' });
+        expect(output).toMatchObject({
+          kind: 'pdf_only',
+          version: { requested: '2001-06-30', applied: 'enacted' },
+        });
+        expect(notice).toBe(PDF_NOTICE('2001-06-30'));
+      } else {
+        await expect(failure({ item: ACT, version: '2001-06-30' })).resolves.toMatchObject({
+          code: JsonRpcErrorCode.NotFound,
+          data: { reason: 'version_not_found' },
+        });
+      }
+    });
+  });
+});
+
+describe('dated reads before the earliest revised version', () => {
+  const ECA_S2 = (date: string) => `/ukpga/1972/68/section/2/${date}/data.xml`;
+  const ECA_CONTENTS = (date: string) => `/ukpga/1972/68/contents/${date}/data.xml`;
+  /** The notice of a dated read answered with a later version (Design Decision 83). */
+  const laterVersion = (item: string, applied: string, requested: string) =>
+    `legislation.gov.uk holds no revised text of ${item} before ${applied}, so the ${applied} version is returned for ${requested}; read version enacted for the original text.`;
+
+  it('serves a date between two versions with the earlier one and no notice', async () => {
+    createUpstream(
+      routes(
+        [
+          '/ukpga/2018/12/section/45/2019-01-01/data.xml',
+          clml('ukpga-2018-12-section-45-2019-01-01.xml'),
+        ],
+        [DPA_FEED, noneUnapplied],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/2018/12',
+      provision: 'section/45',
+      version: '2019-01-01',
+    });
+    expect(result.structuredContent).toMatchObject({
+      version: { requested: '2019-01-01', applied: '2018-07-23' },
+    });
+    expect(result.structuredContent).not.toHaveProperty('notice');
+  });
+
+  it('serves a future date with the latest version and no notice', async () => {
+    createUpstream(
+      routes(
+        ['/ukpga/2018/12/section/45/2030-01-01/data.xml', clml('ukpga-2018-12-section-45.xml')],
+        [DPA_FEED, noneUnapplied],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/2018/12',
+      provision: 'section/45',
+      version: '2030-01-01',
+    });
+    expect(result.structuredContent).toMatchObject({
+      version: { requested: '2030-01-01', applied: '2026-06-19' },
+    });
+    expect(result.structuredContent).not.toHaveProperty('notice');
+  });
+
+  it('names the later version a provision read before the base date is answered with, on both surfaces', async () => {
+    const up = createUpstream(
+      routes(
+        [ECA_S2('1985-01-01'), redirect(307, ECA_S2('1991-02-01'))],
+        [ECA_S2('1991-02-01'), clml('ukpga-1972-68-section-2-1991-02-01.xml')],
+        [unappliedFeed('ukpga/1972/68'), noneUnapplied],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/1972/68',
+      provision: 'section/2',
+      version: '1985-01-01',
+    });
+    expect(up.paths()).toEqual([
+      ECA_S2('1985-01-01'),
+      ECA_S2('1991-02-01'),
+      unappliedFeed('ukpga/1972/68'),
+    ]);
+    const notice =
+      'legislation.gov.uk holds no revised text of ukpga/1972/68 before 1991-02-01, so the 1991-02-01 version is returned for 1985-01-01; read version enacted for the original text.';
+    expect(laterVersion('ukpga/1972/68', '1991-02-01', '1985-01-01')).toBe(notice);
+    expect(result.structuredContent).toMatchObject({
+      kind: 'full',
+      version: { requested: '1985-01-01', applied: '1991-02-01' },
+      notice,
+    });
+    expect(markdownLines(contentText(result))).toContain(notice);
+  });
+
+  it('names the later version an item-level read before the base date is answered with', async () => {
+    const up = createUpstream(
+      routes(
+        [ECA_CONTENTS('1985-01-01'), redirect(307, ECA_CONTENTS('1991-02-01'))],
+        [ECA_CONTENTS('1991-02-01'), clml('ukpga-1972-68-contents-1991-02-01.xml')],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/1972/68',
+      version: '1985-01-01',
+    });
+    expect(up.paths()).toEqual([ECA_CONTENTS('1985-01-01'), ECA_CONTENTS('1991-02-01')]);
+    const structured = result.structuredContent as { kind: string; notice?: string };
+    expect(structured).toMatchObject({
+      kind: 'outline',
+      version: { requested: '1985-01-01', applied: '1991-02-01' },
+    });
+    const notice = laterVersion('ukpga/1972/68', '1991-02-01', '1985-01-01');
+    expect(structured.notice).toContain(notice);
+    expect(markdownLines(contentText(result)).some((line) => line.includes(notice))).toBe(true);
+  });
+
+  it('names the Northern Ireland base date for an apni read before 2006', async () => {
+    createUpstream(
+      routes(
+        [
+          '/apni/1954/33/section/1/2000-01-01/data.xml',
+          redirect(307, '/apni/1954/33/section/1/2006-01-01/data.xml'),
+        ],
+        [
+          '/apni/1954/33/section/1/2006-01-01/data.xml',
+          clml('apni-1954-33-section-1-2006-01-01.xml'),
+        ],
+        [unappliedFeed('apni/1954/33'), noneUnapplied],
+      ),
+    );
+    const { output, notice } = await read({
+      item: 'apni/1954/33',
+      provision: 'section/1',
+      version: '2000-01-01',
+    });
+    expect(output.version).toMatchObject({ requested: '2000-01-01', applied: '2006-01-01' });
+    expect(notice).toBe(laterVersion('apni/1954/33', '2006-01-01', '2000-01-01'));
+  });
+
+  it('names the served regnal path when a calendar-year path is redirected and then dated forward', async () => {
+    const LPA = 'ukpga/Geo5/15-16/20';
+    const up = createUpstream(
+      routes(
+        [
+          '/ukpga/1925/20/section/1/1980-01-01/data.xml',
+          redirect(301, `/${LPA}/section/1/1980-01-01/data.xml`),
+        ],
+        [
+          `/${LPA}/section/1/1980-01-01/data.xml`,
+          redirect(307, `/${LPA}/section/1/1991-02-01/data.xml`),
+        ],
+        [
+          `/${LPA}/section/1/1991-02-01/data.xml`,
+          clml('ukpga-Geo5-15-16-20-section-1-1991-02-01.xml'),
+        ],
+        [unappliedFeed('ukpga/1925/20'), feed('changes-unapplied-affected-ukpga-1925-20.feed')],
+      ),
+    );
+    const { output, notice } = await read({
+      item: 'ukpga/1925/20',
+      provision: 'section/1',
+      version: '1980-01-01',
+    });
+    expect(up.paths()).toHaveLength(4);
+    expect(up.paths().at(-1)).toBe(unappliedFeed('ukpga/1925/20'));
+    expect(output).toMatchObject({
+      item: { path: LPA },
+      provision: { heading: 'Legal estates and equitable interests.' },
+      version: { requested: '1980-01-01', applied: '1991-02-01' },
+    });
+    expect(notice).toBe(
+      `legislation.gov.uk serves ukpga/1925/20 at ${LPA}, which item.path reports. ${laterVersion(LPA, '1991-02-01', '1980-01-01')}`,
+    );
+  });
+
+  it('keeps provision_not_found for a date before enactment', async () => {
+    createUpstream(
+      routes(
+        [ECA_S2('1970-01-01'), notFound()],
+        ['/id/ukpga/1972/68', redirect(303, '/ukpga/1972/68/contents')],
+      ),
+    );
+    await expect(
+      failure({ item: 'ukpga/1972/68', provision: 'section/2', version: '1970-01-01' }),
+    ).resolves.toMatchObject({ data: { reason: 'provision_not_found' } });
+  });
 });
 
 describe('input validation', () => {
@@ -1845,7 +3454,8 @@ describe('refusals', () => {
 });
 
 describe('both surfaces', () => {
-  const routesFor = (): Route[] => routes([S45, clml('ukpga-2018-12-section-45.xml')]);
+  const routesFor = (): Route[] =>
+    routes([S45, clml('ukpga-2018-12-section-45.xml')], [DPA_FEED, noneUnapplied]);
 
   it('renders a provision read on the text surface with every field the model needs', async () => {
     createUpstream(routesFor());
@@ -1913,6 +3523,7 @@ describe('both surfaces', () => {
       routes(
         ['/ukpga/2018/12/section/45/welsh/data.xml', redirect(301, S45)],
         [S45, clml('ukpga-2018-12-section-45.xml')],
+        [DPA_FEED, noneUnapplied],
       ),
     );
     const result = await runToolContract(getDocumentTool, {
@@ -1962,7 +3573,10 @@ describe('both surfaces', () => {
         'Citation URI="http://www.legislation.gov.uk/id/ukpga/2025/18"',
         'Citation URI="http://www.legislation.gov.uk/id/ukpga/2025/18&#10;## Cite"',
       );
-    createUpstream([{ path: S45, respond: ok(injected) }]);
+    createUpstream([
+      { path: S45, respond: ok(injected) },
+      { path: DPA_FEED, respond: noneUnapplied },
+    ]);
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',
@@ -2008,7 +3622,10 @@ describe('both surfaces', () => {
         '<Text>A data subject<Character Name="constructor"/> is entitled',
       )
       .replace('Type="I"', 'Type="constructor"');
-    createUpstream([{ path: S45, respond: ok(xml) }]);
+    createUpstream([
+      { path: S45, respond: ok(xml) },
+      { path: DPA_FEED, respond: noneUnapplied },
+    ]);
     const result = await runToolContract(getDocumentTool, {
       item: 'ukpga/2018/12',
       provision: 'section/45',

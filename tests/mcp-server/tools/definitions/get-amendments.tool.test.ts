@@ -11,6 +11,7 @@
 import type { z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
+import MarkdownIt from 'markdown-it';
 import { describe, expect, it } from 'vitest';
 import { getAmendmentsTool } from '@/mcp-server/tools/definitions/get-amendments.tool.js';
 import { ATTRIBUTION_LINES } from '@/services/legislation/reference-data.js';
@@ -40,6 +41,27 @@ async function amendments(input: AmendmentsInput) {
 function failure(input: AmendmentsInput) {
   const ctx = createMockContext({ errors: getAmendmentsTool.errors });
   return thrown(() => getAmendmentsTool.handler(getAmendmentsTool.input.parse(input), ctx));
+}
+
+/**
+ * The summary paragraph under the heading (Query, count and Scan lines) from a
+ * CommonMark parse: one entry per source line, its bold label and its plain text.
+ */
+function summaryLines(text: string): { label: string; line: string }[] {
+  const tokens = new MarkdownIt('commonmark').parse(text, {});
+  const paragraph = tokens.findIndex((t) => t.type === 'paragraph_open');
+  const lines = [{ label: '', line: '' }];
+  let strong = false;
+  for (const child of tokens[paragraph + 1]?.children ?? []) {
+    const current = lines.at(-1) as { label: string; line: string };
+    if (child.type === 'softbreak') lines.push({ label: '', line: '' });
+    else if (child.type === 'strong_open' || child.type === 'strong_close') strong = !strong;
+    else {
+      if (strong) current.label += child.content;
+      current.line += child.content;
+    }
+  }
+  return lines;
 }
 
 const AFFECTED = '/changes/affected/ukpga/2018/12/data.feed?results-count=3';
@@ -342,7 +364,7 @@ describe('provision scan', () => {
     for (const surface of [structured.notice as string, contentText(result)]) {
       expect(surface).toContain(complete);
       expect(surface).toContain(
-        "names part/3/chapter/4/crossheading/general-obligations): read the enclosing Part with uklaw_get_document (its item-level outline lists the Parts), or pass the Part's path as provision to uklaw_get_amendments.",
+        'names part/77/crossheading/1), which this URI match misses: a uklaw_get_document read of the provision lists the effects on its enclosing provisions, or pass the enclosing path as provision here.',
       );
       expect(surface).not.toContain('No effects matched.');
       expect(surface).not.toContain('No effect references this provision by URI.');
@@ -399,7 +421,7 @@ describe('provision scan', () => {
     }
   });
 
-  it('routes a first-call full-scan zero hit to the enclosing Part or cross-heading, on both surfaces', async () => {
+  it('routes a first-call full-scan zero hit to a provision read, which matches enclosing provisions, on both surfaces', async () => {
     createUpstream(routes([SCAN, feed('changes-unapplied-scan-page-4.feed')]));
     const result = await runToolContract(getAmendmentsTool, {
       item: 'ukpga/2018/12',
@@ -418,7 +440,7 @@ describe('provision scan', () => {
       expect(surface).toContain('Retry with status "all".');
       expect(surface).toContain('No effect references this provision by URI.');
       expect(surface).toContain(
-        "names part/3/chapter/4/crossheading/general-obligations): read the enclosing Part with uklaw_get_document (its item-level outline lists the Parts), or pass the Part's path as provision to uklaw_get_amendments.",
+        'names part/77/crossheading/1), which this URI match misses: a uklaw_get_document read of the provision lists the effects on its enclosing provisions, or pass the enclosing path as provision here.',
       );
       expect(surface).toContain(
         "The provision's applied history is in its annotations in uklaw_get_document.",
@@ -558,6 +580,60 @@ describe('provision scan', () => {
     });
     expect(output.query.provision).toBe('section/45');
     expect(up.paths()[0]).toBe(SCAN);
+  });
+
+  describe('a citation recorded under its prefix (Companies Act 2006 unapplied feed)', () => {
+    const CA_SCAN = '/changes/unapplied/affected/ukpga/2006/46/data.feed?results-count=500';
+    const scan = async (provision: string) => {
+      createUpstream(routes([CA_SCAN, feed('changes-unapplied-affected-ukpga-2006-46.feed')]));
+      const result = await runToolContract(getAmendmentsTool, {
+        item: 'ukpga/2006/46',
+        provision,
+        status: 'unapplied',
+      });
+      const structured = result.structuredContent as {
+        effects: { effect_id: string; affected: { provisions_label?: string } }[];
+      };
+      const text = contentText(result);
+      // The effect ids the text surface lists, one per top-level effect item, from a CommonMark parse.
+      const textIds = new MarkdownIt('commonmark')
+        .parse(text, {})
+        .filter((t) => t.type === 'inline')
+        .flatMap((t) => /\(effect ([^)]+)\)$/.exec(t.content)?.slice(1) ?? []);
+      expect(textIds).toEqual(structured.effects.map((e) => e.effect_id));
+      expect(summaryLines(text)).toContainEqual({
+        label: 'Matched this call:',
+        line: expect.stringMatching(`^Matched this call: ${structured.effects.length} · `),
+      });
+      return structured.effects.map((e) => e.affected.provisions_label);
+    };
+
+    it('does not return effects on other paragraphs of the Schedule the prefix names', async () => {
+      expect(await scan('schedule/10/paragraph/1')).toEqual(['Act', 'Act']);
+    });
+
+    it('still returns the effects on the paragraph cited, and every effect inside the Schedule', async () => {
+      expect(await scan('schedule/10/paragraph/6')).toEqual([
+        'Act',
+        'Act',
+        'Sch. 10 para. 6(1)(c)',
+        'Sch. 10 para. 6(2D)',
+      ]);
+      expect(await scan('schedule/10')).toEqual([
+        'Act',
+        'Act',
+        'Sch. 10 para. 6(1)(c)',
+        'Sch. 10 para. 6(2D)',
+        'Sch. 10 para. 7(2)(a)(ii)',
+        'Sch. 10 para. 7(2)(b)(ii)',
+        'Sch. 10 para. 7(2A)',
+      ]);
+    });
+
+    it('reads "Pt. 3 Ch. 3" as the Chapter, inside Part 3 but not in Chapter 2', async () => {
+      expect(await scan('part/3')).toEqual(['Act', 'Act', 'Pt. 3 Ch. 3']);
+      expect(await scan('part/3/chapter/2')).toEqual(['Act', 'Act']);
+    });
   });
 });
 
@@ -934,7 +1010,107 @@ describe('both surfaces and enrichment', () => {
       }),
     );
     expect(text).toContain('provision `section/45`');
-    expect(text).toContain('**Scan:** 24 effects scanned over 3 page(s) of 309 total');
+    expect(text).toContain(
+      '**Scan:** 24 of 309 effects held for the item scanned this call (3 page(s))',
+    );
+  });
+
+  describe('count and scan lines', () => {
+    const base = { item: 'ukpga/2018/12', status: 'unapplied' as const };
+    const call = async (input: AmendmentsInput) => {
+      const result = await runToolContract(getAmendmentsTool, input);
+      const text = contentText(result);
+      return {
+        structured: result.structuredContent as Record<string, unknown>,
+        text,
+        lines: summaryLines(text),
+      };
+    };
+
+    it('a filtered first page counts its matches and labels the item total as the item’s, never as a match count', async () => {
+      createUpstream(scanRoutes());
+      const { structured, text, lines } = await call({ ...base, provision: 'section/45' });
+      expect(structured).toMatchObject({ total: 309, has_more: true });
+      expect(lines.slice(1)).toEqual([
+        {
+          label: 'Matched this call:',
+          line: `Matched this call: 3 · item total: 309 · has_more: true · next_cursor: ${structured.next_cursor as string}`,
+        },
+        {
+          label: 'Scan:',
+          line: 'Scan: 24 of 309 effects held for the item scanned this call (3 page(s))',
+        },
+      ]);
+      expect(text).not.toContain('**Total:**');
+    });
+
+    it('a continuation page counts only this call’s matches and scan', async () => {
+      createUpstream(scanRoutes());
+      const input = { ...base, provision: 'section/71', limit: 5 };
+      const first = await amendments(input);
+      const { lines, text } = await call({ ...input, cursor: first.output.next_cursor as string });
+      expect(lines.slice(1)).toEqual([
+        {
+          label: 'Matched this call:',
+          line: 'Matched this call: 1 · item total: 309 · has_more: false',
+        },
+        {
+          label: 'Scan:',
+          line: 'Scan: 4 of 309 effects held for the item scanned this call (1 page(s))',
+        },
+      ]);
+      expect(text).not.toContain('**Total:**');
+    });
+
+    it('a limit-capped filtered page agrees with the truncation trailer, which carries no total', async () => {
+      createUpstream(scanRoutes());
+      const { structured, text, lines } = await call({
+        ...base,
+        provision: 'section/45',
+        limit: 2,
+      });
+      expect(structured).toMatchObject({ truncated: true, shown: 2, cap: 2 });
+      expect(lines.slice(1)).toEqual([
+        {
+          label: 'Matched this call:',
+          line: `Matched this call: 2 · item total: 309 · has_more: true · next_cursor: ${structured.next_cursor as string}`,
+        },
+        {
+          label: 'Scan:',
+          line: 'Scan: 8 of 309 effects held for the item scanned this call (1 page(s))',
+        },
+      ]);
+      expect(text).toContain('**shown:** 2');
+      expect(text).toContain('**cap:** 2');
+      expect(text).not.toMatch(/\*\*total:\*\*/i);
+    });
+
+    it('a filtered read with no match renders Matched this call: 0', async () => {
+      createUpstream(routes([SCAN, feed('changes-unapplied-scan-page-4.feed')]));
+      const { lines, text } = await call({ ...base, provision: 'section/45' });
+      expect(lines.slice(1)).toEqual([
+        {
+          label: 'Matched this call:',
+          line: 'Matched this call: 0 · item total: 309 · has_more: false',
+        },
+        {
+          label: 'Scan:',
+          line: 'Scan: 4 of 309 effects held for the item scanned this call (1 page(s))',
+        },
+      ]);
+      expect(text).not.toContain('**Total:**');
+    });
+
+    it('an unfiltered read keeps the Total line, the query’s own match count, and no Scan line', async () => {
+      createUpstream(routes([PAGED, feed('changes-unapplied-scan-page-1.feed')]));
+      const { structured, lines } = await call(base);
+      expect(lines.slice(1)).toEqual([
+        {
+          label: 'Total:',
+          line: `Total: 309 · shown 12 · has_more: true · next_cursor: ${structured.next_cursor as string}`,
+        },
+      ]);
+    });
   });
 
   it('returns a declared reason in the error envelope', async () => {

@@ -183,7 +183,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       .string()
       .optional()
       .describe(
-        "Item-log mode: date (YYYY-MM-DD) of the oldest event this call read from the item's log, which is read newest first. While it is after end_date, the read has not reached the window yet. Absent in a day walk and when no event read carries a calendar date.",
+        "Item-log mode: date (YYYY-MM-DD) of the oldest event on the pages of the item's log this call has passed. The log is read newest first, jumping ahead by page to find an older window; a page checked beyond the window's start does not count. While it is after end_date, the read has not reached the window yet. Absent in a day walk and when no event read carries a calendar date.",
       ),
     has_more: z
       .boolean()
@@ -246,7 +246,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       reason: 'invalid_cursor',
       code: JsonRpcErrorCode.ValidationError,
       severity: 'notice',
-      when: 'cursor does not decode, belongs to a different window, or holds a position no call over that window reaches (a day outside the window or after today, a day in item-log mode, a page past 10,000, or an offset past the end of its page).',
+      when: 'cursor does not decode, belongs to a different window, or holds a position no call over that window reaches (a day outside the window or after today, a day in item-log mode, a page past 10,000, an offset past the end of its page, a page-search bound outside item-log mode, at or below its page, or past 10,000, or an events-returned mark other than the one the server writes).',
       recovery: 'Call uklaw_track_changes again without cursor to start from end_date.',
     },
     {
@@ -330,11 +330,16 @@ export const trackChangesTool = tool('uklaw_track_changes', {
     ].join('|');
     const service = getLegislationService();
     const today = service.today();
-    // A day walk stands only on window days up to today; the item log carries no day (Design Decision 75).
+    /**
+     * A day walk stands only on window days up to today; the item log carries no day, and only it
+     * carries a page search's upper page (Design Decisions 75 and 84). Either can carry the mark
+     * that an earlier call returned events.
+     */
     const position =
       input.cursor !== undefined
         ? decodeCursor(input.cursor, queryKey, {
             pageSize: LOG_PAGE_SIZE,
+            eventsReturned: true,
             ...(mode === 'day_walk'
               ? {
                   days: {
@@ -342,7 +347,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
                     last: endDate.localeCompare(today) < 0 ? endDate : today,
                   },
                 }
-              : {}),
+              : { pageSearch: true }),
           })
         : undefined;
     if (input.cursor !== undefined && !position) {
@@ -368,7 +373,11 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       ctx,
     );
 
-    const nextCursor = outcome.next ? encodeCursor(queryKey, outcome.next) : undefined;
+    // A call cannot see what earlier calls returned, so the cursor carries it.
+    const returned = outcome.events.length > 0 || position?.returned === true;
+    const nextCursor = outcome.next
+      ? encodeCursor(queryKey, { ...outcome.next, ...(returned ? { returned } : {}) })
+      : undefined;
     if (input.start_date > today) {
       ctx.enrich.notice(
         `The window starts after today (${today}, UK date): the Publication Log holds no events for future dates, so nothing was requested. Pass a start_date on or before ${today}.`,
@@ -379,12 +388,20 @@ export const trackChangesTool = tool('uklaw_track_changes', {
         `No events yet: the log of ${item.path} is read newest first, and this call reached ${outcome.readBackTo}, after the window's end (${endDate}); call again with cursor set to next_cursor to read further back toward ${input.start_date}.`,
       );
     } else if (outcome.events.length === 0) {
+      /**
+       * A continuation that finds nothing more, after an earlier call returned events, ends the
+       * window, so filter and item advice would misdirect. Otherwise no call returned an event and
+       * the window is quiet; a cursor minted before the mark existed reads as quiet too.
+       */
+      const windowEnd = position?.returned === true && !outcome.hasMore;
       const fragments: string[] = [
         outcome.hasMore
           ? 'No events in the part of the window read so far; call again with cursor set to next_cursor to continue.'
-          : 'No Publication Log events in this window.',
+          : windowEnd
+            ? 'No further Publication Log events: this call read to the end of the window, so the calls before this one returned every event it holds.'
+            : 'No Publication Log events in this window.',
       ];
-      if (input.new_only || input.category || item || input.event) {
+      if (!windowEnd && (input.new_only || input.category || item || input.event)) {
         fragments.push(
           'Filters narrow an otherwise busy log: drop new_only, category, event, or item to widen.',
         );
@@ -398,7 +415,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
           'The window reaches today: the log for today fills during the UK working day.',
         );
       }
-      if (item) fragments.push('Confirm the item with uklaw_lookup_citation.');
+      if (item && !windowEnd) fragments.push('Confirm the item with uklaw_lookup_citation.');
       ctx.enrich.notice(fragments.join(' '));
     } else if (outcome.capped) {
       ctx.enrich.truncated({

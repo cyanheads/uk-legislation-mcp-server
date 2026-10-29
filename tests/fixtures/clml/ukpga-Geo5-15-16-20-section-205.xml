@@ -1,0 +1,872 @@
+<Legislation xmlns="http://www.legislation.gov.uk/namespaces/legislation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20" NumberOfProvisions="245" xml:lang="en" xsi:schemaLocation="http://www.legislation.gov.uk/namespaces/legislation http://www.legislation.gov.uk/schema/legislation.xsd" SchemaVersion="1.0" RestrictExtent="E+W" RestrictStartDate="2026-10-01"><ukm:Metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dct="http://purl.org/dc/terms/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ukm="http://www.legislation.gov.uk/namespaces/metadata">
+					<dc:identifier>http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205</dc:identifier><dc:title>Law of Property Act 1925</dc:title><dc:description>
+            
+            
+            
+            
+            
+            
+            An Act to consolidate the enactments relating to conveyancing and the law of property in England and Wales.</dc:description><dc:date>1972-12-31</dc:date><dc:type>text</dc:type><dc:format>text/xml</dc:format><dc:language>en</dc:language><dc:publisher>Statute Law Database</dc:publisher><dc:modified>2026-09-28</dc:modified><dc:contributor>Expert Participation</dc:contributor><dct:valid>2026-10-01</dct:valid>
+					
+					<atom:link rel="self" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/data.xml" type="application/xml"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/resources" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/resources" title="More Resources"/>
+					
+					
+					
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/act" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20" title="whole act"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/introduction" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/introduction" title="introduction"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/body" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/body" title="body"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/schedules" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/schedules" title="schedules"/>
+					
+										
+					
+					
+					
+					<atom:link rel="alternate" type="application/rdf+xml" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/data.rdf" title="RDF/XML"/><atom:link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/data.akn" title="AKN"/><atom:link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/data.xht" title="HTML snippet"/><atom:link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/data.htm" title="Website (XHTML) Default View"/><atom:link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/data.csv" title="CSV"/><atom:link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/data.pdf" title="PDF"/>
+					<atom:link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/data.html" title="HTML5 snippet"/>
+
+					
+					<atom:link rel="http://purl.org/dc/terms/tableOfContents" hreflang="en" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/contents" title="Table of Contents"/>
+					
+					<atom:link rel="http://purl.org/dc/terms/replaces" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/2021-04-29" title="2021-04-29"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/enacted" title="enacted"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1991-02-01" title="1991-02-01"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1991-07-01" title="1991-07-01"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1991-09-25" title="1991-09-25"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1997-01-01" title="1997-01-01"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/2003-10-13" title="2003-10-13"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/2005-12-05" title="2005-12-05"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/2007-10-01" title="2007-10-01"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/2009-10-01" title="2009-10-01"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/2012-02-01" title="2012-02-01"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/2021-04-29" title="2021-04-29"/><atom:link rel="http://purl.org/dc/terms/hasVersion" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/2022-10-31" title="2022-10-31"/>
+					
+					<atom:link rel="up" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20" title="Entire legislation"/><atom:link rel="prev" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/204" title="Provision; Section 204"/><atom:link rel="prevInForce" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/204" title="Provision; Section 204"/><atom:link rel="next" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/206" title="Provision; Section 206"/><atom:link rel="nextInForce" href="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/206" title="Provision; Section 206"/>
+					<ukm:PrimaryMetadata><ukm:DocumentClassification><ukm:DocumentCategory Value="primary"/><ukm:DocumentMainType Value="UnitedKingdomPublicGeneralAct"/><ukm:DocumentStatus Value="revised"/></ukm:DocumentClassification><ukm:Year Value="1925"/><ukm:Number Value="20"/><ukm:AlternativeNumber Category="Regnal" Value="15_and_16_Geo_5"/><ukm:EnactmentDate Date="1925-04-09"/><ukm:UnappliedEffects><ukm:UnappliedEffect Type="inserted" RequiresApplied="true" AffectingURI="http://www.legislation.gov.uk/id/ukpga/2016/22" AffectingYear="2016" AffectingClass="UnitedKingdomPublicGeneralAct" EffectId="key-0acbda59e1cc92ecc4a4bcfaef8e87d0" Modified="2025-04-28T16:15:59Z" AffectingProvisions="Sch. 7 para. 1(2)" AffectedExtent="E+W" Row="26" URI="http://www.legislation.gov.uk/id/effect/key-0acbda59e1cc92ecc4a4bcfaef8e87d0" AffectingNumber="22" AffectedYear="1925" AffectedURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20" AffectingEffectsExtent="S+A+M+E+A+S+A+F+F+E+C+T+E+D" AffectedNumber="20" AffectedClass="UnitedKingdomPublicGeneralAct" AffectedProvisions="s. 52(2)(dc)(dd)"><ukm:AffectedTitle>Law of Property Act 1925</ukm:AffectedTitle><ukm:AffectedProvisions><ukm:Section Ref="section-52-2-dc" URI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/52/2/dc" FoundRef="section-52">s. 52(2)(dc)</ukm:Section><ukm:Section Ref="section-52-2-dd" URI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/52/2/dd" FoundRef="section-52">(dd)</ukm:Section></ukm:AffectedProvisions><ukm:AffectingTitle>Housing and Planning Act 2016</ukm:AffectingTitle><ukm:AffectingProvisions><ukm:Section Ref="schedule-7" URI="http://www.legislation.gov.uk/id/ukpga/2016/22/schedule/7">Sch. 7 </ukm:Section><ukm:Section Ref="schedule-7-paragraph-1-2" URI="http://www.legislation.gov.uk/id/ukpga/2016/22/schedule/7/paragraph/1/2">para. 1(2)</ukm:Section></ukm:AffectingProvisions><ukm:CommencementAuthority><ukm:Section Ref="section-216-3" URI="http://www.legislation.gov.uk/id/ukpga/2016/22/section/216/3">s. 216(3)</ukm:Section></ukm:CommencementAuthority><ukm:InForceDates><ukm:InForce Applied="false" Prospective="true" Qualification=""/></ukm:InForceDates></ukm:UnappliedEffect></ukm:UnappliedEffects></ukm:PrimaryMetadata>
+					
+
+                    
+									 
+					<ukm:Alternatives><ukm:Alternative Date="2025-03-24" Size="14414970" URI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/pdfs/ukpga_19250020_en.pdf" Print="true"/></ukm:Alternatives>
+					
+					<ukm:Statistics>
+									<ukm:TotalParagraphs Value="279"/>
+									<ukm:BodyParagraphs Value="207"/>
+									<ukm:ScheduleParagraphs Value="72"/>
+									<ukm:AttachmentParagraphs Value="0"/>
+									<ukm:TotalImages Value="10"/>
+								</ukm:Statistics>
+				</ukm:Metadata><Primary><Body DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/body" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/body" NumberOfProvisions="207" RestrictStartDate="2026-10-01"><Part DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/part/XII" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/part/XII" NumberOfProvisions="9" id="part-XII" RestrictStartDate="2026-10-01"><Number>
+          <Strong>Part XII</Strong>
+        </Number><Title> Construction, Jurisdiction, and General Provisions</Title><P1group RestrictExtent="E+W" RestrictStartDate="2022-10-31"><Title> General definitions.</Title><P1 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205" id="section-205"><Pnumber>205</Pnumber><P1para><P2 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1" id="section-205-1" RestrictStartDate="2022-10-31"><Pnumber><CommentaryRef Ref="key-ce94881005bd2889bdf750a5b6aeb366"/>1</Pnumber><P2para><Text>In this Act unless the context otherwise requires, the following expressions have the meanings hereby assigned to them respectively, that is to say:—</Text><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/i" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/i" id="section-205-1-i"><Pnumber>i</Pnumber><P4para><Text>“<Term id="term-bankruptcy">Bankruptcy</Term>” includes liquidation by arrangement; also in relation to a corporation means the winding up thereof;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/ii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/ii" id="section-205-1-ii"><Pnumber><CommentaryRef Ref="c2387561"/>ii</Pnumber><P4para><Text>“<Term id="term-conveyance">Conveyance</Term>” includes a mortgage, charge, lease, assent, vesting declaration, vesting instrument, disclaimer, release and
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+every other assurance of property or of an interest therein by any instrument, except a will; “<Term id="term-convey">convey</Term>” has a corresponding meaning;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+and “<Term id="term-disposition">disposition</Term>” includes a conveyance and also a devise, bequest, or an appointment of property contained in a will; and “<Term id="term-dispose-of">dispose of</Term>” has a corresponding meaning;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/iii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/iii" id="section-205-1-iii"><Pnumber>iii</Pnumber><P4para><Text>“<Term id="term-building-purposes">Building purposes</Term>” include the erecting and improving of, and the adding to, and the repairing of buildings; and a “<Term id="term-building-lease">building lease</Term>” is a lease for building purposes or purposes connected therewith;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/iiiA" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/iiiA" id="section-205-1-iiiA"><Pnumber><CommentaryRef Ref="c2387571"/>iiiA</Pnumber><P4para><Text>. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/iv" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/iv" id="section-205-1-iv"><Pnumber>iv</Pnumber><P4para><Text>“<Term id="term-death-duty">Death duty</Term>” means estate duty . . . <CommentaryRef Ref="c2387581"/> and every other duty leviable or payable on a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+death;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/v" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/v" id="section-205-1-v"><Pnumber>v</Pnumber><P4para><Text>“<Term id="term-estate-owner">Estate owner</Term>” means the owner of a legal estate, but an infant is not capable of being an estate owner;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/vi" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/vi" id="section-205-1-vi"><Pnumber>vi</Pnumber><P4para><Text>“<Term id="term-gazette">Gazette</Term>” means the London Gazette;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/vii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/vii" id="section-205-1-vii"><Pnumber>vii</Pnumber><P4para><Text>“<Term id="term-incumbrance">Incumbrance</Term>” includes a legal or equitable mortgage and a trust for securing money, and a lien, and a charge of a portion,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+annuity, or other capital or annual sum; and “<Term id="term-incumbrancer">incumbrancer</Term>” has a meaning corresponding with that of incumbrance, and includes every
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+person entitled to the benefit of an incumbrance, or to require payment or discharge thereof;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/viii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/viii" id="section-205-1-viii"><Pnumber>viii</Pnumber><P4para><Text>“<Term id="term-instrument">Instrument</Term>” does not include a statute, unless the statute creates a settlement;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/ix" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/ix" id="section-205-1-ix"><Pnumber>ix</Pnumber><P4para><Text>“<Term id="term-land">Land</Term>” includes land of any tenure, and mines and minerals, whether or not held apart from the surface, buildings or parts of
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+buildings (whether the division is horizontal, vertical or made in any other way) and other corporeal hereditaments; also a manor, an advowson, and a rent and other
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+incorporeal hereditaments, and an easement, right, privilege, or benefit in, over, or derived from land; <CommentaryRef Ref="c2387591"/>. . . and “<Term id="term-mines-and-minerals">mines and minerals</Term>” include any strata or seam of minerals or substances in or under any land, and powers of working and getting the same <CommentaryRef Ref="c2387591"/>.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+. .; and “<Term id="term-manor">manor</Term>” includes a lordship, and reputed manor or lordship; and “<Term id="term-hereditament">hereditament</Term>”
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+means any real property which on an intestacy occurring before the commencement of this Act might have devolved upon an heir;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/x" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/x" id="section-205-1-x"><Pnumber>x</Pnumber><P4para><Text>“<Term id="term-legal-estates">Legal estates</Term>” mean the estates, interests and charges, in or over land (subsisting or created at law) which are by
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+this Act authorised to subsist or to be created as legal estates; “<Term id="term-equitable-interests">equitable interests</Term>” mean all the other interests and charges in or
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+over land <CommentaryRef Ref="c2387591"/>. . .; an equitable interest “<Term id="term-capable-of-subsisting-as-a-legal-estate">capable of subsisting as a legal estate</Term>” means such as
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+could validly subsist or be created as a legal estate under this Act;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xi" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xi" id="section-205-1-xi"><Pnumber>xi</Pnumber><P4para><Text>“<Term id="term-legal-powers">Legal powers</Term>” include the powers vested in a chargee by way of legal mortgage or in an estate owner under which a legal
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+estate can be transferred or created; and “<Term id="term-equitable-powers">equitable powers</Term>” mean all the powers in or over land under which equitable interests or
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+powers only can be transferred or created;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xii" id="section-205-1-xii"><Pnumber><CommentaryRef Ref="c2387621"/>xii</Pnumber><P4para><Text>“<Term id="term-limitation-acts">Limitation Acts</Term>” mean the Real Property Limitation Acts, 1833, 1837 and 1874, and “<Term id="term-limitation">limitation</Term>” includes a trust; </Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xiii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xiii" id="section-205-1-xiii"><Pnumber><Addition ChangeId="d29p9136" CommentaryRef="c2387631">xiii</Addition></Pnumber><P4para><Text><Addition ChangeId="d29p9136" CommentaryRef="c2387631">
+“
+</Addition><Term id="term-mental-disorder"><Addition ChangeId="d29p9136" CommentaryRef="c2387631">Mental disorder</Addition></Term><Addition ChangeId="d29p9136" CommentaryRef="c2387631">
+” has the meaning assigned to it by 
+</Addition><Addition ChangeId="d29p9136" CommentaryRef="c2387631"><Addition ChangeId="d29p9146" CommentaryRef="c2387641">
+section 1 of the Mental
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Health Act 1983
+</Addition></Addition><Addition ChangeId="d29p9136" CommentaryRef="c2387631">
+, and “
+</Addition><Term id="term-receiver"><Addition ChangeId="d29p9136" CommentaryRef="c2387631">receiver</Addition></Term><Addition ChangeId="d29p9136" CommentaryRef="c2387631">
+”, in relation to a person suffering from mental disorder,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+means a receiver appointed for that person under 
+</Addition><Addition ChangeId="d29p9136" CommentaryRef="c2387631"><Addition ChangeId="d29p9153" CommentaryRef="c2387641">
+Part VIII of the Mental Health Act 1959 or Part VII of the said Act of 1983
+</Addition></Addition><Addition ChangeId="d29p9136" CommentaryRef="c2387631">
+of
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+that Act;
+</Addition>
+</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xiv" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xiv" id="section-205-1-xiv"><Pnumber>xiv</Pnumber><P4para><Text>A “<Term id="term-mining-lease">mining lease</Term>” means a lease for mining purposes, that is, the searching for, winning, working, getting, making merchantable,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+carrying away, or disposing of mines and minerals, or purposes connected therewith, and includes a grant or licence for mining purposes;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xv" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xv" id="section-205-1-xv"><Pnumber><CommentaryRef Ref="c2387661"/>xv</Pnumber><P4para><Text>“<Term id="term-minister">Minister</Term>” means the “Minister of Agriculture and Fisheries”;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xvi" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xvi" id="section-205-1-xvi"><Pnumber>xvi</Pnumber><P4para><Text>“<Term id="term-mortgage">Mortgage</Term>” includes any charge or lien on any property for securing money or money’s worth; “<Term id="term-legal-mortgage">legal mortgage</Term>” means a mortgage by demise or subdemise or a charge by way of legal mortgage and “legal
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mortgagee” has a corresponding meaning; “<Term id="term-mortgage-money">mortgage money</Term>” means money or money’s worth secured by a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mortgage; “<Term id="term-mortgagor">mortgagor</Term>” includes any person from time to time deriving title under the original mortgagor or entitled to redeem a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mortgage according to his estate interest or right in the mortgaged property; “<Term id="term-mortgagee">mortgagee</Term>” includes a chargee by way of legal mortgage
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+and any person from time to time deriving title under the original mortgagee; and “<Term id="term-mortgagee-in-possession">mortgagee in possession</Term>” is, for the purposes of
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+this Act, a mortgagee who, in right of the mortgage, has entered into and is in possession of the mortgaged property; and “right of
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+redemption” includes an option to repurchase only if the option in effect creates a right of redemption;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xvii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xvii" id="section-205-1-xvii"><Pnumber>xvii</Pnumber><P4para><Text>“<Term id="term-notice">Notice</Term>” includes constructive notice;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xviii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xviii" id="section-205-1-xviii"><Pnumber>xviii</Pnumber><P4para><Text>“<Term id="term-personal-representative">Personal representative</Term>” means the executor, original or by representation, or administrator for the time being of a deceased
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+person, and as regards any liability for the payment of death duties includes any person who takes possession of or intermeddles with the property of a deceased person without the
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+authority of the personal representatives or the court;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xix" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xix" id="section-205-1-xix"><Pnumber>xix</Pnumber><P4para><Text>“<Term id="term-possession">Possession</Term>” includes receipt of rents and profits or the right to receive the same, if any; and “<Term id="term-income">income</Term>” includes rents and profits;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xx" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xx" id="section-205-1-xx"><Pnumber>xx</Pnumber><P4para><Text>“<Term id="term-property">Property</Term>” includes any thing in action, and any interest in real or personal property;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxi" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxi" id="section-205-1-xxi"><Pnumber>xxi</Pnumber><P4para><Text>“<Term id="term-purchaser">Purchaser</Term>” means a purchaser in good faith for valuable consideration and includes a lessee, mortgagee or other person who
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+for valuable consideration acquires an interest in property except that in Part I of this Act and elsewhere where so expressly provided “purchaser”
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+only means a person who acquires an interest in or charge on property for money or money’s worth; and in reference to a legal estate includes a chargee by way of legal
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mortgage; and where the context so requires “<Term id="term-purchaser">purchaser</Term>” includes an intending purchaser; “<Term id="term-purchase">purchase</Term>” has a meaning corresponding with that of “purchaser”; and “<Term id="term-valuable-consideration">valuable consideration</Term>” includes marriage  <Addition ChangeId="d29p9260" CommentaryRef="c18383991">, and formation of a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+civil partnership,</Addition> but does not include a nominal consideration in money;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxii" id="section-205-1-xxii"><Pnumber>xxii</Pnumber><P4para><Text>“<Term id="term-registered-land">Registered land</Term>” has the same meaning as in the  <Substitution ChangeId="d29p9273" CommentaryRef="c4282831">Land Registration Act 2002;</Substitution><CommentaryRef Ref="c4309911"/>. . . </Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxiii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxiii" id="section-205-1-xxiii"><Pnumber>xxiii</Pnumber><P4para><Text>“<Term id="term-rent">Rent</Term>” includes a rent service or a rentcharge, or other rent, toll, duty, royalty, or annual or periodical payment in money
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+or money’s worth, reserved or issuing out of or charged upon land, but does not include mortgage interest; “<Term id="term-rentcharge">rentcharge</Term>” includes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+a fee farm rent; “<Term id="term-fine">fine</Term>” includes a premium or foregift and any payment, consideration, or benefit in the nature of a fine, premium or
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+foregift; “<Term id="term-lessor">lessor</Term>” includes an underlessor and a person deriving title under a lessor or underlessor; and “<Term id="term-lessee">lessee</Term>” includes an underlessee and a person deriving title under a lessee or underlessee, and “<Term id="term-lease">lease</Term>” includes an underlease or other tenancy;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxiv" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxiv" id="section-205-1-xxiv"><Pnumber>xxiv</Pnumber><P4para><Text>“<Term id="term-sale">Sale</Term>” includes an extinguishment of manorial incidents, but in other respects means a sale properly so called;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxv" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxv" id="section-205-1-xxv"><Pnumber>xxv</Pnumber><P4para><Text>“<Term id="term-securities">Securities</Term>” include stocks, funds and shares;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxvi" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxvi" id="section-205-1-xxvi"><Pnumber>xxvi</Pnumber><P4para><Text>“<Term id="term-tenant-for-life">Tenant for life,</Term>”
+                      “<Term id="term-statutory-owner">statutory owner,</Term>”
+                      “settled
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+land,”
+                      “<Term id="term-settlement">settlement,</Term>”
+                      “<Term id="term-vesting-deed">vesting deed,</Term>”
+                      “<Term id="term-subsidiary-vesting-deed">subsidiary vesting deed,</Term>”
+                      “<Term id="term-vesting-order">vesting order,</Term>”
+                      “vesting
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+instrument,”
+                      “<Term id="term-trust-instrument">trust instrument,</Term>”
+                      “<Term id="term-capital-money">capital money,</Term>” and “<Term id="term-trustees-of-the-settlement">trustees of the settlement</Term>” have the same meanings as in the <CommentaryRef Ref="c2387681"/>Settled Land Act, 1925;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxvii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxvii" id="section-205-1-xxvii"><Pnumber>xxvii</Pnumber><P4para><Text>“<Term id="term-term-of-years-absolute">Term of years absolute</Term>” means a term of years (taking effect either in possession or in reversion whether or not at a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+rent) with or without impeachment for waste, subject or not to another legal estate, and either certain or liable to determination by notice, re-entry, operation of law, or
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+by a provision for cesser on redemption, or in any other event (other than the dropping of a life, or the determination of a determinable life interest); but does not
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+include any term of years determinable with life or lives or with the cesser of a determinable life interest, nor, if created after the commencement of this Act, a term of years
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+which is not expressed to take effect in possession within twenty-one years after the creation thereof where required by this Act to take effect within that period; and in this
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+definition the expression “<Term id="term-term-of-years">term of years</Term>” includes a term for less than a year, or for a year or years and a fraction of a year or
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from year to year;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxviii" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxviii" id="section-205-1-xxviii" RestrictStartDate="2012-02-01"><Pnumber><CommentaryRef Ref="c2387691"/><CommentaryRef Ref="c2387701"/><CommentaryRef Ref="c2387711"/><CommentaryRef Ref="M_C_4990b363-f4a2-44d7-c9db-3ebdc4b908b5"/><CommentaryRef Ref="key-26a0594cd246f787885a16a134451710"/><CommentaryRef Ref="key-86dad4557f5b631deb5ff9106eda32df"/>xxviii</Pnumber><P4para><Text>“<Term id="term-trust-corporation">Trust Corporation</Term>” means the Public Trustee or a corporation either appointed by the court in any particular case to be a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+trustee or entitled by rules made under subsection (3) of section four of the <CommentaryRef Ref="c2387721"/>Public Trustee Act, 1906, to act as custodian
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+trustee;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxix" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxix" id="section-205-1-xxix"><Pnumber><CommentaryRef Ref="c2387561"/>xxix</Pnumber><P4para><Text>“<Term id="term-trust-for-sale">Trust for sale,</Term>” in relation to land, means an immediate <CommentaryRef Ref="c2387591"/>. . . trust for sale, whether
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+or not exercisable at the request or with the consent of any person <CommentaryRef Ref="c2387591"/>. . .; “<Term id="term-trustees-for-sale">trustees for sale</Term>”
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mean the persons (including a personal representative) holding land on trust for sale; <CommentaryRef Ref="c2387591"/>. . .</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxx" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxx" id="section-205-1-xxx"><Pnumber>xxx</Pnumber><P4para><Text>“<Term id="term-united-kingdom">United Kingdom</Term>” means Great Britain and Northern Ireland;</Text></P4para></P4><P4 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1/xxxi" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1/xxxi" id="section-205-1-xxxi"><Pnumber>xxxi</Pnumber><P4para><Text>“<Term id="term-will">Will</Term>” includes codicil.</Text></P4para></P4></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/1A" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1A" id="section-205-1A"><Pnumber><Addition ChangeId="d29p9420" CommentaryRef="c2387771">1A</Addition></Pnumber><P2para><Text><Addition ChangeId="d29p9420" CommentaryRef="c2387771">Any reference in this Act to money being paid into court shall be construed as referring to the money being paid into the  </Addition><Addition ChangeId="d29p9420" CommentaryRef="c2387771"><Substitution ChangeId="d29p9427" CommentaryRef="c18410141">Senior Courts</Substitution></Addition><Addition ChangeId="d29p9420" CommentaryRef="c2387771"> or any other court that has jurisdiction, and any reference in this
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Act to the court, in a context referring to the investment or application of money paid into court, shall be construed, in the case of money paid into the  </Addition><Addition ChangeId="d29p9420" CommentaryRef="c2387771"><Substitution ChangeId="d29p9431" CommentaryRef="c18410141">Senior Courts</Substitution></Addition><Addition ChangeId="d29p9420" CommentaryRef="c2387771"> , as referring to the High Court, and in the case of money paid into
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+another court, as referring to that other court.</Addition></Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/2" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/2" id="section-205-2"><Pnumber>2</Pnumber><P2para><Text>Where an equitable interest in or power over property arises by statute or operation of law, references to the creation of an interest or power include references to any
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+interest or power so arising.</Text></P2para></P2><P2 DocumentURI="http://www.legislation.gov.uk/ukpga/Geo5/15-16/20/section/205/3" IdURI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/3" id="section-205-3"><Pnumber>3</Pnumber><P2para><Text>References to registration under the <CommentaryRef Ref="c2387781"/>Land Charges Act, 1925, apply to any registration made under any other statute which is by the <CommentaryRef Ref="c2387791"/>Land
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Charges Act, 1925, to have effect as if the registration had been made under that Act.</Text></P2para></P2></P1para></P1></P1group></Part></Body></Primary><Commentaries><Commentary id="c18383991" Type="F"><Para><Text>Words in s. 205(1)(xxi) inserted (5.12.2005) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/2004/33" id="c02184" Year="2004" Class="UnitedKingdomPublicGeneralAct" Number="33" Title="Civil Partnership Act 2004">Civil Partnership Act 2004 (c. 33)</Citation>, <CitationSubRef id="c02185" CitationRef="c02184" URI="http://www.legislation.gov.uk/id/ukpga/2004/33/section/261/1" SectionRef="section-261-1">s. 261(1)</CitationSubRef>, <CitationSubRef id="c02186" CitationRef="c02184" URI="http://www.legislation.gov.uk/id/ukpga/2004/33/schedule/27/paragraph/7" SectionRef="schedule-27-paragraph-7" Operative="true">Sch. 27 para. 7</CitationSubRef>; <Citation URI="http://www.legislation.gov.uk/id/uksi/2005/3175" id="c02187" Class="UnitedKingdomStatutoryInstrument" Year="2005" Number="3175">S.I. 2005/3175</Citation>, <CitationSubRef id="c02188" CitationRef="c02187" URI="http://www.legislation.gov.uk/id/uksi/2005/3175/article/2/1" SectionRef="article-2-1" Operative="true">art. 2(1)</CitationSubRef>, <CitationSubRef id="c02189" CitationRef="c02187" URI="http://www.legislation.gov.uk/id/uksi/2005/3175/schedule/1" SectionRef="schedule-1">Sch. 1</CitationSubRef></Text></Para></Commentary><Commentary id="c18410141" Type="F"><Para><Text>Words in s. 205(1A) substituted (1.10.2009) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/2005/4" id="c02232" Year="2005" Class="UnitedKingdomPublicGeneralAct" Number="4" Title="Constitutional Reform Act 2005">Constitutional Reform Act 2005 (c. 4)</Citation>, <CitationSubRef id="c02233" CitationRef="c02232" URI="http://www.legislation.gov.uk/id/ukpga/2005/4/section/59/5" SectionRef="section-59-5">s. 59(5)</CitationSubRef>, <CitationSubRef id="c02234" CitationRef="c02232" URI="http://www.legislation.gov.uk/id/ukpga/2005/4/section/148" SectionRef="section-148">148</CitationSubRef>, <CitationSubRef id="c02235" CitationRef="c02232" URI="http://www.legislation.gov.uk/id/ukpga/2005/4/schedule/11/paragraph/4" SectionRef="schedule-11-paragraph-4" Operative="true">Sch. 11 para. 4</CitationSubRef>; <Citation URI="http://www.legislation.gov.uk/id/uksi/2009/1604" id="c02236" Class="UnitedKingdomStatutoryInstrument" Year="2009" Number="1604">S.I. 2009/1604</Citation>, <CitationSubRef id="c02237" CitationRef="c02236" URI="http://www.legislation.gov.uk/id/uksi/2009/1604/article/2" SectionRef="article-2" Operative="true">art. 2</CitationSubRef></Text></Para></Commentary><Commentary id="c2387561" Type="C"><Para><Text>The definition of "conveyance" in s. 205(1)(ii) applied (1.12.1991) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1991/57" id="c02137" Year="1991" Class="UnitedKingdomPublicGeneralAct" Number="57" Title="Water Resources Act 1991">Water Resources Act 1991 (c. 57, SIF 130)</Citation>, <CitationSubRef id="c02138" CitationRef="c02137" URI="http://www.legislation.gov.uk/id/ukpga/1991/57/section/182" SectionRef="section-182">ss. 182</CitationSubRef>, <CitationSubRef id="c02139" CitationRef="c02137" URI="http://www.legislation.gov.uk/id/ukpga/1991/57/section/225/2" SectionRef="section-225-2">225(2)</CitationSubRef>, <CitationSubRef id="c02140" CitationRef="c02137" URI="http://www.legislation.gov.uk/id/ukpga/1991/57/schedule/23" Operative="true" SectionRef="schedule-23">Sch. 23</CitationSubRef>, <CitationSubRef id="c02141" CitationRef="c02137" URI="http://www.legislation.gov.uk/id/ukpga/1991/57/paragraph/7/1" SectionRef="paragraph-7-1">para. 7(1)</CitationSubRef></Text></Para><Para><Text>The definition of "trust for sale" in s. 205(1)(xxix) applied (25.9.1991) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1961/33" id="c02142" Year="1961" Class="UnitedKingdomPublicGeneralAct" Number="33" Title="Land Compensation Act 1961">Land Compensation Act 1961 (c. 33, SIF 28:1)</Citation>, <CitationSubRef id="c02143" CitationRef="c02142" URI="http://www.legislation.gov.uk/id/ukpga/1961/33/schedule/3" Operative="true" SectionRef="schedule-3">Sch. 3</CitationSubRef>, <CitationSubRef id="c02144" CitationRef="c02142" URI="http://www.legislation.gov.uk/id/ukpga/1961/33/paragraph/7/4" SectionRef="paragraph-7-4">para. 7(4)</CitationSubRef> (as added (25.9.1991) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1991/34" id="c02145" Year="1991" Class="UnitedKingdomPublicGeneralAct" Number="34" Title="Planning and Compensation Act 1991">Planning and Compensation Act 1991 (c. 34, SIF 28:1)</Citation>, <CitationSubRef id="c02146" CitationRef="c02145" URI="http://www.legislation.gov.uk/id/ukpga/1991/34/section/66" SectionRef="section-66">s. 66</CitationSubRef>, <CitationSubRef id="c02147" CitationRef="c02145" URI="http://www.legislation.gov.uk/id/ukpga/1991/34/schedule/14/paragraph/2" Operative="true" SectionRef="schedule-14-paragraph-2">Sch. 14 para. 2</CitationSubRef>; <Citation URI="http://www.legislation.gov.uk/id/uksi/1991/2067" id="c02148" Class="UnitedKingdomStatutoryInstrument" Year="1991" Number="2067">S.I. 1991/2067</Citation>, <CitationSubRef id="c02149" CitationRef="c02148" URI="http://www.legislation.gov.uk/id/uksi/1991/2067/article/3" Operative="true" SectionRef="article-3">art. 3</CitationSubRef>)</Text></Para></Commentary><Commentary id="c2387571" Type="F"><Para><Text>S. 205(1)(iiiA) omitted (1.7.1991) by virtue of <Citation URI="http://www.legislation.gov.uk/id/uksi/1991/724" id="c02151" Class="UnitedKingdomStatutoryInstrument" Year="1991" Number="724">S.I. 1991/724</Citation>, <CitationSubRef id="c02152" CitationRef="c02151" URI="http://www.legislation.gov.uk/id/uksi/1991/724/schedule/part/I" Operative="true" SectionRef="schedule-part-I">Sch. Pt. I</CitationSubRef></Text></Para></Commentary><Commentary id="c2387581" Type="F"><Para><Text>Words repealed with saving by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1949/47" id="c02153" Year="1949" Class="UnitedKingdomPublicGeneralAct" Number="47" Title="Finance Act 1949">Finance Act 1949 (c. 47)</Citation>, <CitationSubRef id="c02154" CitationRef="c02153" URI="http://www.legislation.gov.uk/id/ukpga/1949/47/schedule/11/part/IV" Operative="true" SectionRef="schedule-11-part-IV">Sch. 11 Pt. IV</CitationSubRef></Text></Para></Commentary><Commentary id="c2387591" Type="F"><Para><Text>Words in s. 205(1)(ix)(x)(xxix) repealed (1.1.1997) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1996/47" id="c02156" Year="1996" Class="UnitedKingdomPublicGeneralAct" Number="47">1996 c. 47</Citation>, <CitationSubRef id="c02157" CitationRef="c02156" URI="http://www.legislation.gov.uk/id/ukpga/1996/47/section/25/2" SectionRef="section-25-2">s. 25(2)</CitationSubRef>, <CitationSubRef id="c02158" CitationRef="c02156" URI="http://www.legislation.gov.uk/id/ukpga/1996/47/schedule/4" Operative="true" SectionRef="schedule-4">Sch.4</CitationSubRef> (with <CitationSubRef id="c02159" CitationRef="c02156" URI="http://www.legislation.gov.uk/id/ukpga/1996/47/section/24/2" SectionRef="section-24-2">ss. 24(2)</CitationSubRef>, <CitationSubRef id="c02160" CitationRef="c02156" URI="http://www.legislation.gov.uk/id/ukpga/1996/47/section/25/4" SectionRef="section-25-4">25(4)</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/uksi/1996/2974" id="c02161" Class="UnitedKingdomStatutoryInstrument" Year="1996" Number="2974">S.I. 1996/2974</Citation>, <CitationSubRef id="c02162" CitationRef="c02161" URI="http://www.legislation.gov.uk/id/uksi/1996/2974/article/2" Operative="true" SectionRef="article-2">art. 2</CitationSubRef></Text></Para></Commentary><Commentary id="c2387621" Type="C"><Para><Text>Reference in s. 205(1)(xii) to Real Property Limitation Acts 1833, 1837 and 1874 to be construed as reference to <Citation URI="http://www.legislation.gov.uk/id/ukpga/1980/58" id="c02163" Year="1980" Class="UnitedKingdomPublicGeneralAct" Number="58" Title="Limitation Act 1980">Limitation Act 1980 (c. 58, SIF 79)</Citation>: <Citation URI="http://www.legislation.gov.uk/id/ukpga/1978/30" id="c02164" Year="1978" Class="UnitedKingdomPublicGeneralAct" Number="30" Title="Interpretation Act 1978">Interpretation Act 1978 (c. 30, SIF 115:1)</Citation>, <CitationSubRef id="c02165" CitationRef="c02164" URI="http://www.legislation.gov.uk/id/ukpga/1978/30/section/17/2/a" Operative="true" SectionRef="section-17-2-a">s. 17(2)(a)</CitationSubRef></Text></Para></Commentary><Commentary id="c2387631" Type="F"><Para><Text>S. 205(1)(xiii) substituted by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1959/72" id="c02167" Year="1959" Class="UnitedKingdomPublicGeneralAct" Number="72" Title="Mental Health Act 1959">Mental Health Act 1959 (c. 72)</Citation>, <CitationSubRef id="c02168" CitationRef="c02167" URI="http://www.legislation.gov.uk/id/ukpga/1959/72/schedule/7/part/I" Operative="true" SectionRef="schedule-7-part-I">Sch. 7 Pt. I</CitationSubRef></Text></Para></Commentary><Commentary id="c2387641" Type="F"><Para><Text>Words substituted by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1983/20" id="c02179" Year="1983" Class="UnitedKingdomPublicGeneralAct" Number="20" Title="Mental Health Act 1983">Mental Health Act 1983 (c. 20, SIF 85)</Citation>, <CitationSubRef id="c02180" CitationRef="c02179" URI="http://www.legislation.gov.uk/id/ukpga/1983/20/section/148" SectionRef="section-148">s.148</CitationSubRef>, <CitationSubRef id="c02181" CitationRef="c02179" URI="http://www.legislation.gov.uk/id/ukpga/1983/20/schedule/4/paragraph/5" Operative="true" SectionRef="schedule-4-paragraph-5">Sch. 4 para. 5</CitationSubRef>(<Emphasis>b</Emphasis>)</Text></Para></Commentary><Commentary id="c2387661" Type="C"><Para><Text>Style and title of Minister of Agriculture and Fisheries now changed to Minister of Agriculture, Fisheries and Food by <Citation URI="http://www.legislation.gov.uk/id/uksi/1955/554" id="c02182" Class="UnitedKingdomStatutoryInstrument" Year="1955" Number="554">S.I. 1955/554</Citation> (1955 I, p. 1200)</Text></Para></Commentary><Commentary id="c2387681" Type="M"><Para><Text><Citation URI="http://www.legislation.gov.uk/id/ukpga/1925/18" id="c02210" Year="1925" Class="UnitedKingdomPublicGeneralAct" Number="18">1925 c. 18</Citation>. </Text></Para></Commentary><Commentary id="c2387691" Type="C"><Para><Text>S. 205(1)(xxviii) extended by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1926/11" id="c02212" Year="1926" Class="UnitedKingdomPublicGeneralAct" Number="11" Title="Law of Property (Amendment) Act 1926">Law of Property (Amendment) Act 1926 (c. 11)</Citation>, <CitationSubRef id="c02213" CitationRef="c02212" URI="http://www.legislation.gov.uk/id/ukpga/1926/11/section/3" Operative="true" SectionRef="section-3">s. 3</CitationSubRef>, <CitationSubRef id="c02214" CitationRef="c02212" URI="http://www.legislation.gov.uk/id/ukpga/1926/11/section/I" SectionRef="section-I">S.I</CitationSubRef>. 1952/862 (1952 II, p.2322) and <Citation URI="http://www.legislation.gov.uk/id/ukcm/1961/3" id="c02215" Class="UnitedKingdomChurchMeasure" Year="1961" Number="3" Title="Clergy Pensions Measure 1961">Clergy Pensions Measure 1961 (No. 3)</Citation>, <CitationSubRef id="c02216" CitationRef="c02215" URI="http://www.legislation.gov.uk/id/ukcm/1961/3/section/31" Operative="true" SectionRef="section-31">s. 31</CitationSubRef></Text></Para></Commentary><Commentary id="c2387701" Type="C"><Para><Text>Definition in s. 205(1)(xxviii) extended by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1960/58" id="c02217" Year="1960" Class="UnitedKingdomPublicGeneralAct" Number="58" Title="Charities Act 1960">Charities Act 1960 (c. 58)</Citation>, <CitationSubRef id="c02218" CitationRef="c02217" URI="http://www.legislation.gov.uk/id/ukpga/1960/58/section/21A/c" Operative="true" SectionRef="section-21A-c">s. 21A(c)</CitationSubRef> (as inserted  (retrospectively) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1992/41" id="c02219" Year="1992" Class="UnitedKingdomPublicGeneralAct" Number="41" Title="Charities Act 1992">Charities Act 1992 (c. 41)</Citation>, <CitationSubRef id="c02220" CitationRef="c02219" URI="http://www.legislation.gov.uk/id/ukpga/1992/41/section/14/1/2" Operative="true" SectionRef="section-14-1-2">s.14(1)(2)</CitationSubRef>; <Citation URI="http://www.legislation.gov.uk/id/uksi/1992/1900" id="c02221" Class="UnitedKingdomStatutoryInstrument" Year="1992" Number="1900">S.I. 1992/1900</Citation>, <CitationSubRef id="c02222" CitationRef="c02221" URI="http://www.legislation.gov.uk/id/uksi/1992/1900/article/2/1" SectionRef="article-2-1">art. 2(1)</CitationSubRef>, <CitationSubRef id="c02223" CitationRef="c02221" URI="http://www.legislation.gov.uk/id/uksi/1992/1900/schedule/1" Operative="true" SectionRef="schedule-1">Sch. 1</CitationSubRef></Text></Para></Commentary><Commentary id="c2387711" Type="C"><Para><Text>Definition in s. 205(1)(xxviii) extended (1.8.1993) (retrospective in relation to time before 1.1.1982) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1993/10" id="c02224" Year="1993" Class="UnitedKingdomPublicGeneralAct" Number="10">1993 c. 10</Citation>, <CitationSubRef id="c02225" CitationRef="c02224" URI="http://www.legislation.gov.uk/id/ukpga/1993/10/section/35/1/c/2" Operative="true" SectionRef="section-35-1-c-2">ss. 35(1)(c)(2)</CitationSubRef>, <CitationSubRef id="c02226" CitationRef="c02224" URI="http://www.legislation.gov.uk/id/ukpga/1993/10/section/99" SectionRef="section-99">99</CitationSubRef></Text></Para></Commentary><Commentary id="c2387721" Type="M"><Para><Text><Citation URI="http://www.legislation.gov.uk/id/ukpga/1906/55" id="c02227" Year="1906" Class="UnitedKingdomPublicGeneralAct" Number="55">1906 c. 55</Citation>. </Text></Para></Commentary><Commentary id="c2387771" Type="F"><Para><Text>S. 205(1A) added by <Citation URI="http://www.legislation.gov.uk/id/ukpga/1965/2" id="c02229" Year="1965" Class="UnitedKingdomPublicGeneralAct" Number="2" Title="Administration of Justice Act 1965">Administration of Justice Act 1965 (c. 2)</Citation>, <CitationSubRef id="c02230" CitationRef="c02229" URI="http://www.legislation.gov.uk/id/ukpga/1965/2/schedule/1" Operative="true" SectionRef="schedule-1">Sch. 1</CitationSubRef></Text></Para></Commentary><Commentary id="c2387781" Type="M"><Para><Text><Citation URI="http://www.legislation.gov.uk/id/ukpga/1925/22" id="c02238" Year="1925" Class="UnitedKingdomPublicGeneralAct" Number="22">1925 c. 22</Citation>. </Text></Para></Commentary><Commentary id="c2387791" Type="M"><Para><Text><Citation URI="http://www.legislation.gov.uk/id/ukpga/1925/22" id="c02239" Year="1925" Class="UnitedKingdomPublicGeneralAct" Number="22">1925 c. 22</Citation>. </Text></Para></Commentary><Commentary id="c4282831" Type="F"><Para><Text>Words in s. 205(1)(xxii) substituted (13.10.2003) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/2002/9" id="c02191" Year="2002" Class="UnitedKingdomPublicGeneralAct" Number="9" Title="Land Registration Act 2002">Land Registration Act 2002 (c. 9)</Citation>, <CitationSubRef id="c02192" CitationRef="c02191" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/section/133" SectionRef="section-133">ss. 133</CitationSubRef>, <CitationSubRef id="c02193" CitationRef="c02191" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/section/136/2" SectionRef="section-136-2">136(2)</CitationSubRef>, <CitationSubRef id="c02194" CitationRef="c02191" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/schedule/11/paragraph/2/13/a" SectionRef="schedule-11-paragraph-2-13-a" Operative="true">Sch. 11 para. 2(13)(a)</CitationSubRef> (with <CitationSubRef id="c02195" CitationRef="c02191" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/section/129" SectionRef="section-129">s. 129</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/uksi/2003/1725" id="c02196" Class="UnitedKingdomStatutoryInstrument" Year="2003" Number="1725">S.I. 2003/1725</Citation>, <CitationSubRef id="c02197" CitationRef="c02196" URI="http://www.legislation.gov.uk/id/uksi/2003/1725/article/2" SectionRef="article-2" Operative="true">art. 2</CitationSubRef></Text></Para></Commentary><Commentary id="c4309911" Type="F"><Para><Text>Words in s. 205(1)(xxii) repealed (13.10.2003) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/2002/9" id="c02199" Year="2002" Class="UnitedKingdomPublicGeneralAct" Number="9" Title="Land Registration Act 2002">Land Registration Act 2002 (c. 9)</Citation>, <CitationSubRef id="c02200" CitationRef="c02199" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/section/133" SectionRef="section-133">ss. 133</CitationSubRef>, <CitationSubRef id="c02201" CitationRef="c02199" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/section/135" SectionRef="section-135">135</CitationSubRef>, <CitationSubRef id="c02202" CitationRef="c02199" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/section/136/2" SectionRef="section-136-2">136(2)</CitationSubRef>, <CitationSubRef id="c02203" CitationRef="c02199" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/schedule/11/paragraph/2/13/b" SectionRef="schedule-11-paragraph-2-13-b" Operative="true">Sch. 11 para. 2(13)(b)</CitationSubRef>, <CitationSubRef id="c02204" CitationRef="c02199" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/schedule/13" SectionRef="schedule-13" Operative="true">Sch. 13</CitationSubRef> (with <CitationSubRef id="c02205" CitationRef="c02199" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/section/129" SectionRef="section-129">ss. 129</CitationSubRef>, <CitationSubRef id="c02206" CitationRef="c02199" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/section/134" SectionRef="section-134">134</CitationSubRef>, <CitationSubRef id="c02207" CitationRef="c02199" URI="http://www.legislation.gov.uk/id/ukpga/2002/9/schedule/12/paragraph/1" SectionRef="schedule-12-paragraph-1">Sch. 12 para. 1</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/uksi/2003/1725" id="c02208" Class="UnitedKingdomStatutoryInstrument" Year="2003" Number="1725">S.I. 2003/1725</Citation>, <CitationSubRef id="c02209" CitationRef="c02208" URI="http://www.legislation.gov.uk/id/uksi/2003/1725/article/2" SectionRef="article-2" Operative="true">art. 2</CitationSubRef></Text></Para></Commentary><Commentary id="key-26a0594cd246f787885a16a134451710" Type="C"><Para><Text>S. 205(1)(xxviii) modified by 2010 c. 32, s. 12(1A)(1B) (as inserted (1.2.2012) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/2011/21" id="cwt4b8r91-00019" Class="UnitedKingdomPublicGeneralAct" Year="2011" Number="21" Title="Education Act 2011">Education Act 2011 (c. 21)</Citation>, <CitationSubRef id="cwt4b8r91-00020" CitationRef="cwt4b8r91-00019" URI="http://www.legislation.gov.uk/id/ukpga/2011/21/section/82/3" SectionRef="section-82-3">s. 82(3)</CitationSubRef>, <CitationSubRef id="cwt4b8r91-00021" CitationRef="cwt4b8r91-00019" URI="http://www.legislation.gov.uk/id/ukpga/2011/21/schedule/14/paragraph/20/2" SectionRef="schedule-14-paragraph-20-2" Operative="true">Sch. 14 para. 20(2)</CitationSubRef>; <Citation URI="http://www.legislation.gov.uk/id/uksi/2012/84" id="cwt4b8r91-00022" Class="UnitedKingdomStatutoryInstrument" Year="2012" Number="84" Title="The Education Act 2011 (Commencement No. 2 and Transitional and Savings Provisions) Order 2012">S.I. 2012/84</Citation>, <CitationSubRef id="cwt4b8r91-00023" CitationRef="cwt4b8r91-00022" URI="http://www.legislation.gov.uk/id/uksi/2012/84/article/3" SectionRef="article-3">art. 3</CitationSubRef> (with <CitationSubRef id="cwt4b8r91-00024" CitationRef="cwt4b8r91-00022" URI="http://www.legislation.gov.uk/id/uksi/2012/84/article/5" SectionRef="article-5">art. 5</CitationSubRef>))</Text></Para></Commentary><Commentary id="key-86dad4557f5b631deb5ff9106eda32df" Type="C"><Para><Text>S. 205(1)(xxviii): definition extended (coming into force in accordance with s. 53(3) of the amending Measure) by <Citation URI="http://www.legislation.gov.uk/id/ukcm/2021/2" id="c7snpm5r4-00007" Class="UnitedKingdomChurchMeasure" Year="2021" Number="2" Title="Cathedrals Measure 2021">Cathedrals Measure 2021 (No. 2)</Citation>, <CitationSubRef id="c7snpm5r4-00008" CitationRef="c7snpm5r4-00007" URI="http://www.legislation.gov.uk/id/ukcm/2021/2/schedule/1/paragraph/7/c" SectionRef="schedule-1-paragraph-7-c" Operative="true">Sch. 1 para. 7(c)</CitationSubRef> (with <CitationSubRef id="c7snpm5r4-00009" CitationRef="c7snpm5r4-00007" URI="http://www.legislation.gov.uk/id/ukcm/2021/2/section/42/4" SectionRef="section-42-4">ss. 42(4)</CitationSubRef>, <CitationSubRef id="c7snpm5r4-00010" CitationRef="c7snpm5r4-00007" URI="http://www.legislation.gov.uk/id/ukcm/2021/2/section/48" SectionRef="section-48">48</CitationSubRef>, <CitationSubRef id="c7snpm5r4-00011" CitationRef="c7snpm5r4-00007" URI="http://www.legislation.gov.uk/id/ukcm/2021/2/section/52/1" SectionRef="section-52-1">52(1)</CitationSubRef>)</Text></Para></Commentary><Commentary id="key-ce94881005bd2889bdf750a5b6aeb366" Type="C"><Para><Text><CitationSubRef SectionRef="section-205-1" URI="http://www.legislation.gov.uk/id/ukpga/Geo5/15-16/20/section/205/1" id="crvnv7pc4-00006">S. 205(1)</CitationSubRef> modified (31.10.2022) by 2011 c. 25, s. 334A(2) (as inserted by <Citation URI="http://www.legislation.gov.uk/id/ukpga/2022/6" Class="UnitedKingdomPublicGeneralAct" Year="2022" Number="6" Title="Charities Act 2022" id="crvnv7pc4-00007">Charities Act 2022 (c. 6)</Citation>, <CitationSubRef SectionRef="section-32-1" URI="http://www.legislation.gov.uk/id/ukpga/2022/6/section/32/1" CitationRef="crvnv7pc4-00007" Operative="true" id="crvnv7pc4-00008">ss. 32(1)</CitationSubRef>, <CitationSubRef SectionRef="section-41-4" URI="http://www.legislation.gov.uk/id/ukpga/2022/6/section/41/4" CitationRef="crvnv7pc4-00007" id="crvnv7pc4-00009">41(4)</CitationSubRef> (with <CitationSubRef SectionRef="section-32-2" URI="http://www.legislation.gov.uk/id/ukpga/2022/6/section/32/2" CitationRef="crvnv7pc4-00007" id="crvnv7pc4-00010">s. 32(2)</CitationSubRef>); <Citation URI="http://www.legislation.gov.uk/id/uksi/2022/1109" Class="UnitedKingdomStatutoryInstrument" Year="2022" Number="1109" Title="The Charities Act 2022 (Commencement No. 1, Consequential and Saving Provision) Regulations 2022" id="crvnv7pc4-00011">S.I. 2022/1109</Citation>, <CitationSubRef SectionRef="schedule-paragraph-7" URI="http://www.legislation.gov.uk/id/uksi/2022/1109/schedule/paragraph/7" CitationRef="crvnv7pc4-00011" id="crvnv7pc4-00012">Sch. para. 7</CitationSubRef>)</Text></Para></Commentary><Commentary id="M_C_4990b363-f4a2-44d7-c9db-3ebdc4b908b5" Type="C"><Para><Text>S. 205(1)(xxviii): definition of “trust corporation” extended (retrospectively) by <Citation URI="http://www.legislation.gov.uk/id/ukpga/2011/25" id="d12e4" Year="2011" Class="UnitedKingdomPublicGeneralAct" Number="25" Title="Charities Act 2011">Charities Act 2011 (c. 25)</Citation>, <CitationSubRef id="cc00096" CitationRef="d12e4" URI="http://www.legislation.gov.uk/id/ukpga/2011/25/schedule/7/paragraph/3/1" UpTo="http://www.legislation.gov.uk/id/ukpga/2011/25/schedule/7/paragraph/3/3" Operative="true" Type="group" StartSectionRef="schedule-7-paragraph-3-1" EndSectionRef="schedule-7-paragraph-3-3">Sch. 7 para. 3(1)-(3)</CitationSubRef> (with <CitationSubRef id="cc00097" CitationRef="d12e4" URI="http://www.legislation.gov.uk/id/ukpga/2011/25/section/20/2" SectionRef="section-20-2">s. 20(2)</CitationSubRef>, <CitationSubRef id="cc00098" CitationRef="d12e4" URI="http://www.legislation.gov.uk/id/ukpga/2011/25/schedule/8" SectionRef="schedule-8">Sch. 8</CitationSubRef>)</Text></Para></Commentary></Commentaries></Legislation>

@@ -1,8 +1,9 @@
 /**
  * @fileoverview Effect records — one shape for `ukm:UnappliedEffect` (document
  * metadata) and `ukm:Effect` (changes feeds) — plus provision matching at a
- * path-segment boundary (ranges in natural provision order) and the
- * outstanding-first ordering.
+ * path-segment boundary (ranges in natural provision order, citation prefixes
+ * aside), two-way against a provision and one-way against an element enclosing
+ * it, and the outstanding-first ordering.
  * @module services/legislation/clml/effects
  */
 
@@ -189,12 +190,26 @@ function withinRef(target: string[], from: string[], upTo: string[]): boolean {
   });
 }
 
+/** The provisions an effect names on one side, as path segments; empty for a whole-item effect. */
+function refsOf(
+  effect: EffectRecord,
+  onSide: 'affected' | 'affecting',
+): { from: string[]; upTo: string[] }[] {
+  return effect[onSide].provisions.flatMap((p) => {
+    const from = legislationPath(p.uri ?? p.up_to)?.split('/');
+    const upTo = legislationPath(p.up_to)?.split('/') ?? from;
+    return from && upTo ? [{ from, upTo }] : [];
+  });
+}
+
 /**
  * True when an effect touches a provision on the given side: a provision it
- * names equals the provision, descends from it, or is its ancestor, at a
+ * cites equals the provision, descends from it, or is its ancestor, at a
  * path-segment boundary (`section/45` and `section/45/2/f` touch each other,
  * never `section/45A`); a range touches every provision between its endpoints
  * in natural order (`s. 65(2)-(4)` touches `section/65/3`, not `section/65/5`).
+ * A citation's prefix is not a target: "Sch. 10 para. 6(1)(c)" touches
+ * `schedule/10` and `schedule/10/paragraph/6`, never `schedule/10/paragraph/1`.
  * An effect that names no provision URI on that side is a whole-item effect
  * and touches every provision.
  */
@@ -203,14 +218,60 @@ export function effectTouches(
   onSide: 'affected' | 'affecting',
   provisionPath: string,
 ): boolean {
-  const refs = effect[onSide].provisions.flatMap((p) => {
-    const from = legislationPath(p.uri ?? p.up_to)?.split('/');
-    const upTo = legislationPath(p.up_to)?.split('/') ?? from;
-    return from && upTo ? [{ from, upTo }] : [];
-  });
-  if (refs.length === 0) return true;
+  return refsOf(effect, onSide).length === 0 || effectCites(effect, onSide, provisionPath);
+}
+
+/** True when `path` lies strictly below `ancestor` at a path-segment boundary. */
+function strictlyBelow(path: string[], ancestor: string[]): boolean {
+  return path.length > ancestor.length && comparePaths(path, ancestor, false) === 0;
+}
+
+/**
+ * The provisions an effect names, less any named above another it names: that
+ * is the citation's prefix, not its target. Upstream records "Pt. 3 Ch. 3" as
+ * `part/3` and `part/3/chapter/3`, and "Sch. 10 para. 6(1)(c)" as `schedule/10`
+ * and `schedule/10/paragraph/6/1/c`.
+ */
+function citedRefs(effect: EffectRecord, onSide: 'affected' | 'affecting') {
+  const refs = refsOf(effect, onSide);
+  return refs.filter(({ from }) => !refs.some((other) => strictlyBelow(other.from, from)));
+}
+
+/**
+ * True when an effect reaches everything inside an enclosing element (a Part,
+ * Chapter, cross-heading, EU division, or a section read in part) on the given
+ * side: a provision it cites is the element or encloses it, or a range covers
+ * it with neither end inside it (`Pt. 2-4` covers `part/3`; `Pt. 3 Ch. 1-5`
+ * covers `part/3/chapter/3`, not `part/3`). One-way, unlike
+ * {@link effectTouches}: an effect on a sibling inside the element
+ * (`part/3/chapter/4`) does not reach the provisions of `part/3/chapter/3`, and
+ * "Pt. 3 Ch. 3" reaches nothing of Chapter 2 through its `part/3` prefix. A
+ * whole-item effect names no element and is left to {@link effectTouches}.
+ */
+export function effectEncloses(
+  effect: EffectRecord,
+  onSide: 'affected' | 'affecting',
+  enclosingPath: string,
+): boolean {
+  const target = enclosingPath.split('/');
+  return citedRefs(effect, onSide).some(
+    ({ from, upTo }) =>
+      !strictlyBelow(from, target) && !strictlyBelow(upTo, target) && withinRef(target, from, upTo),
+  );
+}
+
+/**
+ * {@link effectTouches} less its whole-item case: false for an effect that
+ * names no provision URI on the given side, so only an effect citing a
+ * provision is attributed to it.
+ */
+export function effectCites(
+  effect: EffectRecord,
+  onSide: 'affected' | 'affecting',
+  provisionPath: string,
+): boolean {
   const target = provisionPath.split('/');
-  return refs.some(({ from, upTo }) => withinRef(target, from, upTo));
+  return citedRefs(effect, onSide).some(({ from, upTo }) => withinRef(target, from, upTo));
 }
 
 function firstInForceDate(effect: EffectRecord): string {

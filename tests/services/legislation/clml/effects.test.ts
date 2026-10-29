@@ -1,12 +1,16 @@
 /**
  * @fileoverview Tests for effect records — one shape for document
  * `ukm:UnappliedEffect` and feed `ukm:Effect` — provision matching at a
- * path-segment boundary (whole-item effects kept), and outstanding-first order.
+ * path-segment boundary (whole-item effects kept, citation prefixes not
+ * targets), the one-way match against
+ * an enclosing element, and outstanding-first order.
  * @module tests/services/legislation/clml/effects.test
  */
 
 import { describe, expect, it } from 'vitest';
+import { parseChangesFeed } from '@/services/legislation/atom/changes-feed.js';
 import {
+  effectEncloses,
   effectTouches,
   parseEffect,
   sortOutstandingFirst,
@@ -279,12 +283,102 @@ describe('effectTouches', () => {
     expect(effectTouches(range as EffectRecord, 'affected', 'anaw/2016/1/section/186B')).toBe(true);
   });
 
+  it('never attributes an effect on an enclosing Part, Chapter or cross-heading to a section', () => {
+    for (const container of [
+      'ukpga/2006/46/part/3',
+      'ukpga/2006/46/part/3/chapter/3',
+      'ukpga/2006/46/part/3/chapter/3/crossheading/x',
+    ]) {
+      expect(effectTouches(on([container]), 'affected', 'ukpga/2006/46/section/29')).toBe(false);
+    }
+  });
+
   it('matches an ancestor of the provision named, at a segment boundary', () => {
     const onS45 = on(['ukpga/2018/12/section/45']);
     expect(effectTouches(onS45, 'affected', 'ukpga/2018/12/section/45/2')).toBe(true);
     expect(effectTouches(onS45, 'affected', 'ukpga/2018/12/section/45/2/f')).toBe(true);
     expect(effectTouches(onS45, 'affected', 'ukpga/2018/12/section/45A/2')).toBe(false);
     expect(effectTouches(onS45, 'affected', 'ukpga/2018/12/section/4')).toBe(false);
+  });
+
+  describe('citation prefixes', () => {
+    const ITEM = 'ukpga/2006/46';
+    const recorded = parseChangesFeed(
+      fixture('feeds/changes-unapplied-affected-ukpga-2006-46.feed'),
+    ).effects;
+    /** Labels of the recorded effects naming a provision that touch `provision`, in feed order. */
+    const touching = (provision: string) =>
+      recorded
+        .filter(
+          (e) =>
+            e.affected.provisions.length > 0 &&
+            effectTouches(e, 'affected', `${ITEM}/${provision}`),
+        )
+        .map((e) => e.affected.provisions_label);
+    const SCHEDULE_10 = [
+      'Sch. 10 para. 6(1)(c)',
+      'Sch. 10 para. 6(2D)',
+      'Sch. 10 para. 7(2)(a)(ii)',
+      'Sch. 10 para. 7(2)(b)(ii)',
+      'Sch. 10 para. 7(2A)',
+    ];
+
+    it('records "Sch. 10 para. 6(1)(c)" as its schedule/10 prefix and its target', () => {
+      const sch10 = recorded.find((e) => e.affected.provisions_label === 'Sch. 10 para. 6(1)(c)');
+      expect(sch10?.affected.provisions.map((p) => p.uri)).toEqual([
+        'https://www.legislation.gov.uk/id/ukpga/2006/46/schedule/10',
+        'https://www.legislation.gov.uk/id/ukpga/2006/46/schedule/10/paragraph/6/1/c',
+      ]);
+    });
+
+    it('never matches another provision under the prefix', () => {
+      expect(touching('schedule/10/paragraph/1')).toEqual([]);
+      expect(touching('schedule/10/paragraph/6')).toEqual([
+        'Sch. 10 para. 6(1)(c)',
+        'Sch. 10 para. 6(2D)',
+      ]);
+      expect(touching('schedule/10/paragraph/7/2/a')).toEqual(['Sch. 10 para. 7(2)(a)(ii)']);
+      expect(touching('part/3/chapter/2')).toEqual([]);
+      expect(touching('part/3/chapter/3')).toEqual(['Pt. 3 Ch. 3']);
+    });
+
+    it('still matches every effect inside a provision the prefix names', () => {
+      expect(touching('schedule/10')).toEqual(SCHEDULE_10);
+      expect(touching('part/3')).toEqual(['Pt. 3 Ch. 3']);
+    });
+
+    it('keeps a range cited under its prefix to the range', () => {
+      expect(touching('schedule/7/paragraph/8')).toEqual(['Sch. 7 para. 5-11']);
+      expect(touching('schedule/7/paragraph/1')).toEqual([]);
+      expect(touching('schedule/7/paragraph/12')).toEqual([]);
+      expect(touching('schedule/7')).toEqual(['Sch. 7 para. 5-11']);
+    });
+
+    it('keeps the recorded whole-item effects for every provision', () => {
+      const whole = recorded.filter((e) => e.affected.provisions.length === 0);
+      expect(whole.map((e) => e.affected.provisions_label)).toEqual(['Act', 'Act']);
+      for (const provision of ['schedule/10/paragraph/1', 'part/3/chapter/2', 'section/29']) {
+        for (const e of whole)
+          expect(effectTouches(e, 'affected', `${ITEM}/${provision}`)).toBe(true);
+      }
+    });
+
+    it('still matches everything under an effect naming one provision URI', () => {
+      const onSchedule = on([`${ITEM}/schedule/10`]);
+      expect(effectTouches(onSchedule, 'affected', `${ITEM}/schedule/10/paragraph/1`)).toBe(true);
+      expect(effectTouches(onSchedule, 'affected', `${ITEM}/schedule/1`)).toBe(false);
+    });
+
+    it('reads the affecting side the same way', () => {
+      const e = on([]);
+      e.affecting.provisions = ['schedule/2', 'schedule/2/paragraph/3'].map((p) => ({
+        label: 'Sch. 2 para. 3',
+        uri: `https://www.legislation.gov.uk/id/uksi/2026/386/${p}`,
+      }));
+      expect(effectTouches(e, 'affecting', 'uksi/2026/386/schedule/2/paragraph/1')).toBe(false);
+      expect(effectTouches(e, 'affecting', 'uksi/2026/386/schedule/2/paragraph/3/1')).toBe(true);
+      expect(effectTouches(e, 'affecting', 'uksi/2026/386/schedule/2')).toBe(true);
+    });
   });
 
   describe('ranges', () => {
@@ -404,6 +498,108 @@ describe('effectTouches', () => {
         'schedule/2/paragraph/5/1',
       ]);
     });
+  });
+});
+
+describe('effectEncloses', () => {
+  const ITEM = 'ukpga/2006/46';
+  const on = (...refs: (string | [string, string])[]): EffectRecord => ({
+    effect_id: 'k',
+    type: 'excluded',
+    outstanding: true,
+    affected: {
+      provisions: refs.map((ref) =>
+        typeof ref === 'string'
+          ? { label: ref, uri: `https://www.legislation.gov.uk/id/${ITEM}/${ref}` }
+          : {
+              label: ref.join('-'),
+              uri: `https://www.legislation.gov.uk/id/${ITEM}/${ref[0]}`,
+              up_to: `https://www.legislation.gov.uk/id/${ITEM}/${ref[1]}`,
+            },
+      ),
+    },
+    affecting: { provisions: [] },
+    commencement_authority: [],
+    savings: [],
+    in_force: [],
+  });
+  /** The enclosing elements, of those given, that the effect reaches. */
+  const reached = (e: EffectRecord, enclosing: string[]) =>
+    enclosing.filter((p) => effectEncloses(e, 'affected', `${ITEM}/${p}`));
+  const CHAPTER_3 = ['part/3', 'part/3/chapter/3', 'part/3/chapter/3/crossheading/x'];
+
+  it('reaches the element named and every element inside it', () => {
+    expect(reached(on('part/3/chapter/3'), CHAPTER_3)).toEqual([
+      'part/3/chapter/3',
+      'part/3/chapter/3/crossheading/x',
+    ]);
+    expect(reached(on('part/3'), CHAPTER_3)).toEqual(CHAPTER_3);
+  });
+
+  it('does not reach from a sibling inside an enclosing element, or from another kind', () => {
+    expect(reached(on('part/3/chapter/4'), CHAPTER_3)).toEqual([]);
+    expect(reached(on('part/3/chapter/3/crossheading/y'), CHAPTER_3)).toEqual([]);
+    expect(reached(on('part/4'), CHAPTER_3)).toEqual([]);
+    expect(reached(on('section/29'), CHAPTER_3)).toEqual([]);
+    expect(reached(on('schedule/3'), CHAPTER_3)).toEqual([]);
+  });
+
+  it('reaches through a range covering the element, never one with an end inside it', () => {
+    expect(reached(on(['part/2', 'part/4']), CHAPTER_3)).toEqual(CHAPTER_3);
+    expect(reached(on(['part/3/chapter/1', 'part/3/chapter/5']), CHAPTER_3)).toEqual([
+      'part/3/chapter/3',
+      'part/3/chapter/3/crossheading/x',
+    ]);
+    expect(reached(on(['part/3/chapter/4', 'part/5']), CHAPTER_3)).toEqual([]);
+    expect(reached(on(['part/1', 'part/3/chapter/2']), CHAPTER_3)).toEqual([]);
+    expect(reached(on(['part/4', 'part/6']), CHAPTER_3)).toEqual([]);
+  });
+
+  it('orders roman numerals by value, as pre-1963 Parts are numbered', () => {
+    expect(reached(on(['part/II', 'part/IV']), ['part/III', 'part/V', 'part/I'])).toEqual([
+      'part/III',
+    ]);
+  });
+
+  it('leaves a whole-item effect, and one on another item, unmatched', () => {
+    expect(reached(on(), CHAPTER_3)).toEqual([]);
+    const other = on('part/3');
+    other.affected.provisions = [
+      { label: 'Pt. 3', uri: 'https://www.legislation.gov.uk/id/ukpga/2006/47/part/3' },
+    ];
+    expect(reached(other, CHAPTER_3)).toEqual([]);
+  });
+
+  it('reads a recorded "Pt. 3 Ch. 3" citation as the Chapter alone, not its Part prefix', () => {
+    const feed = parseChangesFeed(fixture('feeds/changes-unapplied-affected-ukpga-2006-46.feed'));
+    const chapter = feed.effects.find((e) => e.affected.provisions_label === 'Pt. 3 Ch. 3');
+    expect(chapter?.affected.provisions.map((p) => p.uri)).toEqual([
+      'https://www.legislation.gov.uk/id/ukpga/2006/46/part/3',
+      'https://www.legislation.gov.uk/id/ukpga/2006/46/part/3/chapter/3',
+    ]);
+    const e = chapter as EffectRecord;
+    expect(reached(e, ['part/3', 'part/3/chapter/3'])).toEqual(['part/3/chapter/3']);
+    expect(reached(e, ['part/3', 'part/3/chapter/2'])).toEqual([]);
+    expect(effectTouches(e, 'affected', `${ITEM}/section/29`)).toBe(false);
+  });
+
+  it('finds the recorded Civil Procedure Rules effects on Part 77 and its first cross-heading', () => {
+    const feed = parseChangesFeed(fixture('feeds/changes-unapplied-affected-uksi-1998-3132.feed'));
+    const labels = (enclosing: string) =>
+      feed.effects
+        .filter((e) => effectEncloses(e, 'affected', `uksi/1998/3132/${enclosing}`))
+        .map((e) => e.affected.provisions_label);
+    expect(labels('part/77')).toEqual([
+      'Pt. 77 Table of Contents',
+      'Pt. 77 Table of Contents',
+      'Pt. 77 Table of Contents',
+    ]);
+    expect(labels('part/77/crossheading/1')).toEqual([
+      'Pt. 77 Table of Contents',
+      'Pt. 77 Table of Contents',
+      'Pt. 77 Table of Contents',
+      'rule 77.3 heading',
+    ]);
   });
 });
 

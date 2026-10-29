@@ -8,16 +8,31 @@
 
 import type { Context } from '@cyanheads/mcp-ts-core';
 import { McpError, serviceUnavailable } from '@cyanheads/mcp-ts-core/errors';
-import { parseChangesFeed } from './atom/changes-feed.js';
-import { type PublicationEvent, parsePublicationLog } from './atom/publication-log.js';
+import { escapeMarkdownInline } from '@cyanheads/mcp-ts-core/utils';
+import { type ChangesFeed, parseChangesFeed } from './atom/changes-feed.js';
+import {
+  type PublicationEvent,
+  type PublicationLogPage,
+  parsePublicationLog,
+} from './atom/publication-log.js';
 import { parseSearchFeed, type SearchFacets, type SearchResult } from './atom/search-feed.js';
 import { buildAttribution } from './attribution.js';
-import { extractTitleCandidates, normalizeTitle, type ParsedCitation } from './citations.js';
-import { effectTouches, sortOutstandingFirst } from './clml/effects.js';
+import {
+  extractTitleCandidates,
+  normalizeTitle,
+  type ParsedCitation,
+  type TitleCandidate,
+} from './citations.js';
+import {
+  effectCites,
+  effectEncloses,
+  effectTouches,
+  sortOutstandingFirst,
+} from './clml/effects.js';
 import { type DocumentMetadata, readMetadata } from './clml/metadata.js';
 import { fragmentOutline, type OutlineEntry, tocOutline } from './clml/outline.js';
 import { type Annotation, cutRendered, type RenderResult, renderNodes } from './clml/render.js';
-import type { CursorPosition } from './cursor.js';
+import { type CursorPosition, MAX_PAGE } from './cursor.js';
 import {
   type CallBudget,
   isCannotStart,
@@ -50,6 +65,7 @@ import {
   attr,
   child,
   elements,
+  findDescendants,
   findPath,
   legislationPath,
   parseXml,
@@ -72,6 +88,8 @@ export const SCAN_PAGE_SIZE = 500;
 /** Publication Log page size, fixed upstream; a track cursor's offset lies below it. */
 export const LOG_PAGE_SIZE = 20;
 const SCAN_MAX_PAGES = 3;
+/** Longest wait on the unapplied changes feed a provision read checks, inside what remains of the read's deadline (Design Decision 85). */
+const ITEM_CHECK_DEADLINE_MS = 10_000;
 const LOG_MAX_REQUESTS = 4;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** The UK calendar date, read by parts: the order and separators of a formatted date vary by ICU version. */
@@ -81,8 +99,6 @@ const UK_DATE = new Intl.DateTimeFormat('en-GB', {
   month: '2-digit',
   day: '2-digit',
 });
-/** An `/id` redirect to `…/contents/made` (or enacted, …) marks an item held only as its original text. */
-const ORIGINAL_ONLY = /\/contents\/(made|enacted|adopted|created)(?:\/|$)/;
 const SIMPLIFIED_TABLE_NOTICE =
   'Tables with merged cells were simplified; the XML link carries the exact layout.';
 
@@ -109,6 +125,8 @@ export interface DocumentQuery {
   /** Index of the first outline entry to return when the read answers with an outline. */
   outlineOffset: number;
   provision?: string;
+  /** The item path the caller passed, once `item` is rebound to the path legislation.gov.uk served it at (Design Decision 82). */
+  requestedItem?: string;
   /** `current`, an enacted keyword, or a calendar date. */
   version: string;
 }
@@ -165,9 +183,22 @@ export interface DocumentOutput {
   };
 }
 
+/** What a provision read's item check adds beyond the fragment's own effects (Design Decision 85). */
+interface ItemCheck {
+  /** Effects on the provision or an element enclosing it that the fragment does not carry. */
+  added: EffectRecord[];
+  /** Effects on a provision inside it that its path does not nest. */
+  inside: EffectRecord[];
+  notice?: string;
+  /** Set when the check could not run: the provisions it left unchecked, for the caveat. */
+  unchecked?: string;
+}
+
 /** Outcome of a document read. */
 export type DocumentOutcome =
   | { kind: 'found'; notices: string[]; output: DocumentOutput }
+  /** The path names more than one item (a document 300); the candidates its page lists. */
+  | { kind: 'ambiguous'; candidates: TitleCandidate[] }
   | {
       kind: 'not_found';
       /** False when the item-existence check could not run within the call's budget. */
@@ -230,7 +261,11 @@ export interface TrackOutcome {
   itemLogTotal?: number;
   mode: 'day_walk' | 'item_log';
   next?: CursorPosition;
-  /** Item-log mode: date of the oldest log event this call examined, in or out of the window (Design Decision 68). */
+  /**
+   * Item-log mode: date of the oldest log event, in or out of the window, on the pages this call
+   * passed: those it walked and those a page search found wholly newer than the window, never a
+   * probe past the window's first page (Design Decisions 68 and 84).
+   */
   readBackTo?: string;
 }
 
@@ -267,6 +302,48 @@ function idUriFor(path: string): string {
   return `${ORIGIN}/id/${path}`;
 }
 
+/**
+ * The query rebound to the item a served document or a redirect target names,
+ * when that differs from the item asked for: legislation.gov.uk serves a
+ * pre-1963 Act's calendar-year path at its regnal path and a Welsh SI asked for
+ * as `uksi` at `wsi`. Provision matching, outlines, effects and links then use
+ * the served path, and `requestedItem` keeps the caller's (Design Decision 82).
+ */
+function servedAt(query: DocumentQuery, uri: string | undefined): DocumentQuery {
+  const served = uri ? parseItemInput(uri)?.item : undefined;
+  if (!served?.full || served.path === query.item.path) return query;
+  return { ...query, item: served, requestedItem: query.requestedItem ?? query.item.path };
+}
+
+/**
+ * A dated read legislation.gov.uk answered with the original text of an item
+ * that holds no revised version (its 307 to `…/made`), rebound as the re-read
+ * after a 404 is (Design Decision 55): `version` the enacted keyword the served
+ * document names, `asOf` the date. A document listing a revised version
+ * (`current` or a dated one) is the original text of a revised item and stays
+ * as read.
+ */
+function asOriginal(query: DocumentQuery, md: DocumentMetadata): DocumentQuery {
+  if (query.asOf || !ISO_DATE.test(query.version)) return query;
+  const segments = legislationPath(md.identifier)?.split('/') ?? [];
+  if (segments.at(-1) === 'welsh') segments.pop();
+  const served = segments.at(-1);
+  if (!served || !isEnactedKeyword(served)) return query;
+  if (md.versions.some((v) => v === 'current' || isCalendarDate(v))) return query;
+  return { ...query, version: served, asOf: query.version };
+}
+
+/**
+ * The enacted keyword an item's `/id` redirect ends at, marking an item held
+ * only as its original text: `…/contents/made` for most, `…/enacted` with no
+ * `/contents` for a PDF-only Act (live: `/id/ukla/Eliz2/4-5/1` 303s to
+ * `/ukla/Eliz2/4-5/1/enacted`). A revised item's redirect ends at `…/contents`.
+ */
+function originalKeyword(location: string): string | undefined {
+  const last = location.split('?')[0]?.split('/').at(-1);
+  return isEnactedKeyword(last) ? last : undefined;
+}
+
 function dayBefore(date: string): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - 1);
@@ -283,6 +360,17 @@ function calendarDateOf(event: PublicationEvent): string | undefined {
   return isCalendarDate(date) ? date : undefined;
 }
 
+/**
+ * True when a Publication Log page holds an event dated by a calendar date and
+ * every such event is after `endDate`: the item log is newest first, so neither
+ * this page nor any before it holds a window event. A page with no
+ * calendar-dated event, such as one past the log's end, is not (Design Decision 84).
+ */
+function newerThan(page: PublicationLogPage, endDate: string): boolean {
+  const dates = page.events.map(calendarDateOf).filter((date) => date !== undefined);
+  return dates.length > 0 && dates.every((date) => date > endDate);
+}
+
 /** The document body container (`Primary`, `Secondary`, `EURetained`, …). */
 function bodyRoot(root: XmlElement): XmlElement | undefined {
   return elements(root).find(
@@ -292,26 +380,40 @@ function bodyRoot(root: XmlElement): XmlElement | undefined {
 }
 
 /**
- * Builds the fixed caveat sentence for a document's editorial status. `listed`
- * is false when the output omits `unapplied_effects` (an item outline), so the
- * sentence points at the count and uklaw_get_amendments instead.
+ * Builds the fixed caveat sentence for a document's editorial status.
+ * `listedOutstanding` is how many of the `outstanding` effects `unapplied_effects`
+ * lists, undefined when the output omits the field (an item outline): the
+ * sentence sends the caller to the list only for what it holds, and to
+ * uklaw_get_amendments for the rest (the effects past the first 20, or inside an
+ * outlined provision). `unchecked` names the provisions whose effects a
+ * provision read could not check, so a zero count claims none only against the
+ * provision itself.
  */
 function caveatFor(
   status: string | undefined,
   outstanding: number,
   version: string,
   scope: 'provision' | 'item',
-  listed: boolean,
+  listedOutstanding: number | undefined,
+  unchecked?: string,
 ): string {
+  const listed = listedOutstanding !== undefined;
   const historical =
     version !== 'current'
       ? ` ${listed ? 'unapplied_effects describes' : 'editorial.outstanding_effects counts'} the outstanding work on the current revised text, not the history of the version shown.`
       : '';
   if (status === 'revised') {
+    const route = !listedOutstanding
+      ? 'uklaw_get_amendments lists them'
+      : listedOutstanding < outstanding
+        ? `${listedOutstanding} ${listedOutstanding === 1 ? 'is' : 'are'} listed in unapplied_effects; uklaw_get_amendments lists the rest`
+        : 'see unapplied_effects';
     const count =
       outstanding === 0
-        ? `No outstanding effects are recorded against this ${scope}.`
-        : `${outstanding} outstanding effect${outstanding === 1 ? ' is' : 's are'} recorded against this ${scope} but not yet applied (${listed ? 'see unapplied_effects' : 'uklaw_get_amendments lists them'}).`;
+        ? unchecked
+          ? `No outstanding effects are recorded against this ${scope} itself; effects on ${unchecked} were not checked.`
+          : `No outstanding effects are recorded against this ${scope}.`
+        : `${outstanding} outstanding effect${outstanding === 1 ? ' is' : 's are'} recorded against this ${scope} but not yet applied (${route}).${unchecked ? ` Effects on ${unchecked} were not checked.` : ''}`;
     return `Revised text: an editorial consolidation by legislation.gov.uk that can lag behind amendments; it is not the authoritative text. ${count}${historical}`;
   }
   if (status === 'final') {
@@ -323,6 +425,32 @@ function caveatFor(
   }
   if (status === 'draft') return `Draft legislation: not made law.${historical}`;
   return `legislation.gov.uk did not report an editorial status for this document; treat the text as unverified.${historical}`;
+}
+
+/**
+ * The uklaw_get_amendments arguments that list an item's unapplied effects:
+ * `provision` scope adds "without provision", since a provision read's route
+ * must not carry its provision. uklaw_get_amendments refuses a regnal path and
+ * the changes feeds index a pre-1963 Act by calendar year (Design Decision
+ * 64), so a regnal `path` is asked for at the calendar-year path `year` (its
+ * `ukm:Year`) gives, keeping the effects on the regnal path. The item-scope
+ * regnal form closes that clause with a comma, so the caller's " for …"
+ * follows either form. `code` renders each path (format() sets code spans).
+ */
+export function unappliedArgs(
+  path: string,
+  year: number | undefined,
+  scope: 'provision' | 'item',
+  code: (path: string) => string = (p) => p,
+): string {
+  const without = scope === 'provision' ? ', without provision' : '';
+  const item = parseItemInput(path)?.item;
+  if (!item?.regnal) return `item ${code(path)} and status "unapplied"${without}`;
+  const calendar =
+    year !== undefined
+      ? `item ${code(`${item.type}/${year}/${item.number}`)}`
+      : `item ${code(`${item.type}/YYYY/${item.number}`)}, where YYYY is the Act's calendar year,`;
+  return `${calendar} and status "unapplied"${without}, keeping the effects whose affected.item is ${code(path)}${scope === 'item' ? ',' : ''}`;
 }
 
 /**
@@ -423,23 +551,25 @@ export class LegislationService {
   ): Promise<{ exists: boolean; original?: string } | undefined> {
     const result = await this.later(() => this.client.get(idUrl(item), 'identifier', budget, ctx));
     if (!result) return;
-    const original =
-      result.kind === 'redirect' ? ORIGINAL_ONLY.exec(result.location)?.[1] : undefined;
+    const original = result.kind === 'redirect' ? originalKeyword(result.location) : undefined;
     return { exists: result.kind !== 'not_found', ...(original ? { original } : {}) };
   }
 
   /**
-   * After a 404: a dated read of an item held only as its original text is
-   * re-read at that text's keyword on the same budget (a re-read that cannot
-   * start sheds, since the call holds nothing yet); otherwise the `/id` check
-   * tells a missing item from a missing provision or version.
+   * After a 404 at `url` (the last redirect hop, which names the served item):
+   * a dated read of an item held only as its original text is re-read at that
+   * text's keyword on the same budget (a re-read that cannot start sheds,
+   * since the call holds nothing yet); otherwise the `/id` check tells a
+   * missing item from a missing provision or version.
    */
   private async afterNotFound(
-    query: DocumentQuery,
+    asked: DocumentQuery,
+    url: string,
     which: 'provision' | 'version',
     budget: CallBudget,
     ctx: Context,
   ): Promise<DocumentOutcome> {
+    const query = servedAt(asked, url);
     const check = await this.itemExists(query.item.path, budget, ctx);
     if (check?.original && ISO_DATE.test(query.version)) {
       return this.readDocument(
@@ -460,43 +590,55 @@ export class LegislationService {
   }
 
   private async readDocument(
-    query: DocumentQuery,
+    asked: DocumentQuery,
     budget: CallBudget,
     ctx: Context,
   ): Promise<DocumentOutcome> {
-    const version = versionSegment(query.version, query.item.type);
-    const welsh = query.language === 'cy';
-    const item = query.item.path;
+    const version = versionSegment(asked.version, asked.item.type);
+    const welsh = asked.language === 'cy';
 
-    if (query.provision) {
+    if (asked.provision) {
       const result = await this.client.get(
-        documentUrl({ item, provision: query.provision, ...(version ? { version } : {}), welsh }),
+        documentUrl({
+          item: asked.item.path,
+          provision: asked.provision,
+          ...(version ? { version } : {}),
+          welsh,
+        }),
         'document',
         budget,
         ctx,
       );
-      if (result.kind === 'not_found') return this.afterNotFound(query, 'provision', budget, ctx);
-      return this.provisionDocument(query, parseXml(this.body(result, 'document'), 'a document'));
+      if (result.kind === 'multiple')
+        return { kind: 'ambiguous', candidates: extractTitleCandidates(result.body) };
+      if (result.kind === 'not_found')
+        return this.afterNotFound(asked, result.url, 'provision', budget, ctx);
+      const root = parseXml(this.body(result, 'document'), 'a document');
+      return this.provisionDocument(servedAt(asked, attr(root, 'IdURI')), root, budget, ctx);
     }
 
     const contents = await this.client.get(
       contentsUrl({
-        item,
+        item: asked.item.path,
         ...(version ? { version } : {}),
         welsh,
-        ...(query.matchText ? { text: query.matchText } : {}),
+        ...(asked.matchText ? { text: asked.matchText } : {}),
       }),
       'document',
       budget,
       ctx,
     );
+    if (contents.kind === 'multiple')
+      return { kind: 'ambiguous', candidates: extractTitleCandidates(contents.body) };
     if (contents.kind === 'not_found') {
-      if (!ISO_DATE.test(query.version))
+      if (!ISO_DATE.test(asked.version))
         return { kind: 'not_found', which: 'document', checkRan: true };
-      return this.afterNotFound(query, 'version', budget, ctx);
+      return this.afterNotFound(asked, contents.url, 'version', budget, ctx);
     }
     const tocRoot = parseXml(this.body(contents, 'table of contents'), 'a table of contents');
     const md = readMetadata(tocRoot);
+    const query = asOriginal(servedAt(asked, attr(tocRoot, 'IdURI')), md);
+    const item = query.item.path;
     if (query.asOf && md.madeDate && query.asOf < md.madeDate)
       return { kind: 'not_found', which: 'version', checkRan: true };
     const toc = child(tocRoot, 'Contents');
@@ -562,9 +704,10 @@ export class LegislationService {
         : `The outline has ${outline.total} entries`,
     );
     if (window.notice) notices.push(window.notice);
+    /** The caller's term, escaped: the framework renders a notice as authored Markdown (Design Decision 74). */
     if (query.matchText && outline.total === 0)
       notices.push(
-        `No provision of ${item} matches "${query.matchText}" at this version. Try another term, or drop match_text to list the item's provisions.`,
+        `No provision of ${item} matches "${escapeMarkdownInline(query.matchText)}" at this version. Try another term, or drop match_text to list the item's provisions.`,
       );
     const output = this.itemOutput(query, md, 'outline', notices);
     const example = outline.entries.find((e) => e.level === 1) ?? outline.entries[0];
@@ -598,7 +741,7 @@ export class LegislationService {
     if (kind === 'outline' && sorted.length > 0) {
       const outstanding = sorted.filter((e) => e.outstanding).length;
       notices.push(
-        `${sorted.length} unapplied effect${sorted.length === 1 ? ' is' : 's are'} recorded against this item (${outstanding} outstanding); an item outline does not list them. Call uklaw_get_amendments with item ${query.item.path} and status "unapplied" for the list.`,
+        `${sorted.length} unapplied effect${sorted.length === 1 ? ' is' : 's are'} recorded against this item (${outstanding} outstanding); an item outline does not list them. Call uklaw_get_amendments with ${unappliedArgs(query.item.path, md.year, 'item')} for the list.`,
       );
     }
     return this.baseOutput(query, md, kind, sorted, kind !== 'outline', notices, 'item');
@@ -608,7 +751,9 @@ export class LegislationService {
    * The output fields every document read shares. `effects` is the whole
    * sorted list, which `editorial.outstanding_effects` counts; when `listed`,
    * the first `EFFECTS_LISTED_MAX` become `unapplied_effects`, with a notice
-   * when more exist (Design Decision 73).
+   * when more exist (Design Decision 73). A provision read's item check adds
+   * the effects it counts without listing and what it left unchecked (Design
+   * Decision 85).
    */
   private baseOutput(
     query: DocumentQuery,
@@ -618,13 +763,16 @@ export class LegislationService {
     listed: boolean,
     notices: string[],
     scope: 'provision' | 'item',
+    check: { unchecked?: string; unlisted: EffectRecord[] } = { unlisted: [] },
   ): DocumentOutput {
     const item = query.item;
     if (listed && effects.length > EFFECTS_LISTED_MAX) {
+      /** No provision in the route: the provision scan matches neither enclosing nor contained provisions. */
+      const args = unappliedArgs(item.path, md.year, scope);
       notices.push(
         scope === 'item'
-          ? `${effects.length} unapplied effects are recorded against this item; the first ${EFFECTS_LISTED_MAX} are listed. Call uklaw_get_amendments with item ${item.path} and status "unapplied" for the full list.`
-          : `${effects.length} unapplied effects touch this provision, whole-item effects included; the first ${EFFECTS_LISTED_MAX} are listed. Call uklaw_get_amendments with item ${item.path}, provision ${query.provision} and status "unapplied" for the full list.`,
+          ? `${effects.length} unapplied effects are recorded against this item; the first ${EFFECTS_LISTED_MAX} are listed. Call uklaw_get_amendments with ${args} for the full list.`
+          : `${effects.length} unapplied effects touch this provision, whole-item effects included; the first ${EFFECTS_LISTED_MAX} are listed. Call uklaw_get_amendments with ${args}, for the item's full list.`,
       );
     }
     const version = versionSegment(query.version, item.type);
@@ -634,6 +782,11 @@ export class LegislationService {
       (served && isEnactedKeyword(served) ? served : undefined) ??
       (md.status === 'final' ? (typeByCode(item.type)?.enactedKeyword ?? 'enacted') : 'current');
     const language = md.language ?? 'en';
+    if (query.requestedItem) {
+      notices.unshift(
+        `legislation.gov.uk serves ${query.requestedItem} at ${item.path}, which item.path reports.`,
+      );
+    }
     if (query.language === 'cy' && language !== 'cy') {
       notices.push('Welsh text is not held for this document; the English text is returned.');
     }
@@ -645,8 +798,18 @@ export class LegislationService {
       notices.push(
         `legislation.gov.uk holds no revised versions of ${item.path}, only its ${keyword} text (${when}), so that text is returned for ${query.asOf}.`,
       );
+    } else if (
+      isCalendarDate(query.version) &&
+      isCalendarDate(applied) &&
+      applied > query.version
+    ) {
+      /** Upstream 307s a date before the earliest revised version to that version (Design Decision 83). */
+      notices.push(
+        `legislation.gov.uk holds no revised text of ${item.path} before ${applied}, so the ${applied} version is returned for ${query.version}; read version ${typeByCode(item.type)?.enactedKeyword ?? 'enacted'} for the original text.`,
+      );
     }
-    const outstanding = effects.filter((e) => e.outstanding).length;
+    const outstanding = [...effects, ...check.unlisted].filter((e) => e.outstanding).length;
+    const shown = listed ? effects.slice(0, EFFECTS_LISTED_MAX) : undefined;
     const web = `${ORIGIN}${documentPath({ item: item.path, ...(query.provision ? { provision: query.provision } : {}), ...(version ? { version } : {}), welsh: language === 'cy' })}`;
     const documentUri = query.provision
       ? md.identifier
@@ -685,10 +848,11 @@ export class LegislationService {
           outstanding,
           query.asOf ? 'current' : query.version,
           scope,
-          listed,
+          shown?.filter((e) => e.outstanding).length,
+          check.unchecked,
         ),
       },
-      ...(listed ? { unapplied_effects: effects.slice(0, EFFECTS_LISTED_MAX) } : {}),
+      ...(shown ? { unapplied_effects: shown } : {}),
       links: {
         web,
         xml: `${web}/data.xml`,
@@ -703,12 +867,131 @@ export class LegislationService {
     };
   }
 
+  /**
+   * Checks the item's unapplied changes feed for the effects a fragment does
+   * not carry (Design Decision 85): those on the elements enclosing the
+   * provision (one-way) and those on the provisions inside it (two-way), each
+   * beyond the effects touching the provision itself, which the fragment
+   * holds. Runs on its own one-request budget, bounded by the read's
+   * remaining deadline, and never fails the read: when the feed cannot be read
+   * the check reports what it left unchecked. A draft (the feeds index none)
+   * and a fragment with nothing to check skip it silently. A regnal path is
+   * checked against the feed of the calendar-year path its `ukm:Year` gives,
+   * since the feeds index Acts by calendar year (Design Decision 64), and
+   * skips the check before any request when that year is not recorded.
+   */
+  private async checkItemEffects(
+    query: DocumentQuery,
+    md: DocumentMetadata,
+    own: EffectRecord[],
+    enclosing: string[],
+    inside: string[],
+    budget: CallBudget,
+    ctx: Context,
+  ): Promise<ItemCheck> {
+    const item = query.item;
+    const none: ItemCheck = { added: [], inside: [] };
+    if (enclosing.length === 0 && inside.length === 0) return none;
+    if (typeByCode(item.type)?.category === 'draft') return none;
+    /** Upstream element paths, escaped: the framework renders a notice as authored Markdown. */
+    const shown = enclosing.map((p) => escapeMarkdownInline(p.slice(item.path.length + 1)));
+    const scope =
+      enclosing.length === 0
+        ? 'the provisions inside this one'
+        : `the provisions enclosing this one (${shown.join(', ')})${inside.length > 0 ? ' and those inside it' : ''}`;
+    const unchecked =
+      enclosing.length === 0
+        ? 'the provisions inside it'
+        : `the provisions enclosing it${inside.length > 0 ? ' or inside it' : ''}`;
+    const route = `Call uklaw_get_amendments with ${unappliedArgs(item.path, md.year, 'provision')}`;
+    /** The feeds index a regnal path's Act by the calendar year its fragment records (Design Decision 64). */
+    const feedItem = !item.regnal
+      ? item.path
+      : md.year !== undefined
+        ? `${item.type}/${md.year}/${item.number}`
+        : undefined;
+    if (!feedItem) {
+      return {
+        ...none,
+        unchecked,
+        notice: `Unapplied effects on ${scope} were not checked: legislation.gov.uk's changes feeds index ${item.path} by calendar year, which this document does not record. ${route}, to list them.`,
+      };
+    }
+
+    let feed: (ChangesFeed & { total: number }) | undefined;
+    try {
+      const result = await this.client.get(
+        changesUrl({
+          item: feedItem,
+          direction: 'affected',
+          status: 'unapplied',
+          limit: SCAN_PAGE_SIZE,
+          page: 1,
+        }),
+        'feed',
+        this.client.budget(1, Math.min(ITEM_CHECK_DEADLINE_MS, budget.remainingMs())),
+        ctx,
+      );
+      const parsed = result.kind === 'ok' ? parseChangesFeed(result.body) : undefined;
+      // A changes feed always states its total; one that does not is not a feed to match.
+      if (parsed?.total !== undefined) feed = { ...parsed, total: parsed.total };
+    } catch (error) {
+      if (ctx.signal.aborted || !(error instanceof McpError)) throw error;
+    }
+    if (!feed) {
+      return {
+        ...none,
+        unchecked,
+        notice: `Unapplied effects on ${scope} were not checked: the item's unapplied changes feed could not be read within this call, so unapplied_effects lists only those legislation.gov.uk attaches to this provision. ${route}, to list them.`,
+      };
+    }
+
+    const fullPath = `${item.path}/${query.provision}`;
+    /**
+     * The fragment is the source of every effect upstream attaches to it, those nesting under
+     * the read path and whole-item ones (Design Decision 49), so the feed's copy of one is never
+     * added, whatever field its copy differs in (a `Modified` stamp, cache skew); `effect_id`
+     * alone is not unique upstream. A copy JSON-identical to another the fragment carries is
+     * skipped too.
+     */
+    const carried = new Set(own.map((e) => JSON.stringify(e)));
+    const fragmentCarries = (effect: EffectRecord) => {
+      const refs = effect.affected.provisions.flatMap((p) =>
+        [p.uri, p.up_to].flatMap((uri) => legislationPath(uri) ?? []),
+      );
+      return (
+        refs.length === 0 ||
+        refs.some((p) => p === fullPath || p.startsWith(`${fullPath}/`)) ||
+        carried.has(JSON.stringify(effect))
+      );
+    };
+    const check: ItemCheck = { added: [], inside: [] };
+    for (const effect of feed.effects) {
+      /** A calendar path two sessions' Acts share indexes both (Design Decision 64): keep the served item's. */
+      if (effect.affected.item !== item.path || fragmentCarries(effect)) continue;
+      // A range covering the provision may be missing from the fragment too.
+      if ([fullPath, ...enclosing].some((p) => effectEncloses(effect, 'affected', p)))
+        check.added.push(effect);
+      else if (inside.some((p) => effectCites(effect, 'affected', p))) check.inside.push(effect);
+    }
+    if (feed.hasMore) {
+      check.notice = `The item's unapplied changes feed holds ${feed.total} effects; the first ${feed.effects.length} were checked against ${scope}. ${route}, for the rest.`;
+    }
+    return check;
+  }
+
   /** Builds the provision-level output from a fetched fragment. */
-  private provisionDocument(query: DocumentQuery, root: XmlElement): DocumentOutcome {
+  private async provisionDocument(
+    served: DocumentQuery,
+    root: XmlElement,
+    budget: CallBudget,
+    ctx: Context,
+  ): Promise<DocumentOutcome> {
+    const md = readMetadata(root);
+    const query = asOriginal(served, md);
     const item = query.item.path;
     const provision = query.provision as string;
     const fullPath = `${item}/${provision}`;
-    const md = readMetadata(root);
     if (query.asOf && md.madeDate && query.asOf < md.madeDate)
       return { kind: 'not_found', which: 'provision', checkRan: true };
     const notices: string[] = [];
@@ -747,10 +1030,52 @@ export class LegislationService {
       validFrom = validTo = undefined;
     }
 
-    const touching = sortOutstandingFirst(
-      md.unappliedEffects.filter((e) => effectTouches(e, 'affected', fullPath)),
-    );
-    const base = this.baseOutput(query, md, 'full', touching, true, notices, 'provision');
+    const rendered = renderAs ? renderNodes(root, [renderAs]) : undefined;
+    const outline =
+      rendered && rendered.chars > TEXT_BUDGET_CHARS && target
+        ? fragmentOutline(root, target, item, { offset: query.outlineOffset, max: OUTLINE_MAX })
+        : undefined;
+    const outlined = outline !== undefined && outline.total > 0;
+
+    /** A fragment element's path when it lies in the served item. */
+    const pathOf = (el: XmlElement) => {
+      const p = legislationPath(attr(el, 'IdURI'));
+      return p?.startsWith(`${item}/`) ? p : undefined;
+    };
+    const enclosing = (path?.slice(0, -1) ?? []).flatMap((el) => {
+      const p = pathOf(el);
+      return p && p !== `${item}/body` ? [p] : [];
+    });
+    const inside = renderAs
+      ? [
+          ...new Set(
+            findDescendants(renderAs, (el) => attr(el, 'IdURI') !== undefined).flatMap((el) => {
+              const p = pathOf(el);
+              return p && p !== fullPath && !p.startsWith(`${fullPath}/`) ? [p] : [];
+            }),
+          ),
+        ]
+      : [];
+    const own = md.unappliedEffects.filter((e) => effectTouches(e, 'affected', fullPath));
+    const check = await this.checkItemEffects(query, md, own, enclosing, inside, budget, ctx);
+    /** An outline lists the effects inside the provision only as a count (Design Decision 58). */
+    const unlisted = outlined ? check.inside : [];
+    const touching = sortOutstandingFirst([
+      ...own,
+      ...check.added,
+      ...(outlined ? [] : check.inside),
+    ]);
+    const base = this.baseOutput(query, md, 'full', touching, true, notices, 'provision', {
+      unlisted,
+      ...(check.unchecked ? { unchecked: check.unchecked } : {}),
+    });
+    if (check.notice) notices.push(check.notice);
+    if (unlisted.length > 0) {
+      const n = unlisted.length;
+      notices.push(
+        `${n} more unapplied effect${n === 1 ? '' : 's'} (${unlisted.filter((e) => e.outstanding).length} outstanding) touch${n === 1 ? 'es' : ''} provisions inside ${provisionLabel(provision)}; the outline does not list them, and editorial.outstanding_effects counts the outstanding ones. Read a provision from the outline to list those on it, or call uklaw_get_amendments with ${unappliedArgs(query.item.path, md.year, 'provision')}, for the item's full list.`,
+      );
+    }
     const heading = textOf(
       (target?.name === 'P1' && parent?.name === 'P1group' ? child(parent, 'Title') : undefined) ??
         child(target, 'Title') ??
@@ -771,17 +1096,12 @@ export class LegislationService {
         ...(validTo ? { valid_to: validTo } : {}),
       },
     };
-    if (!renderAs)
+    if (!rendered)
       return { kind: 'found', notices, output: { ...output, text: '', annotations: [] } };
 
-    const rendered = renderNodes(root, [renderAs]);
     let returned: RenderResult = rendered;
-    if (rendered.chars > TEXT_BUDGET_CHARS && target) {
-      const outline = fragmentOutline(root, target, item, {
-        offset: query.outlineOffset,
-        max: OUTLINE_MAX,
-      });
-      if (outline.total > 0) {
+    if (outline) {
+      if (outlined) {
         const window = placeWindow(
           query.outlineOffset,
           outline.entries.length,
@@ -965,26 +1285,88 @@ export class LegislationService {
 
     const logItem = query.item?.full ? query.item.path : undefined;
     if (logItem) {
-      let page = query.position?.page ?? 1;
-      let offset = query.position?.offset ?? 0;
-      let next: CursorPosition | undefined;
+      // Each page is fetched at most once a call: a page the search probed is walked from here.
+      const pages = new Map<number, PublicationLogPage>();
+      let fetches = 0;
       let itemLogTotal: number | undefined;
       let readBackTo: string | undefined;
-      let capped = false;
-      for (let i = 0; i < LOG_MAX_REQUESTS; i += 1) {
+      /** A log page; undefined once the call's four fetches are spent or a later request cannot start. */
+      const read = async (page: number): Promise<PublicationLogPage | undefined> => {
+        const held = pages.get(page);
+        if (held) return held;
+        if (fetches === LOG_MAX_REQUESTS) return;
         const run = () =>
           this.client.get(updateUrl({ ...filters, item: logItem, page }), 'feed', budget, ctx);
-        const result = i === 0 ? await run() : await this.later(run);
-        if (!result) {
-          next = { page, offset };
-          break;
+        const first = fetches === 0;
+        fetches += 1;
+        const result = first ? await run() : await this.later(run);
+        if (!result) return;
+        // A feed redirected off its data.feed path is past the log's last page.
+        const feed =
+          result.kind === 'ok' ? parsePublicationLog(result.body) : { events: [], hasMore: false };
+        if (result.kind === 'ok') itemLogTotal = feed.total;
+        pages.set(page, feed);
+        return feed;
+      };
+      /** Takes read_back_to from a page the read has passed (Design Decision 68). */
+      const pass = (passed: PublicationEvent[]) => {
+        for (const event of passed) {
+          const date = calendarDateOf(event);
+          if (date !== undefined && (readBackTo === undefined || date < readBackTo)) {
+            readBackTo = date;
+          }
         }
-        if (result.kind !== 'ok') {
-          next = undefined;
-          break;
+      };
+      const outcome = (next: CursorPosition | undefined, capped = false): TrackOutcome => ({
+        mode: 'item_log',
+        events,
+        days: [],
+        ...(itemLogTotal !== undefined ? { itemLogTotal } : {}),
+        ...(readBackTo !== undefined ? { readBackTo } : {}),
+        hasMore: next !== undefined,
+        ...(next ? { next } : {}),
+        capped,
+        attribution: attributionOf(),
+      });
+
+      let page = query.position?.page ?? 1;
+      let offset = query.position?.offset ?? 0;
+      const start = await read(page);
+      if (start?.hasMore && newerThan(start, query.endDate)) {
+        /**
+         * Every page before the start page was read on an earlier call, so a start page wholly
+         * newer than the window opens a page search (Design Decision 84): probe 2p, 4p, … — no
+         * further than the last page the total names, nor page 10,000 — until a page is not wholly
+         * newer, then bisect between the highest page that is and the lowest page that is not.
+         */
+        pass(start.events.slice(offset));
+        let lower = page;
+        let upper = query.position?.upper;
+        while (upper !== lower + 1 && lower < MAX_PAGE) {
+          const last =
+            itemLogTotal === undefined ? undefined : Math.ceil(itemLogTotal / LOG_PAGE_SIZE);
+          const probe =
+            upper !== undefined
+              ? Math.floor((lower + upper) / 2)
+              : Math.min(2 * lower, MAX_PAGE, last !== undefined && last > lower ? last : MAX_PAGE);
+          const feed = await read(probe);
+          if (!feed) return outcome({ page: lower, offset: 0, ...(upper ? { upper } : {}) });
+          if (!newerThan(feed, query.endDate)) {
+            upper = probe;
+            continue;
+          }
+          pass(feed.events);
+          lower = probe;
+          // The log ends on a page newer than the window: the window precedes the whole log.
+          if (!feed.hasMore) return outcome(undefined);
         }
-        const feed = parsePublicationLog(result.body);
-        itemLogTotal = feed.total;
+        page = lower + 1;
+        offset = 0;
+      }
+
+      for (;;) {
+        const feed = await read(page);
+        if (!feed) return outcome({ page, offset });
         let done = false;
         let stopAt: number | undefined;
         for (let idx = offset; idx < feed.events.length; idx += 1) {
@@ -1003,7 +1385,6 @@ export class LegislationService {
             break;
           }
         }
-        offset = 0;
         if (stopAt !== undefined) {
           // The log is newest-first: an older event left on the page ends the window there.
           const rest = feed.events.slice(stopAt);
@@ -1011,32 +1392,17 @@ export class LegislationService {
             const date = calendarDateOf(e);
             return date !== undefined && date >= query.startDate;
           });
-          next = moreOnPage
+          const next = moreOnPage
             ? { page, offset: stopAt }
             : rest.length === 0 && feed.hasMore
               ? { page: page + 1, offset: 0 }
               : undefined;
-          capped = next !== undefined;
-          break;
+          return outcome(next, next !== undefined);
         }
-        if (done || !feed.hasMore) {
-          next = undefined;
-          break;
-        }
+        if (done || !feed.hasMore) return outcome(undefined);
         page += 1;
-        next = { page, offset: 0 };
+        offset = 0;
       }
-      return {
-        mode: 'item_log',
-        events,
-        days: [],
-        ...(itemLogTotal !== undefined ? { itemLogTotal } : {}),
-        ...(readBackTo !== undefined ? { readBackTo } : {}),
-        hasMore: next !== undefined,
-        ...(next ? { next } : {}),
-        capped,
-        attribution: attributionOf(),
-      };
     }
 
     const days = new Map<string, { date: string; pages_read: number; total?: number }>();

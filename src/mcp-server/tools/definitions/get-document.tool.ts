@@ -8,7 +8,10 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { getLegislationService } from '@/services/legislation/legislation-service.js';
+import {
+  getLegislationService,
+  unappliedArgs,
+} from '@/services/legislation/legislation-service.js';
 import {
   isCalendarDate,
   normalizeProvision,
@@ -37,7 +40,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
   auth: ['tool:uklaw_get_document:read'],
   input: z.object({
     item: FullItemInput.describe(
-      'Item path {type}/{year}/{number} — ukpga/2018/12, uksi/2019/419, eur/2016/679, ukpga/Eliz2/3-4/19 — or any legislation.gov.uk URI (a URI carrying a provision, version, or /welsh is split into those parts; a version or /welsh in the URI applies unless the version or language input is set). Get it from uklaw_lookup_citation or uklaw_search_legislation.',
+      'Item path {type}/{year}/{number} — ukpga/2018/12, uksi/2019/419, eur/2016/679, ukpga/Eliz2/3-4/19 — or any legislation.gov.uk URI (a URI carrying a provision, version, or /welsh is split into those parts; a version or /welsh in the URI applies unless the version or language input is set). Get it from uklaw_lookup_citation or uklaw_search_legislation. A path legislation.gov.uk serves at another path — a pre-1963 Act by calendar year (ukpga/1925/20 is ukpga/Geo5/15-16/20), a Welsh SI as uksi — is read there, and item.path reports the served path, with a notice.',
     ),
     provision: blankAsUnset(ProvisionInput.optional()).describe(
       'Provision path — section/45/2/f, regulation/5, article/28/3, schedule/2/paragraph/3, part/3/chapter/2, introduction — or citation shorthand (s. 45(2)(f), reg. 5, art. 28(3), Sch. 2 para. 3), normalized before the request. Omit to read the item; an item-level outline lists the paths.',
@@ -51,7 +54,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
         )
         .optional(),
     ).describe(
-      'current (the latest revised text, or the original text for an item never revised), enacted (made, adopted and created are synonyms — the original text), or a date YYYY-MM-DD for the text as it stood then. Omitted: the version in an item URI, else current. A future date returns the latest version, and a date on or after the made or enactment date of an item never revised returns its original text, with a notice; version.applied reports the version served.',
+      'current (the latest revised text, or the original text for an item never revised), enacted (made, adopted and created are synonyms — the original text), or a date YYYY-MM-DD for the text as it stood then. Omitted: the version in an item URI, else current. A future date returns the latest version; a date before the earliest revised version (1991-02-01 for most primary legislation, 2006-01-01 for Northern Ireland) returns that version, with a notice; and a date on or after the made or enactment date of an item never revised returns its original text, with a notice. version.applied reports the version served.',
     ),
     language: blankAsUnset(z.enum(['en', 'cy']).optional()).describe(
       'en, or cy for the Welsh text of Welsh legislation (asc, anaw, mwa, wsi). Omitted: cy when an item URI ends in /welsh, else en. English is returned, with a notice, when no Welsh text exists.',
@@ -76,7 +79,11 @@ export const getDocumentTool = tool('uklaw_get_document', {
       ),
     item: z
       .object({
-        path: z.string().describe('Item path, e.g. ukpga/2018/12.'),
+        path: z
+          .string()
+          .describe(
+            'Item path legislation.gov.uk serves the item at, e.g. ukpga/2018/12; a redirected input (ukpga/1925/20 → ukpga/Geo5/15-16/20) reports the served path, with a notice.',
+          ),
         id_uri: z.string().describe('Identifier URI of the item.'),
         title: z.string().describe('Title of the item.'),
         title_cy: z.string().optional().describe('Welsh title, when held.'),
@@ -179,7 +186,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
         outstanding_effects: z
           .number()
           .describe(
-            'Effects requiring a text change not yet applied that touch this provision, or at item level every such effect on the item: the full count, beyond the 20 unapplied_effects lists.',
+            'Effects requiring a text change not yet applied: at provision level those touching the provision, an element enclosing it (Part, Chapter, cross-heading) or a provision inside it; at item level every such effect on the item. The full count, beyond the 20 unapplied_effects lists and the effects inside an outlined provision, which it does not list.',
           ),
         caveat: z.string().describe('How far to rely on this text, given its status.'),
       })
@@ -226,7 +233,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
       .array(EffectRecordSchema)
       .optional()
       .describe(
-        'Recorded effects not yet applied to the revised text that touch this provision (at item level, the item’s): the first 20, outstanding first, with a notice when more exist; empty when none. Absent on an item-level outline, where a notice gives the item’s count and uklaw_get_amendments lists them.',
+        'Recorded effects not yet applied to the revised text that touch this provision — whole-item effects, those on an element enclosing it (Part, Chapter, cross-heading), and when kind is full those on a provision inside it — or at item level the item’s: the first 20, outstanding first, with a notice when more exist; empty when none. An outlined provision does not list the effects inside it; a notice counts them. Absent on an item-level outline, where a notice gives the item’s count. uklaw_get_amendments with the item (for a pre-1963 Act, its calendar-year path, as the notices name it) and status "unapplied", without provision, lists them all.',
       ),
     outline: z
       .array(
@@ -283,7 +290,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
       .string()
       .optional()
       .describe(
-        'Notices: Welsh fallback, original text served for a dated read, an omitted provision window, the unapplied effects an item outline leaves out, truncated lists, an outline window with the outline_offset that continues it, an oversized provision with no smaller child provisions returned whole or cut (its full size, and the links to the full text), and how to continue.',
+        'Notices: the path an item input is served at, Welsh fallback, original text served for a dated read, a later version served for a date before the earliest revised version, an omitted provision window, the unapplied effects an item outline or an outlined provision leaves out, unapplied effects on enclosing or contained provisions that could not be checked, how many effects of a multi-page unapplied changes feed were checked, truncated lists, an outline window with the outline_offset that continues it, an oversized provision with no smaller child provisions returned whole or cut (its full size, and the links to the full text), and how to continue.',
       ),
   },
   errors: [
@@ -309,6 +316,14 @@ export const getDocumentTool = tool('uklaw_get_document', {
       severity: 'notice',
       when: 'version is shaped YYYY-MM-DD but is not a real calendar date, or a URI carried an unsupported version.',
       recovery: 'Pass version as current, enacted, or a calendar date such as 2020-01-31.',
+    },
+    {
+      reason: 'ambiguous_item',
+      code: JsonRpcErrorCode.ValidationError,
+      severity: 'notice',
+      when: 'item names more than one item on legislation.gov.uk (a 300), as a pre-1963 calendar year and chapter shared by two parliamentary sessions does: ukpga/1955/19.',
+      recovery:
+        'Pass one of the item paths the error names as item; data.candidates gives the title of each.',
     },
     {
       reason: 'match_text_needs_item_level',
@@ -412,6 +427,14 @@ export const getDocumentTool = tool('uklaw_get_document', {
       ctx,
     );
 
+    if (outcome.kind === 'ambiguous') {
+      const listed = outcome.candidates.map((c) => `${c.item} (${c.title})`).join(', ');
+      throw ctx.fail(
+        'ambiguous_item',
+        `legislation.gov.uk holds more than one item at ${parsed.item.path}${listed ? `: ${listed}` : ''}.`,
+        { candidates: outcome.candidates },
+      );
+    }
     if (outcome.kind === 'not_found') {
       const where = `${parsed.item.path}${provision ? `/${provision}` : ''} at version ${version}`;
       if (outcome.which === 'provision') {
@@ -518,7 +541,7 @@ export const getDocumentTool = tool('uklaw_get_document', {
       lines.push(
         '',
         '### Unapplied effects',
-        `Not listed on an item outline; call uklaw_get_amendments with item \`${uri(item.path)}\` and status "unapplied" for them.`,
+        `Not listed on an item outline; call uklaw_get_amendments with ${unappliedArgs(item.path, item.year, 'item', (p) => `\`${uri(p)}\``)} for them.`,
       );
     }
     const l = result.links;

@@ -607,13 +607,13 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
       key: 'YYYY-MM-DD',
       label: 'Point in time',
       description:
-        'The text as it stood on that date. A date before the item or provision existed is not found; a future date returns the latest known version, and version.applied reports the version actually served.',
+        'The text as it stood on that date. A date before the item or provision existed is not found; a date before the earliest revised version returns that version, with a notice; a future date returns the latest known version; version.applied reports the version actually served.',
     },
     {
       key: 'base_dates',
       label: 'Revision base dates',
       description:
-        'Revised primary legislation starts from the 1 February 1991 base date (Northern Ireland: 1 January 2006); no earlier point-in-time text exists for it.',
+        'Revised primary legislation starts from the 1 February 1991 base date (Northern Ireland: 1 January 2006); no earlier point-in-time text exists for it. A dated read between enactment and the base date returns the base-date version, with a notice naming it; read version enacted for the original text.',
     },
   ],
   document_status: [

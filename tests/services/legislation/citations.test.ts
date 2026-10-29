@@ -261,6 +261,28 @@ describe('extractTitleCandidates', () => {
     ]);
   });
 
+  it('reads the item paths of a document 300 page, which links each candidate’s provision', () => {
+    expect(extractTitleCandidates(fixture('html/ukpga-1955-19-section-1-300.html.txt'))).toEqual([
+      { item: 'ukpga/Eliz2/4-5/19', title: 'Friendly Societies Act 1955' },
+      { item: 'ukpga/Eliz2/3-4/19', title: 'Air Force Act 1955 (repealed)' },
+    ]);
+  });
+
+  it('reads a candidate once whether its anchor names the item, a provision, or a version', () => {
+    const html =
+      '<div id="content"><ul>' +
+      '<li><a href="/ukpga/Eliz2/4-5/19/section/1/1980-01-01">Friendly Societies Act 1955</a></li>' +
+      '<li><a href="/id/ukpga/Eliz2/4-5/19">Again</a></li>' +
+      '<li><a href="/ukpga/Eliz2/3-4/19/contents">Air Force Act 1955</a></li>' +
+      '<li><a href="/help">Help</a></li>' +
+      '<li><a href="/cy/ukpga/2018/12">Cymraeg</a></li>' +
+      '</ul></div>';
+    expect(extractTitleCandidates(html)).toEqual([
+      { item: 'ukpga/Eliz2/4-5/19', title: 'Friendly Societies Act 1955' },
+      { item: 'ukpga/Eliz2/3-4/19', title: 'Air Force Act 1955' },
+    ]);
+  });
+
   it('ignores anchors outside the content div, duplicates and non-item paths', () => {
     const html =
       '<li><a href="/id/ukpga/1998/42">Outside</a></li><div id="content"><ul>' +
@@ -326,6 +348,38 @@ describe('extractTitleCandidates', () => {
     const elapsed = process.threadCpuUsage(started);
     expect(candidates).toEqual([]);
     expect((elapsed.user + elapsed.system) / 1_000).toBeLessThan(25);
+  });
+
+  /** Thread CPU milliseconds of the fastest of three scans of `html`. */
+  function scanMs(html: string): number {
+    let best = Number.POSITIVE_INFINITY;
+    for (let run = 0; run < 3; run += 1) {
+      const started = process.threadCpuUsage();
+      expect(extractTitleCandidates(html)).toEqual([]);
+      const elapsed = process.threadCpuUsage(started);
+      best = Math.min(best, (elapsed.user + elapsed.system) / 1_000);
+    }
+    return best;
+  }
+
+  it.each([
+    [
+      'one long line of anchors whose href runs into the next, ending in a break',
+      '<li><a href="/x/',
+      '\ny',
+    ],
+    ['list items with line breaks throughout and no anchor', '<li>  \r\n', ''],
+  ])('scans in linear time from 5k to 320k characters: %s', (_name, unit, tail) => {
+    const page = (chars: number) =>
+      `<div id="content"><ul>${unit.repeat(Math.ceil(chars / unit.length))}${tail}`;
+    const times: number[] = [];
+    for (let chars = 5_000; chars <= 320_000; chars *= 2) {
+      const ms = scanMs(page(chars));
+      expect(ms).toBeLessThan(25);
+      times.push(ms);
+    }
+    const first = Math.max(times[0] as number, 0.001);
+    expect((times.at(-1) as number) / first).toBeLessThan(256);
   });
 });
 

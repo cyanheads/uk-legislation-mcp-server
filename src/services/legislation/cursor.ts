@@ -3,8 +3,10 @@
  * position and a fingerprint of the query that produced it, so a cursor
  * replayed against a different query is rejected rather than misread. The
  * fingerprint is unsigned, so a decoded position is also held to bounds a call
- * over the query can produce: a page ceiling, an offset inside the page, and a
- * walk day inside the window (Design Decision 75).
+ * over the query can produce: a page ceiling, an offset inside the page, a
+ * walk day inside the window (Design Decision 75), an upper page above the
+ * page in an item-log page search (Design Decision 84), and an events-returned
+ * mark only as the server writes it, only on a Publication Log cursor.
  * @module services/legislation/cursor
  */
 
@@ -17,12 +19,26 @@ export interface CursorPosition {
   /** Entries to skip on `page` (a page left part-way through). */
   offset: number;
   page: number;
+  /**
+   * Publication Log: some call in the chain that reached this cursor returned an event, so a
+   * continuation that finds nothing more ends the window rather than finding it quiet.
+   */
+  returned?: true;
+  /**
+   * Item-log page search: a page known not to be wholly newer than the window,
+   * so the window's first page is at or before it; always above `page`.
+   */
+  upper?: number;
 }
 
 /** The positions a call over one query can produce. */
 export interface CursorBounds {
   /** Days a day walk can stand on, inclusive; absent for a query that walks no days. */
   days?: { first: string; last: string };
+  /** True for a Publication Log query: only its cursors carry `returned`. */
+  eventsReturned?: boolean;
+  /** True for a query whose calls search the log by page (the item log): only its cursors carry `upper`. */
+  pageSearch?: boolean;
   /** Entries per upstream page: an offset always lies below it. */
   pageSize: number;
 }
@@ -51,6 +67,8 @@ export function encodeCursor(queryKey: string, position: CursorPosition): string
     p: position.page,
     ...(position.offset > 0 ? { o: position.offset } : {}),
     ...(position.date ? { d: position.date } : {}),
+    ...(position.upper !== undefined ? { h: position.upper } : {}),
+    ...(position.returned ? { e: 1 } : {}),
   };
   return Buffer.from(JSON.stringify(payload)).toString('base64url');
 }
@@ -71,7 +89,7 @@ export function decodeCursor(
     return;
   }
   if (typeof payload !== 'object' || payload === null) return;
-  const { k, p, o, d } = payload as Record<string, unknown>;
+  const { k, p, o, d, h, e } = payload as Record<string, unknown>;
   if (k !== fingerprint(queryKey)) return;
   if (!Number.isInteger(p) || (p as number) < 1 || (p as number) > MAX_PAGE) return;
   if (
@@ -83,9 +101,22 @@ export function decodeCursor(
     const { first, last } = bounds.days;
     if (typeof d !== 'string' || !isCalendarDate(d) || d < first || d > last) return;
   } else if (d !== undefined) return;
+  if (
+    h !== undefined &&
+    !(
+      bounds.pageSearch &&
+      Number.isInteger(h) &&
+      (h as number) > (p as number) &&
+      (h as number) <= MAX_PAGE
+    )
+  )
+    return;
+  if (e !== undefined && !(bounds.eventsReturned && e === 1)) return;
   return {
     page: p as number,
     offset: (o as number | undefined) ?? 0,
     ...(d ? { date: d as string } : {}),
+    ...(h !== undefined ? { upper: h as number } : {}),
+    ...(e !== undefined ? { returned: true as const } : {}),
   };
 }
