@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.2.1](changelog/0.2.x/0.2.1.md) — 2026-10-29
+
+A redirected item path (pre-1963 calendar year, Welsh SI as uksi) is read at its served path, a provision read lists effects on its enclosing and contained provisions, an old item-log window is found by page search, and several dated-read and notice fixes.
+
 ## [0.2.0](changelog/0.2.x/0.2.0.md) — 2026-10-28
 
 Publishes the uk-legislation-guide Agent Skill over MCP as skill://uk-legislation-guide/SKILL.md, moves to mcp-ts-core 0.13.18 (which fixes a per-request HTTP memory leak under Bun in 0.13.16), and trims the .mcpb to runtime files.
