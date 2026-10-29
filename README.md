@@ -1,13 +1,13 @@
 <div align="center">
   <h1>@cyanheads/uk-legislation-mcp-server</h1>
   <p><b>Search and read UK legislation at any date, resolve citations, list amendments, track changes via MCP. STDIO or Streamable HTTP.</b>
-  <div>6 Tools</div>
+  <div>6 Tools • 1 Resource</div>
   </p>
 </div>
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/Version-0.1.3-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/uk-legislation-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^2.3.1-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/uk-legislation-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/uk-legislation-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.4.4-blueviolet.svg?style=flat-square)](https://bun.sh/)
+[![Version](https://img.shields.io/badge/Version-0.1.3-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/uk-legislation-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^2.4.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/uk-legislation-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/uk-legislation-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.4.4-blueviolet.svg?style=flat-square)](https://bun.sh/)
 
 </div>
 
@@ -41,6 +41,14 @@ The UK statute book from [legislation.gov.uk](https://www.legislation.gov.uk/): 
 | `uklaw_track_changes` | Read the legislation.gov.uk Publication Log for a window of up to 31 days |
 | `uklaw_lookup_citation` | Resolve a citation, short title, or legislation.gov.uk URI to the canonical item and provision |
 | `uklaw_list_reference` | Decode type codes, extents, version keywords, annotation letters, citation forms, and other vocabulary, offline |
+
+### Resources
+
+| Resource | Description |
+|:---|:---|
+| `skill://uk-legislation-guide/SKILL.md` | Agent Skill covering how to decide with the `uklaw_*` tools whether a provision is in force and current, its text on a date, what amended or commenced it, and what changed since a date |
+
+The skill is served over MCP through the Agent Skills extension (`io.modelcontextprotocol/skills`, `skill://{+path}` template) and ships in `skills/` in the npm package, the Docker image, and the `.mcpb` bundle. The tools do not depend on it.
 
 ## Capability reference
 
@@ -103,6 +111,13 @@ Any form can end with a provision (`s. 45(2)(f)`, `section 45`, `reg. 5`, `art. 
 - `topic`: `types`, `type_groups`, `extents`, `versions`, `document_status`, `annotation_types`, `effects`, `provision_paths`, `citation_formats`, `publication_log`, `coverage`, or `attribution`
 - Offline, with no request to legislation.gov.uk; each entry is a `key`, `label`, `description`, and optional `details`
 
+---
+
+### `skill://uk-legislation-guide/SKILL.md` <sub>resource</sub>
+
+- Markdown with YAML frontmatter: scope, identifier sources, the gates for in-force status, revised-text lag, container effects, dated reads, and date semantics, and workflows for commencement, point-in-time text, amendment history, and changes since a date
+- Listed in `resources/list`; the `skill://{+path}` template reads any file under it
+
 ## Features
 
 Built on [`@cyanheads/mcp-ts-core`](https://github.com/cyanheads/mcp-ts-core): stdio and Streamable HTTP transports, pluggable auth (`none` / `jwt` / `oauth`), swappable storage (`in-memory`, `filesystem`, `Supabase`, `Cloudflare KV/R2/D1`), structured logging with optional OpenTelemetry tracing.
@@ -125,135 +140,34 @@ Agent-friendly output:
 
 ## Getting started
 
-### Public Hosted Instance
-
-A public instance is available at `https://uk-legislation.caseyjhand.com/mcp` — no installation required. It serves Streamable HTTP; each client takes its own config shape.
-
-For Claude Code:
+Connect to the hosted instance, no install:
 
 ```sh
 claude mcp add --transport http uk-legislation-mcp-server https://uk-legislation.caseyjhand.com/mcp
 ```
 
-For Cline (`cline_mcp_settings.json`):
-
-```json
-{
-  "mcpServers": {
-    "uk-legislation-mcp-server": {
-      "type": "streamableHttp",
-      "url": "https://uk-legislation.caseyjhand.com/mcp"
-    }
-  }
-}
-```
-
-For Cursor (`mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "uk-legislation-mcp-server": {
-      "url": "https://uk-legislation.caseyjhand.com/mcp"
-    }
-  }
-}
-```
-
-Claude Desktop adds remote servers under Settings → Connectors.
-
 Every caller of the hosted instance shares one request queue, paced at one legislation.gov.uk request per second under its fair use policy. For sustained use, run your own instance.
 
-### Self-Hosted / Local
+Or run it locally:
 
-Add the following to your MCP client configuration file.
-
-```json
-{
-  "mcpServers": {
-    "uk-legislation-mcp-server": {
-      "type": "stdio",
-      "command": "bunx",
-      "args": ["@cyanheads/uk-legislation-mcp-server@latest"],
-      "env": {
-        "MCP_TRANSPORT_TYPE": "stdio",
-        "MCP_LOG_LEVEL": "info"
-      }
-    }
-  }
-}
+```sh
+claude mcp add uk-legislation-mcp-server -- npx -y @cyanheads/uk-legislation-mcp-server
 ```
 
-Or with npx (no Bun required):
+For other clients, add this to the MCP config file:
 
 ```json
 {
   "mcpServers": {
     "uk-legislation-mcp-server": {
-      "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@cyanheads/uk-legislation-mcp-server@latest"],
-      "env": {
-        "MCP_TRANSPORT_TYPE": "stdio",
-        "MCP_LOG_LEVEL": "info"
-      }
+      "args": ["-y", "@cyanheads/uk-legislation-mcp-server"]
     }
   }
 }
 ```
 
-Or with Docker:
-
-```json
-{
-  "mcpServers": {
-    "uk-legislation-mcp-server": {
-      "type": "stdio",
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "MCP_TRANSPORT_TYPE=stdio", "ghcr.io/cyanheads/uk-legislation-mcp-server:latest"]
-    }
-  }
-}
-```
-
-For Streamable HTTP, set the transport and start the server:
-
-```sh
-MCP_TRANSPORT_TYPE=http MCP_HTTP_PORT=3010 bun run start:http
-# Server listens at http://localhost:3010/mcp
-```
-
-### Prerequisites
-
-- [Bun v1.4.0](https://bun.sh/) or higher (or Node.js v24+).
-- No API key or account is needed. The legislation.gov.uk [fair use policy](https://www.legislation.gov.uk/fair-use-policy) asks non-browser clients to identify themselves, so set `UK_LEGISLATION_CONTACT` to an email or URL when you run a shared deployment.
-
-### Installation
-
-1. **Clone the repository:**
-
-```sh
-git clone https://github.com/cyanheads/uk-legislation-mcp-server.git
-```
-
-2. **Navigate into the directory:**
-
-```sh
-cd uk-legislation-mcp-server
-```
-
-3. **Install dependencies:**
-
-```sh
-bun install
-```
-
-4. **Configure environment:**
-
-```sh
-cp .env.example .env
-# edit .env and set UK_LEGISLATION_CONTACT as needed
-```
+No API key or account is needed. The legislation.gov.uk [fair use policy](https://www.legislation.gov.uk/fair-use-policy) asks non-browser clients to identify themselves, so set `UK_LEGISLATION_CONTACT` to an email or URL when you run a shared deployment. For Docker or a source build, see [Running the server](#running-the-server).
 
 ## Configuration
 
@@ -277,6 +191,16 @@ See [`.env.example`](./.env.example) for the full list of optional overrides.
 
 ### Local development
 
+Requires [Bun v1.4.0](https://bun.sh/) or higher (or Node.js v24+).
+
+- **Clone and install:**
+
+  ```sh
+  git clone https://github.com/cyanheads/uk-legislation-mcp-server.git
+  cd uk-legislation-mcp-server && bun install
+  cp .env.example .env   # optionally set UK_LEGISLATION_CONTACT
+  ```
+
 - **Build and run the production version**:
 
   ```sh
@@ -295,12 +219,21 @@ See [`.env.example`](./.env.example) for the full list of optional overrides.
   bun run test      # Runs the test suite
   ```
 
+### Docker
+
+```sh
+docker run --rm -p 3010:3010 ghcr.io/cyanheads/uk-legislation-mcp-server:latest
+```
+
+The image defaults to HTTP transport, stateless session mode, and logs to `/var/log/uk-legislation-mcp-server`. To run it over stdio from an MCP client, use `"command": "docker"` with `"args": ["run", "-i", "--rm", "-e", "MCP_TRANSPORT_TYPE=stdio", "ghcr.io/cyanheads/uk-legislation-mcp-server:latest"]`. To build locally, `docker build -t uk-legislation-mcp-server .`; OpenTelemetry peer dependencies are installed by default — build with `--build-arg OTEL_ENABLED=false` to omit them.
+
 ## Project structure
 
 | Directory | Purpose |
 |:---|:---|
 | `src/index.ts` | `createApp()` entry point: registers the six tools; `setup()` reads robots.txt and builds the pacer, response cache, client, and service. |
 | `src/config` | Server-specific environment variable parsing and validation with Zod. |
+| `skills/` | The published `uk-legislation-guide` Agent Skill, served as an MCP resource via `createApp({ skills: 'skills' })`. |
 | `src/mcp-server/tools/definitions` | Tool definitions (`*.tool.ts`), plus the shared input/output schemas and Markdown rendering helpers. |
 | `src/services/legislation` | legislation.gov.uk service layer: HTTP client, response cache, citation and provision-path parsing, CLML and Atom parsers, reference data, attribution. |
 | `tests/` | Unit tests mirroring `src/`, run against recorded CLML and Atom fixtures. |

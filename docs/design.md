@@ -15,7 +15,11 @@
 
 ### Resources
 
-None. See Design Decisions.
+| Resource | Description |
+|:---|:---|
+| `skill://uk-legislation-guide/SKILL.md` | Agent Skill (`skills/uk-legislation-guide/`) for deciding with the `uklaw_*` tools whether a provision is in force and current, what it said on a date, what amended or commenced it, and what changed since a date. Served by the framework from `createApp({ skills: 'skills' })`; the `skill://{+path}` template reads files under it. |
+
+No `resources` definitions are registered. See Design Decisions.
 
 ### Prompts
 
@@ -29,7 +33,7 @@ This server wraps that single keyless API — content-negotiated REST returning 
 
 ## Requirements
 
-- Read-only. Six tools; no resources or prompts.
+- Read-only. Six tools and one published skill served as a resource; no prompts.
 - Upstream: `https://www.legislation.gov.uk`, keyless. Documents as CLML (`/data.xml`), lists and effects as Atom (`/data.feed`), identifier resolution through `/id`.
 - Fair use policy: an identifying `User-Agent` with contact details on every request, at most 1,500 requests in any 5-minute period per user (across all of a user's IPs), and the robots.txt path rules. The robots.txt `Crawl-delay: 5` in the `User-agent: *` group governs crawling, which this server never does (Design Decision 2). The server paces every upstream request — redirect hops included — to one start per second by default, process-wide: ≤ 300 requests per 5 minutes, 20% of the policy ceiling. A `Crawl-delay` that robots.txt sets for this server's own user agent overrides the gap when longer, up to 60 s (Design Decision 79).
 - Robots.txt disallows `*/data.pdf` and `*/data.docx`: PDFs are linked in output, never fetched.
@@ -473,7 +477,7 @@ Failures: 403 → `rateLimited` with `data.reason: 'upstream_refused'` and `retr
 
 Framework variables (`MCP_TRANSPORT_TYPE`, `MCP_HTTP_PORT`, `MCP_HTTP_HOST`, `MCP_AUTH_MODE`, logging, telemetry) are unchanged. Each server variable is declared in both `server.json` and `manifest.json`. Parsed with `parseEnvConfig` in `src/config/server-config.ts`; booleans via `z.stringbool()` if any are added.
 
-`createApp()` receives `name: 'uk-legislation-mcp-server'`, `title: 'uk-legislation-mcp-server'`, `tools`, `resources: []`, `prompts: []`, `instructions`, `setup` (config, robots.txt read, pacer, cache, client, service) and `teardown` (pacer dispose, cache clear) — no other identity fields.
+`createApp()` receives `name: 'uk-legislation-mcp-server'`, `title: 'uk-legislation-mcp-server'`, `tools`, `resources: []`, `prompts: []`, `skills: 'skills'`, `instructions`, `setup` (config, robots.txt read, pacer, cache, client, service) and `teardown` (pacer dispose, cache clear) — no other identity fields.
 
 ## Server Instructions
 
@@ -566,7 +570,7 @@ Verified live on 2026-09-26 with an identifying `User-Agent`, keyless, ~100 requ
 23. **Enums for structured type inputs; free text through the citation parser.** `types` and similar fields advertise lowercase codes as enums; abbreviations like "S.I." are handled only where free text is expected (`uklaw_lookup_citation`).
 24. **Output formats trimmed to Markdown plus links.** Raw CLML output and a links-only mode were considered and dropped: the links (`xml`, `akn`, `pdf`) are in every response and raw XML would flood context.
 25. **Welsh via `language`, never a silent swap.** Welsh text is authoritative for Welsh legislation; when none exists, the English text comes back labelled with a notice.
-26. **No resources or prompts.** Provision paths are variable-depth and `uklaw_get_document` covers the same data for tool-only clients; no recurring interaction pattern needs a prompt.
+26. **No resource or prompt definitions; one published skill.** Provision paths are variable-depth and `uklaw_get_document` covers the same data for tool-only clients; no recurring interaction pattern needs a prompt. The gates that tool descriptions cannot carry (in-force vs. present in revised text, effects on a container, date semantics) live in the `uk-legislation-guide` skill, served over MCP and shipped in the plugin, npm package, Docker image, and `.mcpb`.
 27. **Effect `Comments` are not surfaced.** They are editor working notes addressed to other editors; `Notes` is the reader-facing field.
 28. **Attribution and editorial status in every response.** The licence conditions travel with the content, and revised text is never shown without its status and outstanding effects.
 29. **A provision is verified by fetching it, not through `/id`.** `/id/{item}/{provision}` 303s for a provision that does not exist, so a 303 would report `provision_found: true` for any typo. Fetching the current provision document answers 200/404 and puts the document in the shared cache, which is the request the caller's next `uklaw_get_document` call makes anyway.
