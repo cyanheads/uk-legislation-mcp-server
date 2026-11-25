@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.2.2](changelog/0.2.x/0.2.2.md) — 2026-11-25
+
+Citation shorthand reads letter-prefixed numbers and a Schedule before \"to\", a provision read lists its enclosing Parts, Chapters and headings, an item read adds made, laid and in-force dates and associated documents, and an over-cap limit is served at the cap, with higher caps on search and amendments.
+
 ## [0.2.1](changelog/0.2.x/0.2.1.md) — 2026-10-29
 
 A redirected item path (pre-1963 calendar year, Welsh SI as uksi) is read at its served path, a provision read lists effects on its enclosing and contained provisions, an old item-log window is found by page search, and several dated-read and notice fixes.
