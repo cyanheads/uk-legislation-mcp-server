@@ -34,6 +34,8 @@
 /biome.json
 /tsconfig*.json
 /vitest.config.ts
-# Repo-local paths of this server: git metadata and the TypeScript build cache.
+# Repo-local paths of this server: git metadata, the TypeScript build cache,
+# and the Vitest cache.
 /.gitignore
 /.tsbuildinfo
+/node_modules/.vitest-cache/
