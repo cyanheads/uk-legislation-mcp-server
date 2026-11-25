@@ -1,7 +1,8 @@
 /**
  * @fileoverview Tests for the citation grammar (numbered UK, devolved and
- * EU-origin citations, URIs, short titles, provision tails) and the bounded
- * text scan of the `/id?title=` 300 page.
+ * EU-origin citations, URIs, short titles, provision tails and leading
+ * provisions), the bounded text scan of the `/id?title=` 300 page, and the
+ * time the citation and provision parsers take as their input grows.
  * @module tests/services/legislation/citations.test
  */
 
@@ -11,7 +12,63 @@ import {
   normalizeTitle,
   parseCitation,
 } from '@/services/legislation/citations.js';
+import { normalizeProvision } from '@/services/legislation/provision-path.js';
 import { fixture } from '../../helpers/upstream.js';
+
+/** Least thread CPU milliseconds per call of `run`, over `rounds` batches of `calls` calls. */
+function leastCpuMs(run: () => unknown, calls = 1, rounds = 3): number {
+  let best = Number.POSITIVE_INFINITY;
+  for (let round = 0; round < rounds; round += 1) {
+    const started = process.threadCpuUsage();
+    for (let call = 0; call < calls; call += 1) run();
+    const elapsed = process.threadCpuUsage(started);
+    best = Math.min(best, (elapsed.user + elapsed.system) / 1_000 / calls);
+  }
+  return best;
+}
+
+/** Calls that bring one batch of `run` to about 2 ms of CPU, above the timer's resolution. */
+function batchSize(run: () => unknown): number {
+  return Math.min(64, Math.ceil(2 / Math.max(leastCpuMs(run, 1, 1), 0.01)));
+}
+
+/** Per-call CPU budget at every size; a linear parse of 320k characters stays well below it. */
+const PARSE_BUDGET_MS = 250;
+
+/**
+ * Times `run` on `make(chars)` from 5k characters to `maxChars`, doubling, and
+ * fails at the first size whose least per-call thread CPU passes the budget.
+ * Each size is timed in pairs beside the 5k baseline, and the least growth over
+ * the last size's pairs stays below four times the span.
+ */
+function expectLinearTime(
+  run: (input: string) => unknown,
+  make: (chars: number) => string,
+  maxChars = 320_000,
+): void {
+  const base = make(5_000);
+  const runBase = () => run(base);
+  const baseCalls = batchSize(runBase);
+  let growth = Number.POSITIVE_INFINITY;
+  for (let chars = 5_000; chars <= maxChars; chars *= 2) {
+    const input = make(chars);
+    const runSize = () => run(input);
+    const calls = batchSize(runSize);
+    let least = Number.POSITIVE_INFINITY;
+    growth = Number.POSITIVE_INFINITY;
+    for (let pair = 0; pair < 3; pair += 1) {
+      const baseMs = leastCpuMs(runBase, baseCalls, 1);
+      const sizeMs = leastCpuMs(runSize, calls, 1);
+      least = Math.min(least, sizeMs);
+      growth = Math.min(growth, sizeMs / Math.max(baseMs, 0.001));
+    }
+    expect(least).toBeLessThan(PARSE_BUDGET_MS);
+  }
+  expect(growth).toBeLessThan((4 * maxChars) / 5_000);
+}
+
+/** `unit` repeated to at least `chars` characters. */
+const fill = (unit: string, chars: number) => unit.repeat(Math.ceil(chars / unit.length));
 
 describe('parseCitation — numbered forms', () => {
   it.each([
@@ -170,6 +227,108 @@ describe('parseCitation — written forms', () => {
   });
 });
 
+describe('parseCitation — letter-prefixed values, a Schedule "to" its item, commas', () => {
+  const title = (text: string, year: number, provision?: string) => ({
+    kind: 'title',
+    title: text,
+    year,
+    ...(provision ? { provision } : {}),
+  });
+
+  it.each([
+    ['Access to Justice Act 1999', title('Access to Justice Act 1999', 1999)],
+    [
+      'section 1 of the Access to Justice Act 1999',
+      title('Access to Justice Act 1999', 1999, 'section/1'),
+    ],
+    [
+      'section 1 to 5 of the Data Protection Act 2018',
+      title('section 1 to 5 of the Data Protection Act 2018', 2018),
+    ],
+    [
+      'regulation 3 to the Civil Procedure Rules 1998',
+      title('regulation 3 to the Civil Procedure Rules 1998', 1998),
+    ],
+    [
+      'Part 2 to the Data Protection Act 2018',
+      title('Part 2 to the Data Protection Act 2018', 2018),
+    ],
+    [
+      'Schedules 2 to 4 to the Data Protection Act 2018',
+      title('Schedules 2 to 4 to the Data Protection Act 2018', 2018),
+    ],
+    ['Henry VIII', { kind: 'title', title: 'Henry VIII' }],
+    ['Solvency II', { kind: 'title', title: 'Solvency II' }],
+    [
+      'Representation of the People Act 1983 Pt II',
+      title('Representation of the People Act 1983', 1983, 'part/II'),
+    ],
+    [
+      'The A1 and A19 Trunk Roads (Speed Limits) Order 2020',
+      title('The A1 and A19 Trunk Roads (Speed Limits) Order 2020', 2020),
+    ],
+    ['Value Added Tax Act 1994', title('Value Added Tax Act 1994', 1994)],
+  ])('keeps the reading of %j', (citation, parsed) => {
+    expect(parseCitation(citation)).toEqual(parsed);
+  });
+
+  it.each([
+    [
+      'Insolvency Act 1986 Sch. B1 para. 14',
+      title('Insolvency Act 1986', 1986, 'schedule/B1/paragraph/14'),
+    ],
+    ['Insolvency Act 1986 s. A6', title('Insolvency Act 1986', 1986, 'section/A6')],
+    ['Children Act 1989 Pt XA', title('Children Act 1989', 1989, 'part/XA')],
+    ['Insolvency Act 1986 Pt IX Ch. IA', title('Insolvency Act 1986', 1986, 'part/IX/chapter/IA')],
+    [
+      'Schedule 2 to the Data Protection Act 2018',
+      title('Data Protection Act 2018', 2018, 'schedule/2'),
+    ],
+    [
+      'paragraph 3 of Schedule 2 to the Data Protection Act 2018',
+      title('Data Protection Act 2018', 2018, 'schedule/2/paragraph/3'),
+    ],
+    [
+      'paragraph 14 of Schedule B1 to the Insolvency Act 1986',
+      title('Insolvency Act 1986', 1986, 'schedule/B1/paragraph/14'),
+    ],
+    [
+      'Part 1 of Schedule 2 to the Data Protection Act 2018',
+      title('Data Protection Act 2018', 2018, 'schedule/2/part/1'),
+    ],
+    [
+      'Schedule 2 to the Access to Justice Act 1999',
+      title('Access to Justice Act 1999', 1999, 'schedule/2'),
+    ],
+    [
+      'Schedule 2 to the Representation of the People Act 1983',
+      title('Representation of the People Act 1983', 1983, 'schedule/2'),
+    ],
+    [
+      'Schedule 2 to 2018 c. 12',
+      { kind: 'numbered', type: 'ukpga', year: 2018, number: '12', provision: 'schedule/2' },
+    ],
+    [
+      'Data Protection Act 2018, Sch. 2, para. 3',
+      title('Data Protection Act 2018', 2018, 'schedule/2/paragraph/3'),
+    ],
+    [
+      'Insolvency Act 1986, sch B1, para 14',
+      title('Insolvency Act 1986', 1986, 'schedule/B1/paragraph/14'),
+    ],
+    [
+      'Data Protection Act 2018, Sch. 2 , para. 3',
+      title('Data Protection Act 2018', 2018, 'schedule/2/paragraph/3'),
+    ],
+    [
+      'Data Protection Act 2018, Sch. 2,, para. 3',
+      title('Data Protection Act 2018', 2018, 'schedule/2/paragraph/3'),
+    ],
+  ])('reads %j', (citation, parsed) => {
+    expect(parseCitation(citation)).toEqual(parsed);
+  });
+});
+
 describe('parseCitation — URIs, titles, and unparsed input', () => {
   it('splits a legislation.gov.uk URI into item and provision', () => {
     const parsed = parseCitation(
@@ -209,6 +368,15 @@ describe('parseCitation — URIs, titles, and unparsed input', () => {
       title: 'Human Rights Act 1998',
       year: 1998,
     });
+  });
+
+  it.each([
+    // An instrument titled after its parent Act: the instrument's own year is written last.
+    ['The Pensions Act 2008 (Commencement No. 3) Order 2009', 2009],
+    // An ISBN after the year is one longer digit run, never a year.
+    ['Draft Order 2026 ISBN 9780348288018', 2026],
+  ])('takes the year of %j from the last year written as its own word', (citation, year) => {
+    expect(parseCitation(citation)).toEqual({ kind: 'title', title: citation, year });
   });
 
   it.each([
@@ -352,14 +520,7 @@ describe('extractTitleCandidates', () => {
 
   /** Thread CPU milliseconds of the fastest of three scans of `html`. */
   function scanMs(html: string): number {
-    let best = Number.POSITIVE_INFINITY;
-    for (let run = 0; run < 3; run += 1) {
-      const started = process.threadCpuUsage();
-      expect(extractTitleCandidates(html)).toEqual([]);
-      const elapsed = process.threadCpuUsage(started);
-      best = Math.min(best, (elapsed.user + elapsed.system) / 1_000);
-    }
-    return best;
+    return leastCpuMs(() => expect(extractTitleCandidates(html)).toEqual([]));
   }
 
   it.each([
@@ -405,4 +566,58 @@ describe('normalizeTitle', () => {
     expect(normalized).toBe(title);
     expect((elapsed.user + elapsed.system) / 1_000).toBeLessThan(100);
   });
+});
+
+describe('parser time as the input grows', () => {
+  it.each<[string, (chars: number) => string]>([
+    ['digit-led components ending in junk', (n) => `${fill('s 1 ', n)}x`],
+    ['letter-prefixed components ending in junk', (n) => `${fill('Sch B1 ', n)}x`],
+    ['roman components with a letter suffix ending in junk', (n) => `${fill('Pt XA ', n)}x`],
+    [
+      'a keyword, then one run of roman-numeral letters ending in a digit',
+      (n) => `Pt ${'I'.repeat(n)}5`,
+    ],
+    ['comma-separated components ending in junk', (n) => `${fill('s 1, ', n)}x`],
+    ['one component, then a run of commas and junk', (n) => `s 1${fill(', ', n)}x`],
+    ['a title, a run of commas, then a component', (n) => `Act${fill(', ', n)}x s. 1`],
+    ['a title holding a run of semicolons', (n) => `Act${fill('; ', n)}x`],
+    ['repeated "to" with no Schedule before it', (n) => fill('a to ', n)],
+    [
+      'a provision "of" a chain of Schedules "to"',
+      (n) => `paragraph 3 of ${fill('Schedule 2 to ', n)}`,
+    ],
+    [
+      'years, then a long stretch without one',
+      (n) => `${fill('2018 ', n / 2)}${'a'.repeat(n / 2)}`,
+    ],
+    ['one long line ending in a break', (n) => `${fill('s 1 ', n)}\ny`],
+    ['line breaks throughout', (n) => `${fill('s 1  \r\n', n)}x`],
+  ])(
+    'parses a citation in linear time from 5k to 320k characters: %s',
+    (_name, make) => {
+      expectLinearTime(parseCitation, make);
+    },
+    0,
+  );
+
+  it.each<[string, (chars: number) => string]>([
+    ['digit-led components ending in junk', (n) => `${fill('s 1 ', n)}x`],
+    ['letter-prefixed components ending in junk', (n) => `${fill('Sch B1 ', n)}x`],
+    ['roman components with a letter suffix ending in junk', (n) => `${fill('Pt XA ', n)}x`],
+    ['comma-separated components ending in junk', (n) => `${fill('s 1, ', n)}x`],
+    ['slashes between two letters', (n) => `x${'/'.repeat(n)}x`],
+    ['one long line ending in a break', (n) => `${fill('s 1 ', n)}\ny`],
+    ['line breaks throughout', (n) => `${fill('s 1  \r\n', n)}x`],
+  ])(
+    'normalizes a provision in linear time from 5k to 320k characters: %s',
+    (_name, make) => {
+      expectLinearTime(normalizeProvision, make);
+    },
+    0,
+  );
+
+  /** Bun's regex engine switches to a several-fold slower mode past about 160k characters of repeated sub-levels, so this shape stops at 80k, below the switch. */
+  it('normalizes a provision in linear time from 5k to 80k characters: bracketed sub-levels ending in an open bracket', () => {
+    expectLinearTime(normalizeProvision, (n) => `s. 1${fill(' (1)', n)}(`, 80_000);
+  }, 0);
 });

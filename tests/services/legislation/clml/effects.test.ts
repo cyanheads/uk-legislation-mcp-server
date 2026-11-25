@@ -383,19 +383,19 @@ describe('effectTouches', () => {
 
   describe('ranges', () => {
     const ITEM = 'ukpga/2018/12';
-    const range = (from: string, upTo: string): EffectRecord => {
+    const range = (from: string, upTo: string, item = ITEM): EffectRecord => {
       const e = on([]);
       e.affected.provisions = [
         {
           label: `${from}-${upTo}`,
-          uri: `https://www.legislation.gov.uk/id/${ITEM}/${from}`,
-          up_to: `https://www.legislation.gov.uk/id/${ITEM}/${upTo}`,
+          uri: `https://www.legislation.gov.uk/id/${item}/${from}`,
+          up_to: `https://www.legislation.gov.uk/id/${item}/${upTo}`,
         },
       ];
       return e;
     };
-    const touched = (e: EffectRecord, provisions: string[]) =>
-      provisions.filter((p) => effectTouches(e, 'affected', `${ITEM}/${p}`));
+    const touched = (e: EffectRecord, provisions: string[], item = ITEM) =>
+      provisions.filter((p) => effectTouches(e, 'affected', `${item}/${p}`));
 
     it('matches provisions between the endpoints, the endpoints, their descendants and ancestors', () => {
       const s65 = range('section/65/2', 'section/65/4');
@@ -498,6 +498,245 @@ describe('effectTouches', () => {
         'schedule/2/paragraph/5/1',
       ]);
     });
+
+    describe('letter-prefixed numbers', () => {
+      const IA = 'ukpga/1986/45';
+      /** The Insolvency Act 1986's provisions in the order its contents list them on legislation.gov.uk. */
+      const SCHEDULES = [
+        'schedule/ZA1',
+        'schedule/ZA2',
+        'schedule/A1',
+        'schedule/B1',
+        'schedule/1',
+        'schedule/2',
+        'schedule/2A',
+        'schedule/3',
+        'schedule/4',
+        'schedule/4ZZA',
+        'schedule/4ZA',
+        'schedule/4ZB',
+        'schedule/4A',
+        'schedule/5',
+      ];
+      const SECTIONS = [
+        'section/A1',
+        'section/A2',
+        'section/A10',
+        'section/A54',
+        'section/A55',
+        'section/1',
+        'section/1A',
+        'section/2',
+      ];
+
+      it('orders a double-z suffix first, as the Act numbers Schedule 4ZZA before 4ZA', () => {
+        expect(
+          touched(
+            range('schedule/4', 'schedule/4A', IA),
+            [
+              'schedule/3',
+              'schedule/4',
+              'schedule/4ZZA',
+              'schedule/4ZA',
+              'schedule/4ZB',
+              'schedule/4A',
+              'schedule/4B',
+              'schedule/5',
+            ],
+            IA,
+          ),
+        ).toEqual(['schedule/4', 'schedule/4ZZA', 'schedule/4ZA', 'schedule/4ZB', 'schedule/4A']);
+      });
+
+      it('matches a prefixed range at its endpoints and their descendants, never outside them', () => {
+        expect(
+          touched(
+            range('section/A29', 'section/A32', IA),
+            [
+              'section/A29',
+              'section/A29/1',
+              'section/A32',
+              'section/A32/2/a',
+              'section/A28',
+              'section/A33',
+              'section/A3',
+              'section/A290',
+              'section/29',
+              'section/30',
+              'section/30A',
+              'section/32',
+            ],
+            IA,
+          ),
+        ).toEqual(['section/A29', 'section/A29/1', 'section/A32', 'section/A32/2/a']);
+      });
+
+      it('never reads a prefix as a suffix: A30 and 30A are distinct and never swap', () => {
+        expect(
+          touched(range('section/29', 'section/32', IA), ['section/A30', 'section/30A'], IA),
+        ).toEqual(['section/30A']);
+        expect(touched(on([`${IA}/section/A30`]), ['section/30A', 'section/A30'], IA)).toEqual([
+          'section/A30',
+        ]);
+        expect(touched(on([`${IA}/section/30A`]), ['section/A30', 'section/30A'], IA)).toEqual([
+          'section/30A',
+        ]);
+      });
+
+      it('orders by number below a prefixed segment', () => {
+        expect(
+          touched(
+            range('schedule/B1/paragraph/3', 'schedule/B1/paragraph/9', IA),
+            [
+              'schedule/B1',
+              'schedule/B1/paragraph/5',
+              'schedule/B1/paragraph/9/1',
+              'schedule/B1/paragraph/2',
+              'schedule/B1/paragraph/10',
+              'schedule/A1/paragraph/5',
+              'schedule/1/paragraph/5',
+            ],
+            IA,
+          ),
+        ).toEqual(['schedule/B1', 'schedule/B1/paragraph/5', 'schedule/B1/paragraph/9/1']);
+      });
+
+      it('covers the interior of the recorded range s. A29-A32', () => {
+        const recorded = parseChangesFeed(
+          fixture('feeds/changes-affected-ukpga-1986-45-affecting-ukpga-2020-12-page-5.feed'),
+        ).effects;
+        const a29 = recorded.find((e) => e.affected.provisions_label === 's. A29-A32');
+        expect(a29?.affected.provisions).toMatchObject([
+          {
+            uri: `https://www.legislation.gov.uk/id/${IA}/section/A29`,
+            up_to: `https://www.legislation.gov.uk/id/${IA}/section/A32`,
+          },
+        ]);
+        const labels = (provision: string) =>
+          recorded
+            .filter((e) => effectTouches(e, 'affected', `${IA}/${provision}`))
+            .map((e) => e.affected.provisions_label);
+        expect(labels('section/A30')).toEqual(['s. A29-A32']);
+        expect(labels('section/A31/2')).toEqual(['s. A29-A32']);
+        expect(labels('section/A33')).toEqual([]);
+        expect(labels('section/30')).toEqual([]);
+        expect(labels('section/A21')).toEqual(['s. A21']);
+      });
+
+      it('orders prefixed numbers before unprefixed ones, prefixes in insertion order', () => {
+        for (const order of [SCHEDULES, SECTIONS]) {
+          for (let i = 0; i + 2 < order.length; i += 1) {
+            const [a, b, c] = order.slice(i, i + 3) as [string, string, string];
+            const touches = (from: string, upTo: string, p: string) =>
+              effectTouches(range(from, upTo, IA), 'affected', `${IA}/${p}`);
+            expect(touches(a, c, b), `${b} inside ${a}-${c}`).toBe(true);
+            expect(touches(a, b, c), `${c} outside ${a}-${b}`).toBe(false);
+            expect(touches(b, c, a), `${a} outside ${b}-${c}`).toBe(false);
+          }
+        }
+      });
+
+      it('reads ZA1-B1 as holding A1 and its paragraphs, never Schedule 1', () => {
+        expect(
+          touched(
+            range('schedule/ZA1', 'schedule/B1', IA),
+            [
+              'schedule/ZA2',
+              'schedule/A1',
+              'schedule/A1/paragraph/7',
+              'schedule/B1/paragraph/14',
+              'schedule/ZZA1',
+              'schedule/1',
+              'schedule/2A',
+            ],
+            IA,
+          ),
+        ).toEqual([
+          'schedule/ZA2',
+          'schedule/A1',
+          'schedule/A1/paragraph/7',
+          'schedule/B1/paragraph/14',
+        ]);
+        expect(touched(range('schedule/ZZA1', 'schedule/A1', IA), ['schedule/ZA1'], IA)).toEqual([
+          'schedule/ZA1',
+        ]);
+      });
+
+      it('spans a prefixed start to an unprefixed end', () => {
+        expect(
+          touched(
+            range('section/A50', 'section/2', IA),
+            [
+              'section/A49',
+              'section/A50',
+              'section/A55',
+              'section/1',
+              'section/1A',
+              'section/2',
+              'section/2A',
+              'section/3',
+            ],
+            IA,
+          ),
+        ).toEqual(['section/A50', 'section/A55', 'section/1', 'section/1A', 'section/2']);
+      });
+
+      it('orders a prefixed number by its suffix as well: A1 < A1A < A1B < A2', () => {
+        expect(
+          touched(
+            range('section/A1', 'section/A2', IA),
+            ['section/A1A', 'section/A1B', 'section/1A', 'section/A10', 'section/ZA1'],
+            IA,
+          ),
+        ).toEqual(['section/A1A', 'section/A1B']);
+        expect(
+          touched(
+            range('section/A1A', 'section/A1C', IA),
+            ['section/A1', 'section/A1B', 'section/A2', 'section/1B'],
+            IA,
+          ),
+        ).toEqual(['section/A1B']);
+      });
+
+      it('orders a prefixed segment below the top level, with endpoints at different depths', () => {
+        expect(
+          touched(
+            range('schedule/ZA2', 'schedule/B1/paragraph/3', IA),
+            [
+              'schedule/A1',
+              'schedule/A1/paragraph/7',
+              'schedule/B1',
+              'schedule/B1/paragraph/2',
+              'schedule/B1/paragraph/3/1',
+              'schedule/B1/paragraph/4',
+              'schedule/ZA1',
+              'schedule/1',
+            ],
+            IA,
+          ),
+        ).toEqual([
+          'schedule/A1',
+          'schedule/A1/paragraph/7',
+          'schedule/B1',
+          'schedule/B1/paragraph/2',
+          'schedule/B1/paragraph/3/1',
+        ]);
+        expect(
+          touched(range('schedule/2/paragraph/A1', 'schedule/2/paragraph/2'), [
+            'schedule/2/paragraph/A2',
+            'schedule/2/paragraph/A2/1',
+            'schedule/2/paragraph/1',
+            'schedule/2/paragraph/ZA1',
+            'schedule/2/paragraph/3',
+            'schedule/3/paragraph/1',
+          ]),
+        ).toEqual([
+          'schedule/2/paragraph/A2',
+          'schedule/2/paragraph/A2/1',
+          'schedule/2/paragraph/1',
+        ]);
+      });
+    });
   });
 });
 
@@ -559,6 +798,12 @@ describe('effectEncloses', () => {
     expect(reached(on(['part/II', 'part/IV']), ['part/III', 'part/V', 'part/I'])).toEqual([
       'part/III',
     ]);
+  });
+
+  it('reaches through a range whose start is a letter-prefixed number', () => {
+    expect(reached(on(['part/A1', 'part/2']), ['part/A2', 'part/1', 'part/ZA1', 'part/3'])).toEqual(
+      ['part/A2', 'part/1'],
+    );
   });
 
   it('leaves a whole-item effect, and one on another item, unmatched', () => {

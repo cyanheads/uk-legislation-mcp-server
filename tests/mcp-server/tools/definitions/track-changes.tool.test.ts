@@ -13,7 +13,8 @@ import type { z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import MarkdownIt from 'markdown-it';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setStrictLimits } from '@/mcp-server/tools/definitions/_schemas.js';
 import { trackChangesTool } from '@/mcp-server/tools/definitions/track-changes.tool.js';
 import { parsePublicationLog } from '@/services/legislation/atom/publication-log.js';
 import { ATTRIBUTION_LINES } from '@/services/legislation/reference-data.js';
@@ -36,6 +37,14 @@ import {
 
 type TrackInput = z.input<typeof trackChangesTool.input>;
 
+const clamped = vi.hoisted(() => ({ add: vi.fn() }));
+
+// `createCounter` is wrapped so the clamp counter's increments can be read; nothing else is replaced.
+vi.mock('@cyanheads/mcp-ts-core/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@cyanheads/mcp-ts-core/utils')>();
+  return { ...actual, createCounter: () => ({ add: clamped.add }) };
+});
+
 async function track(input: TrackInput) {
   const ctx = createMockContext({ errors: trackChangesTool.errors });
   const output = await trackChangesTool.handler(trackChangesTool.input.parse(input), ctx);
@@ -53,6 +62,8 @@ const dayRoutes = (): Route[] =>
     [DAY, feed('update-2026-09-24.feed')],
     [`${DAY}?page=2`, feed('update-2026-09-24-page-2.feed')],
   );
+/** next_cursor 0.2.1 minted for the first page of the 2026-09-24 day walk at limit 20. */
+const TRACK_CURSOR_0_2_1 = 'eyJrIjoiYTBlMzQ5NDEiLCJwIjoyLCJkIjoiMjAyNi0wOS0yNCIsImUiOjF9';
 const EMPTY = 'update-2026-09-24-changes-primary-empty.feed';
 const NEW = (date: string) => `/update/${date}/legislation/data.feed?new=true`;
 const ITEM_LOG = '/update/changes/affected/ukpga/2018/12/data.feed';
@@ -87,6 +98,16 @@ const paragraphs = (text: string): string[] =>
     .map((t) =>
       (t.children ?? []).map((c) => (c.type === 'softbreak' ? '\n' : c.content)).join(''),
     );
+
+/** The recorded item-log page with every event year moved back by `years`: a deeper page of the log. */
+const olderLogPage = (years: number) =>
+  ok(
+    fixture('feeds/update-changes-affected-ukpga-2018-12.feed').replace(
+      /<updated>(\d{4})/g,
+      (_, year: string) => `<updated>${Number(year) - years}`,
+    ),
+    { contentType: 'application/atom+xml;charset=utf-8' },
+  );
 
 describe('day walk', () => {
   it('pages within a day until limit, then hands back a cursor', async () => {
@@ -718,16 +739,6 @@ describe('item log', () => {
     expect(enrichment.notice).toContain('drop new_only, category, event, or item');
   });
 
-  /** The recorded item-log page with every event year moved back by `years`: a deeper page of the log. */
-  const olderLogPage = (years: number) =>
-    ok(
-      fixture('feeds/update-changes-affected-ukpga-2018-12.feed').replace(
-        /<updated>(\d{4})/g,
-        (_, year: string) => `<updated>${Number(year) - years}`,
-      ),
-      { contentType: 'application/atom+xml;charset=utf-8' },
-    );
-
   it('names how far back the read has passed when the window lies deeper, then finds it by page search, on both surfaces', async () => {
     // Pages 1, 2, 4, 6 and 7 are all newer than the window; page 8 holds it.
     const up = createUpstream(
@@ -1314,6 +1325,17 @@ describe('errors', () => {
     }
   });
 
+  it('resumes a day walk cursor 0.2.1 minted at limit 20, reading the next page', async () => {
+    const up = createUpstream(dayRoutes());
+    const base = { start_date: '2026-09-24', limit: 20 } as const;
+    expect((await track(base)).output.next_cursor).toBe(TRACK_CURSOR_0_2_1);
+    const { output } = await track({ ...base, cursor: TRACK_CURSOR_0_2_1 });
+    expect(up.paths()).toEqual([DAY, `${DAY}?page=2`]);
+    expect(output.events).toEqual(
+      parsePublicationLog(fixture('feeds/update-2026-09-24-page-2.feed')).events,
+    );
+  });
+
   /** Expects `invalid_cursor` for each forged cursor, with no upstream request. */
   async function expectRefused(
     input: TrackInput,
@@ -1425,7 +1447,8 @@ describe('errors', () => {
     { start_date: '2026-09-24', item: 'Data Protection Act 2018' },
     { start_date: '2026-09-24', cursor: 'abc=' },
     { start_date: '2026-09-24', limit: 0 },
-    { start_date: '2026-09-24', limit: 81 },
+    { start_date: '2026-09-24', limit: -1 },
+    { start_date: '2026-09-24', limit: 1.5 },
     { start_date: '2026-09-24', new_only: 'yes' },
     { start_date: '2026-09-24', event: 'amended' },
   ])('rejects %j at the schema', async (input) => {
@@ -1433,6 +1456,176 @@ describe('errors', () => {
     const error = errorOf(await runToolContract(trackChangesTool, input as TrackInput));
     expect(error.code).toBe(JsonRpcErrorCode.InvalidParams);
     expect(error.data?.reason).toBe('invalid_arguments');
+  });
+});
+
+describe('limit cap and clamp', () => {
+  const MORE = 'More events remain in the window: call again with cursor set to next_cursor.';
+  /** The 2026-09-24 log, with page 2's events standing in for pages 3 to 8. */
+  const busyDay = (): Route[] => [
+    ...dayRoutes(),
+    ...[3, 4, 5, 6, 7, 8].map((page) => ({
+      path: `${DAY}?page=${page}`,
+      respond: () => feed('update-2026-09-24-page-2.feed'),
+    })),
+  ];
+  const pages = (...numbers: number[]) =>
+    numbers.map((page) => (page === 1 ? DAY : `${DAY}?page=${page}`));
+
+  it('reads four 20-event pages, the request budget, for limit 80, with no clamp sentence, on both surfaces', async () => {
+    const up = createUpstream(busyDay());
+    const result = await runToolContract(trackChangesTool, { start_date: '2026-09-24', limit: 80 });
+    expect(up.paths()).toEqual(pages(1, 2, 3, 4));
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured.events).toHaveLength(80);
+    expect(structured).toMatchObject({ truncated: true, shown: 80, cap: 80, notice: MORE });
+    expect(payloadOf(structured.next_cursor as string)).toMatchObject({ p: 5 });
+    expect(contentText(result)).toContain('**cap:** 80');
+  });
+
+  it('serves limit 81 at 80, the clamp sentence joined to the capped-page notice, on both surfaces', async () => {
+    const up = createUpstream(busyDay());
+    const result = await runToolContract(trackChangesTool, { start_date: '2026-09-24', limit: 81 });
+    expect(up.paths()).toEqual(pages(1, 2, 3, 4));
+    const notice = `limit 81 is above the cap; 80 applied. ${MORE}`;
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured.events).toHaveLength(80);
+    expect(structured).toMatchObject({ truncated: true, cap: 80, notice });
+    const text = contentText(result);
+    expect(text).toContain('**cap:** 80');
+    expect(text).toContain(notice);
+  });
+
+  it('serves an over-cap limit on a window read to its end with the clamp sentence alone, on both surfaces', async () => {
+    createUpstream(routes([NEW('2026-09-24'), feed('update-2026-09-24-legislation-new.feed')]));
+    const result = await runToolContract(trackChangesTool, {
+      start_date: '2026-09-24',
+      content_type: 'legislation',
+      new_only: true,
+      limit: 100,
+    });
+    const notice = 'limit 100 is above the cap; 80 applied.';
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured).toMatchObject({ has_more: false, notice });
+    expect(structured.events).toHaveLength(7);
+    expect(structured).not.toHaveProperty('truncated');
+    expect(contentText(result)).toContain(notice);
+  });
+
+  it('serves an over-cap limit on a quiet window with the clamp sentence first in its notice, on both surfaces', async () => {
+    createUpstream(routes(['/update/2026-09-24/changes/data.feed', feed(EMPTY)]));
+    const result = await runToolContract(trackChangesTool, {
+      start_date: '2026-09-24',
+      content_type: 'changes',
+      limit: 81,
+    });
+    const opening =
+      'limit 81 is above the cap; 80 applied. No Publication Log events in this window.';
+    expect((result.structuredContent as { notice: string }).notice.startsWith(opening)).toBe(true);
+    expect(contentText(result)).toContain(opening);
+  });
+
+  it.each([
+    [
+      'a window starting after today',
+      (): Route[] => [],
+      { start_date: '2026-10-01', end_date: '2026-10-31' },
+      'The window starts after today (2026-09-26, UK date): the Publication Log holds no events for future dates, so nothing was requested. Pass a start_date on or before 2026-09-26.',
+    ],
+    [
+      'an item log not yet read back to its window',
+      (): Route[] =>
+        routes(
+          [ITEM_LOG, olderLogPage(0)],
+          [`${ITEM_LOG}?page=2`, olderLogPage(3)],
+          [`${ITEM_LOG}?page=4`, olderLogPage(9)],
+          [`${ITEM_LOG}?page=8`, olderLogPage(15)],
+        ),
+      { ...itemLogBase, start_date: '2010-06-01', end_date: '2010-06-30' },
+      "No events yet: the log of ukpga/2018/12 is read newest first, and this call reached 2015-01-16, after the window's end (2010-06-30); call again with cursor set to next_cursor to read further back toward 2010-06-01.",
+    ],
+    [
+      'a day walk whose request budget ends before the window',
+      (): Route[] =>
+        routes(
+          [NEW('2026-09-24'), feed('update-2026-09-24-legislation-new.feed')],
+          [NEW('2026-09-23'), feed(EMPTY)],
+          [NEW('2026-09-22'), feed(EMPTY)],
+          [NEW('2026-09-21'), feed(EMPTY)],
+        ),
+      {
+        start_date: '2026-09-15',
+        end_date: '2026-09-24',
+        content_type: 'legislation',
+        new_only: true,
+      },
+      "This call's request budget ended before the window did: call again with cursor set to next_cursor.",
+    ],
+  ] as [string, () => Route[], TrackInput, string][])(
+    'serves an over-cap limit on %s with the clamp sentence first and the branch guidance after it, on both surfaces',
+    async (_branch, upstream, input, guidance) => {
+      const up = createUpstream(upstream(), { clock: testClock() });
+      const result = await runToolContract(trackChangesTool, { ...input, limit: 81 });
+      expect(up.unhandled).toEqual([]);
+      const notice = `limit 81 is above the cap; 80 applied. ${guidance}`;
+      expect((result.structuredContent as { notice: string }).notice).toBe(notice);
+      expect(contentText(result)).toContain(notice);
+    },
+  );
+
+  it('counts a clamped call under uklaw_track_changes', async () => {
+    createUpstream(routes(['/update/2026-09-24/changes/data.feed', feed(EMPTY)]));
+    clamped.add.mockClear();
+    await track({ start_date: '2026-09-24', content_type: 'changes', limit: 81 });
+    expect(clamped.add).toHaveBeenCalledExactlyOnceWith(1, {
+      'mcp.tool.name': 'uklaw_track_changes',
+    });
+  });
+
+  it('keys a clamped call’s cursor on the applied 80, so it continues at any limit above it', async () => {
+    const up = createUpstream(busyDay());
+    const first = await track({ start_date: '2026-09-24', limit: 81 });
+    const { output } = await track({
+      start_date: '2026-09-24',
+      limit: 90,
+      cursor: first.output.next_cursor as string,
+    });
+    expect(output.events).toHaveLength(80);
+    expect(up.paths()).toEqual(pages(1, 2, 3, 4, 5, 6, 7, 8));
+  });
+
+  describe('strict (UK_LEGISLATION_CLAMP_LIMITS=false)', () => {
+    beforeEach(() => setStrictLimits(true));
+    afterEach(() => setStrictLimits(false));
+
+    it('advertises maximum 80', () => {
+      const schema = trackChangesTool.input['~standard'].jsonSchema.input({
+        target: 'draft-2020-12',
+      }) as { properties: { limit: Record<string, unknown> } };
+      expect(schema.properties.limit).toMatchObject({ maximum: 80, minimum: 1, default: 40 });
+    });
+
+    it('serves limit 80', async () => {
+      const up = createUpstream(busyDay());
+      const result = await runToolContract(trackChangesTool, {
+        start_date: '2026-09-24',
+        limit: 80,
+      });
+      expect(result.isError).toBeFalsy();
+      expect(up.paths()).toEqual(pages(1, 2, 3, 4));
+    });
+
+    it('rejects limit 81 at the schema naming the maximum, before any request', async () => {
+      const up = createUpstream([]);
+      const error = errorOf(
+        await runToolContract(trackChangesTool, { start_date: '2026-09-24', limit: 81 }),
+      );
+      expect(error.data?.reason).toBe('invalid_arguments');
+      expect(error.message).toBe(
+        'Input validation error: Invalid arguments for tool uklaw_track_changes: limit: Too big: expected number to be <=80',
+      );
+      expect(up.paths()).toEqual([]);
+    });
   });
 });
 

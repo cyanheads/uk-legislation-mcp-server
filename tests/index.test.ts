@@ -3,8 +3,11 @@
  * passes to `createApp()`, and its `setup()`/`teardown()` lifecycle — the
  * startup robots.txt read, the request gap the pacer is built with, the
  * identifying User-Agent, service registration, and release of the pacer and
- * response cache. `createApp` is replaced with a capture and `createPacer` is
- * wrapped in a pass-through spy; the robots.txt parser, pacer, cache, client
+ * response cache, and the `limit` clamp switch: no server config is read while
+ * the definitions load and emit their input schemas, and `setup()` turns strict
+ * limits on from `UK_LEGISLATION_CLAMP_LIMITS`. `createApp` is replaced with a
+ * capture; `createPacer` and `getServerConfig` are wrapped in pass-through
+ * spies; the robots.txt parser, pacer, cache, client
  * and service are real. `setup()` hands the global `fetch` to both the
  * robots.txt read and the client, so the strict fetch fake is stubbed over it.
  * @module tests/index.test
@@ -31,7 +34,6 @@ vi.mock('@cyanheads/mcp-ts-core/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@cyanheads/mcp-ts-core/utils')>();
   return { ...actual, createPacer: vi.fn(actual.createPacer) };
 });
-
 const ROBOTS = `${ORIGIN}/robots.txt`;
 const NUMBER_DPA = `${ORIGIN}/ukpga/2018/data.feed?number=12`;
 const REPO = 'https://github.com/cyanheads/uk-legislation-mcp-server';
@@ -65,6 +67,7 @@ beforeEach(() => {
   vi.stubEnv('UK_LEGISLATION_CONTACT', 'ops@example.org');
   vi.stubEnv('UK_LEGISLATION_MIN_REQUEST_GAP_MS', undefined);
   vi.stubEnv('UK_LEGISLATION_CACHE_MAX_MB', undefined);
+  vi.stubEnv('UK_LEGISLATION_CLAMP_LIMITS', undefined);
 });
 
 afterEach(async () => {
@@ -87,18 +90,32 @@ async function boot(robots: Response) {
   vi.stubGlobal('fetch', http.fetch);
 
   vi.resetModules();
+  /**
+   * Registered per boot: a hoisted mock's module outlives `resetModules()`, so
+   * the config it wraps would stay cached from the first boot.
+   */
+  vi.doMock('@/config/server-config.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/config/server-config.js')>();
+    return { ...actual, getServerConfig: vi.fn(actual.getServerConfig) };
+  });
   captured.options = undefined;
   await import('@/index.js');
   const options = captured.options as AppOptions | undefined;
   if (!options) throw new Error('src/index.ts did not call createApp()');
 
-  const [{ allToolDefinitions }, { getLegislationService }, { lookupCitationTool }, utils] =
-    await Promise.all([
-      import('@/mcp-server/tools/definitions/index.js'),
-      import('@/services/legislation/legislation-service.js'),
-      import('@/mcp-server/tools/definitions/lookup-citation.tool.js'),
-      import('@cyanheads/mcp-ts-core/utils'),
-    ]);
+  const [
+    { allToolDefinitions },
+    { getLegislationService },
+    { lookupCitationTool },
+    utils,
+    serverConfig,
+  ] = await Promise.all([
+    import('@/mcp-server/tools/definitions/index.js'),
+    import('@/services/legislation/legislation-service.js'),
+    import('@/mcp-server/tools/definitions/lookup-citation.tool.js'),
+    import('@cyanheads/mcp-ts-core/utils'),
+    import('@/config/server-config.js'),
+  ]);
 
   const logger = { notice: vi.fn(), warning: vi.fn() };
   const core = { config: { mcpServerVersion: '9.9.9' }, logger } as unknown as Core;
@@ -108,6 +125,7 @@ async function boot(robots: Response) {
     core,
     createPacer: vi.mocked(utils.createPacer),
     getLegislationService,
+    getServerConfig: vi.mocked(serverConfig.getServerConfig),
     http,
     logger,
     lookup: () => runToolContract(lookupCitationTool, { citation: '2018 c. 12' }),
@@ -249,6 +267,51 @@ describe('setup', () => {
     expect(() => app.getLegislationService()).toThrow('LegislationService not initialized');
     expect(() => app.teardown()).not.toThrow();
   });
+});
+
+describe('limit clamp switch', () => {
+  type App = Awaited<ReturnType<typeof boot>>;
+  const COUNT_TOOLS = ['uklaw_search_legislation', 'uklaw_get_amendments', 'uklaw_track_changes'];
+
+  /** A definition's input JSON Schema, converted as the SDK does on every `tools/list`. */
+  const inputSchema = (tool: App['allToolDefinitions'][number]) =>
+    tool.input['~standard'].jsonSchema.input({ target: 'draft-2020-12' }) as {
+      properties: Record<string, { maximum?: number }>;
+    };
+
+  /** The `limit` maximum each count tool advertises right now. */
+  const maxima = (app: App) =>
+    COUNT_TOOLS.map((name) => {
+      const tool = app.allToolDefinitions.find((t) => t.name === name);
+      if (!tool) throw new Error(`${name} is not registered`);
+      return inputSchema(tool).properties.limit?.maximum;
+    });
+
+  it('reads no server config while the definitions load and emit their schemas; setup() sets strict mode', async () => {
+    vi.stubEnv('UK_LEGISLATION_CLAMP_LIMITS', 'false');
+    const app = await boot(recordedRobots());
+    for (const tool of app.allToolDefinitions) inputSchema(tool);
+    expect(app.getServerConfig).not.toHaveBeenCalled();
+    expect(maxima(app)).toEqual([undefined, undefined, undefined]);
+
+    await app.setup();
+    expect(app.getServerConfig).toHaveBeenCalled();
+    expect(maxima(app)).toEqual([1000, 500, 80]);
+  });
+
+  it.each([
+    ['unset', undefined],
+    ['true', 'true'],
+  ])(
+    'with UK_LEGISLATION_CLAMP_LIMITS %s, setup() leaves every limit without a maximum',
+    async (_label, value) => {
+      vi.stubEnv('UK_LEGISLATION_CLAMP_LIMITS', value);
+      const app = await boot(recordedRobots());
+      await app.setup();
+      expect(app.getServerConfig).toHaveBeenCalled();
+      expect(maxima(app)).toEqual([undefined, undefined, undefined]);
+    },
+  );
 });
 
 describe('teardown', () => {

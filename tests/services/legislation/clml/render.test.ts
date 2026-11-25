@@ -1,8 +1,9 @@
 /**
  * @fileoverview Tests for the CLML → Markdown renderer over recorded
  * documents (section 45 of the Data Protection Act 2018, a repealed section, a
- * whole Westlaw-contributed instrument) and CLML-schema snippets for the rarer
- * constructs: tables, formulae, figures, characters, status prefixes.
+ * cross-heading whose text window has ended, a whole Westlaw-contributed
+ * instrument) and CLML-schema snippets for the rarer constructs: tables,
+ * formulae, figures, characters, status prefixes.
  * @module tests/services/legislation/clml/render.test
  */
 
@@ -106,6 +107,22 @@ describe('renderNodes — recorded documents', () => {
     expect(annotations[0]?.text).toMatch(/^Act repealed/);
   });
 
+  it('marks a superseded cross-heading and its group not in force, never prospective', () => {
+    const root = load('ukpga-1989-41-part-XA-crossheading-regulations.xml');
+    const pblock = byId(
+      root,
+      'http://www.legislation.gov.uk/id/ukpga/1989/41/part/XA/crossheading/regulations',
+    );
+    // The Pblock and its P1group carry Match="false" and RestrictEndDate 2011-04-01, no Status.
+    const { text } = renderNodes(root, [pblock]);
+    const lines = text.split('\n');
+    expect(lines[0]).toBe('## *(not in force at this version)* Regulations');
+    expect(lines[2]).toBe(
+      '*(not in force at this version)* **Regulations etc. governing child minders and day care providers.**',
+    );
+    expect(text).not.toContain('prospective');
+  });
+
   it('renders a whole instrument without its prelims, with footnotes and quoted amendments', () => {
     const root = load('uksi-1984-458-made.xml');
     const secondary = elements(root).find((e) => e.name === 'Secondary') as XmlElement;
@@ -152,15 +169,38 @@ describe('renderNodes — CLML constructs', () => {
     );
   });
 
-  it('marks prospective and not-matching provisions', () => {
+  it('marks a prospective provision prospective and any other non-matching one not in force', () => {
     expect(
       render(
         '<P1 Status="Prospective"><Pnumber>9</Pnumber><P1para><Text>Later.</Text></P1para></P1>',
       ).text,
     ).toBe('*(prospective — not in force at this version)* **9** Later.');
-    expect(
-      render('<P1 Match="false"><Pnumber>9</Pnumber><P1para><Text>X.</Text></P1para></P1>').text,
-    ).toMatch(/^\*\(prospective — not in force at this version\)\*/);
+    for (const attrs of [
+      'Match="false"',
+      'Match="false" RestrictEndDate="2011-04-01"',
+      'Match="false" RestrictStartDate="2025-02-27"',
+      'Status="Discarded" Match="false"',
+    ]) {
+      expect(
+        render(`<P1 ${attrs}><Pnumber>9</Pnumber><P1para><Text>X.</Text></P1para></P1>`).text,
+      ).toBe('*(not in force at this version)* **9** X.');
+    }
+  });
+
+  it('labels a prospective or repealed division, group, and provision at each prefix site', () => {
+    const { text } = render(
+      '<Part Status="Prospective" Match="false"><Number>PART 2</Number><Title>Later</Title><P1group Status="Repealed" Match="false"><Title>Gone</Title><P1 Status="Prospective" Match="false"><Pnumber>3</Pnumber><P1para><Text>Not yet.</Text></P1para></P1></P1group><P1group><Title>Kept</Title><P1 Status="Repealed" Match="false"><Pnumber>4</Pnumber><P1para><Text>. . .</Text></P1para></P1></P1group></Part>',
+    );
+    expect(text).toBe(
+      [
+        '## *(prospective — not in force at this version)* PART 2 — Later',
+        '',
+        '*(repealed)* **Gone**',
+        '*(prospective — not in force at this version)* **3** Not yet.',
+        '**Kept**',
+        '*(repealed)* **4** . . .',
+      ].join('\n'),
+    );
   });
 
   it('honours number punctuation and indents sub-paragraphs', () => {

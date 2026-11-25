@@ -21,10 +21,16 @@ import {
   AttributionSchema,
   blankAsUnset,
   CursorInput,
+  clampLimit,
   EffectRecordSchema,
   ItemInput,
+  limitField,
   ProvisionInput,
+  withClamp,
 } from './_schemas.js';
+
+/** Effects a page returns at most, or with provision the most matches: 500 effects stay under about 0.75 MB on each surface. */
+const LIMIT_CAP = 500;
 
 /** Where a provision scan's misses usually are: effects that name an enclosing heading or container, which a provision read matches (Design Decision 85). */
 const HEADING_ROUTE = `An effect on a heading names the enclosing cross-heading, Chapter or Part instead of the provision (e.g. "rule 77.3 heading" in uksi/1998/3132 names part/77/crossheading/1), which this URI match misses: a uklaw_get_document read of the provision lists the effects on its enclosing provisions, or pass the enclosing path as provision here. The provision's applied history is in its annotations in uklaw_get_document.`;
@@ -94,15 +100,11 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
     provision: blankAsUnset(ProvisionInput.optional()).describe(
       'Keep only effects touching this provision of item (path or shorthand, e.g. section/45 or s. 45), including effects on the whole item. Needs a full item path. legislation.gov.uk cannot filter by provision, so each call scans up to 1,500 effects; continue with next_cursor.',
     ),
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(100)
-      .default(20)
-      .describe(
-        'Effects per page, or with provision the most matches returned (1–100, default 20).',
-      ),
+    limit: limitField(
+      LIMIT_CAP,
+      20,
+      'Effects per page, or with provision the most matches returned',
+    ),
     cursor: blankAsUnset(CursorInput.optional()).describe(
       'next_cursor from the previous call, passed with the other inputs unchanged; omit for the first page.',
     ),
@@ -149,7 +151,12 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
     attribution: AttributionSchema,
   }),
   enrichment: {
-    notice: z.string().optional().describe('Guidance when nothing matched or the list continues.'),
+    notice: z
+      .string()
+      .optional()
+      .describe(
+        'Guidance when nothing matched or the list continues, opening with a note when limit was above the cap.',
+      ),
     truncated: z.boolean().optional().describe('True when the list was capped at limit.'),
     shown: z.number().optional().describe('Effects returned.'),
     cap: z.number().optional().describe('The limit applied.'),
@@ -230,6 +237,7 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
   ],
 
   async handler(input, ctx) {
+    const served = clampLimit('uklaw_get_amendments', input.limit, LIMIT_CAP, ctx);
     const parsed = parseItemInput(input.item, { allowPartial: true });
     if (!parsed) {
       throw ctx.fail(
@@ -308,13 +316,14 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
       counterpart?.item.path ?? '',
       input.status,
       provision ?? '',
-      provision ? '' : input.limit,
+      // The applied limit: a cursor issued at or below the cap keeps its key, and a clamped call continues at any limit above it.
+      provision ? '' : served.limit,
     ].join('|');
     // A scan resumes inside a 500-effect page; a plain page reads `limit` effects (Design Decision 75).
     const position =
       input.cursor !== undefined
         ? decodeCursor(input.cursor, queryKey, {
-            pageSize: provision ? SCAN_PAGE_SIZE : input.limit,
+            pageSize: provision ? SCAN_PAGE_SIZE : served.limit,
           })
         : { page: 1, offset: 0 };
     if (!position) {
@@ -331,7 +340,7 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
         ...(counterpart ? { counterpart: counterpart.item.path } : {}),
         status: input.status,
         ...(provision ? { provision } : {}),
-        limit: input.limit,
+        limit: served.limit,
         position,
       },
       ctx,
@@ -340,9 +349,12 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
     const nextCursor = outcome.next ? encodeCursor(queryKey, outcome.next) : undefined;
     if (outcome.effects.length === 0 && input.cursor !== undefined && outcome.scan) {
       ctx.enrich.notice(
-        outcome.hasMore
-          ? `No further matches in the ${outcome.scan.effects_scanned} effects scanned this call; call again with cursor set to next_cursor to scan further.`
-          : `No further matches: this call scanned the last ${outcome.scan.effects_scanned} of ${outcome.scan.total_effects} effects, so the scan is complete. If earlier pages returned no match either, no effect references this provision by URI. ${HEADING_ROUTE}`,
+        withClamp(
+          served,
+          outcome.hasMore
+            ? `No further matches in the ${outcome.scan.effects_scanned} effects scanned this call; call again with cursor set to next_cursor to scan further.`
+            : `No further matches: this call scanned the last ${outcome.scan.effects_scanned} of ${outcome.scan.total_effects} effects, so the scan is complete. If earlier pages returned no match either, no effect references this provision by URI. ${HEADING_ROUTE}`,
+        ),
       );
     } else if (outcome.effects.length === 0) {
       const fragments: string[] = ['No effects matched.'];
@@ -362,17 +374,25 @@ export const getAmendmentsTool = tool('uklaw_get_amendments', {
             : `No effect references this provision by URI. ${HEADING_ROUTE}`,
         );
       }
-      ctx.enrich.notice(fragments.join(' '));
+      ctx.enrich.notice(withClamp(served, fragments.join(' ')));
     } else if (outcome.capped) {
       ctx.enrich.truncated({
         shown: outcome.effects.length,
-        cap: input.limit,
-        guidance: 'More effects remain: call again with cursor set to next_cursor.',
+        cap: served.limit,
+        guidance: withClamp(
+          served,
+          'More effects remain: call again with cursor set to next_cursor.',
+        ),
       });
     } else if (outcome.stoppedEarly && outcome.scan) {
       ctx.enrich.notice(
-        `Scanned ${outcome.scan.effects_scanned} of ${outcome.scan.total_effects} effects this call; call again with cursor set to next_cursor to scan further.`,
+        withClamp(
+          served,
+          `Scanned ${outcome.scan.effects_scanned} of ${outcome.scan.total_effects} effects this call; call again with cursor set to next_cursor to scan further.`,
+        ),
       );
+    } else if (served.clamp) {
+      ctx.enrich.notice(served.clamp);
     }
 
     return {

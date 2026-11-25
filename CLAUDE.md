@@ -2,8 +2,8 @@
 
 **Server:** uk-legislation-mcp-server
 **Version:** 0.2.1
-**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.13.18`
-**Engines:** Bun ≥1.4.0, Node ≥24.0.0
+**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.13.22`
+**Engines:** Bun ≥1.4.4, Node ≥24.0.0
 **MCP SDK:** `@modelcontextprotocol/server` ^2.4.0
 **Zod:** ^4.6.7
 
@@ -54,7 +54,10 @@ import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { getLegislationService } from '@/services/legislation/legislation-service.js';
 import { isCalendarDate } from '@/services/legislation/provision-path.js';
 import { attributionLines, inline, uri } from './_markdown.js';
-import { AttributionSchema, blankAsUnset, DateInput } from './_schemas.js';
+import { AttributionSchema, blankAsUnset, clampLimit, DateInput, limitField } from './_schemas.js';
+
+/** Results a page returns at most. */
+const LIMIT_CAP = 1000;
 
 export const searchLegislationTool = tool('uklaw_search_legislation', {
   title: 'Search UK legislation',
@@ -64,7 +67,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
   input: z.object({
     text: blankAsUnset(z.string().max(500).optional()).describe('Full-text query. …'),
     as_of: blankAsUnset(DateInput.optional()).describe('Point in time YYYY-MM-DD: …'),
-    limit: z.number().int().min(1).max(50).default(20).describe('Results per page (1–50).'),
+    limit: limitField(LIMIT_CAP, 20, 'Results per page'),
     page: z.number().int().min(1).default(1).describe('Page number, from 1.'),
   }),
   output: z.object({
@@ -102,6 +105,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
   ],
 
   async handler(input, ctx) {
+    const served = clampLimit('uklaw_search_legislation', input.limit, LIMIT_CAP, ctx);
     if (input.as_of !== undefined && !isCalendarDate(input.as_of)) {
       throw ctx.fail('invalid_date', `as_of ${input.as_of} is not a real calendar date.`);
     }
@@ -109,7 +113,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
       {
         types: ['all'],
         extentMatch: 'applicable',
-        limit: input.limit,
+        limit: served.limit,
         page: input.page,
         ...(input.text ? { text: input.text } : {}),
         ...(input.as_of ? { asOf: input.as_of } : {}),
@@ -132,7 +136,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
 });
 ```
 
-- Optional string inputs are wrapped in `blankAsUnset` (form clients send `""` for every blank field); shared input shapes (`FullItemInput`, `ItemInput`, `ProvisionInput`, `CursorInput`, `DateInput`) and the `EffectRecordSchema` / `AttributionSchema` outputs live in `_schemas.ts`.
+- Optional string inputs are wrapped in `blankAsUnset` (form clients send `""` for every blank field); shared input shapes (`FullItemInput`, `ItemInput`, `ProvisionInput`, `CursorInput`, `DateInput`), the `limitField` / `clampLimit` pair behind every `limit`, and the `EffectRecordSchema` / `AttributionSchema` outputs live in `_schemas.ts`.
 - Input errors are declared reasons with `severity: 'notice'`; `filter_refused`, `upstream_refused`, and `pacer_shed` are thrown by the service layer and declared on each tool with `thrownBy: 'service'`.
 - `format()` renders upstream text only through `_markdown.ts`: `blockquote` for multi-line text, `inline` / `cell` for inline slots, `uri` for URIs and paths.
 
@@ -152,6 +156,8 @@ const ServerConfigSchema = z.object({
     .describe('Minimum gap between upstream request starts, in ms (process-wide)'),
   cacheMaxMb: z.coerce.number().int().min(8).max(1024).default(64)
     .describe('Response cache size bound, in MB'),
+  clampLimits: z.stringbool().default(true)
+    .describe('Serve a limit above the cap at the cap, with a notice; false advertises each cap as the maximum and rejects a larger limit'),
 });
 
 let _config: z.infer<typeof ServerConfigSchema> | undefined;
@@ -160,6 +166,7 @@ export function getServerConfig() {
     contact: 'UK_LEGISLATION_CONTACT',
     minRequestGapMs: 'UK_LEGISLATION_MIN_REQUEST_GAP_MS',
     cacheMaxMb: 'UK_LEGISLATION_CACHE_MAX_MB',
+    clampLimits: 'UK_LEGISLATION_CLAMP_LIMITS',
   });
   return _config;
 }
@@ -286,7 +293,7 @@ src/
       xml.ts                            # XML parsing helpers
       types.ts                          # Domain types
       atom/                             # Atom feed parsers: search, changes, Publication Log
-      clml/                             # CLML parsers: metadata, effects, outline, Markdown render
+      clml/                             # CLML parsers: metadata, effects, outline, provision heading, Markdown render
   mcp-server/
     tools/definitions/
       *.tool.ts                         # The six uklaw_* tool definitions
@@ -405,7 +412,7 @@ When you complete a skill's checklist, check the boxes and add a completion time
 
 ## Bundling
 
-`bun run bundle` produces `dist/uk-legislation-mcp-server.mcpb` for one-click install in Claude Desktop. `mcpb pack` reads `.mcpbignore`, not `.gitignore`, so every root path the bundle must not ship — source, tests, docs, caches, logs, agent docs, plugin manifests, gitignored local files such as `/.tsbuildinfo` — needs a root-anchored line there (`/docs/`, never `docs/`, which also strips `node_modules/*/docs/`); `lint:packaging` names each missing or unanchored line for the paths it knows, and a root path of this server's own needs its line added by hand. Root `skills/` ships on purpose. The pack step is followed by `scripts/clean-mcpb.ts`, which prunes dev dependencies (`mcpb clean`) and strips four classes of `node_modules/**` content that root-anchored `.mcpbignore` patterns cannot reach: dependency-shipped agent docs (`framework-skills/`, `skills/`, `.claude/`, `.agents/` at a package root, and `SKILL.md` — a nested runtime directory such as the MCP SDK's `dist/ext/skills/` stays); platform-specific native bindings, which would otherwise lock the bundle to the platform it was packed on; node-gyp build output beside a `binding.gyp`, which records the packing machine's paths; and build-only package files (the framework's `changelog/`, `scripts/`, `templates/`, `CLAUDE.md`, `AGENTS.md`, and config bases). MCPB is stdio-only — HTTP and Docker deployments are unaffected. The `release-and-publish` skill attaches the bundle to the GitHub Release at the stable `releases/latest/download/uk-legislation-mcp-server.mcpb` URL behind the README's Claude Desktop install badge.
+`bun run bundle` produces `dist/uk-legislation-mcp-server.mcpb` for one-click install in Claude Desktop. `mcpb pack` reads `.mcpbignore`, not `.gitignore`, so every root path the bundle must not ship — source, tests, docs, caches, logs, agent docs, plugin manifests, gitignored local files such as `/.tsbuildinfo` — needs a root-anchored line there (`/docs/`, never `docs/`, which also strips `node_modules/*/docs/`); `lint:packaging` names each missing or unanchored line for the paths it knows, and a root path of this server's own needs its line added by hand. Root `skills/` ships on purpose. The pack step is followed by `scripts/clean-mcpb.ts`, which prunes dev dependencies (`mcpb clean`) and strips four classes of `node_modules/**` content that root-anchored `.mcpbignore` patterns cannot reach: dependency-shipped agent docs (`framework-skills/`, `skills/`, `.claude/`, `.agents/`, `AGENTS.md`, and `CLAUDE.md` at a package's root, and `SKILL.md` anywhere — a `skills/` deeper in a package, such as the MCP SDK's `dist/ext/skills/`, is runtime code and stays); platform-specific native bindings, which would otherwise lock the bundle to the platform it was packed on; node-gyp build output beside a `binding.gyp`, which records the packing machine's paths; and build-only package files (the framework's `changelog/`, `scripts/`, `templates/`, and config bases). MCPB is stdio-only — HTTP and Docker deployments are unaffected. The `release-and-publish` skill attaches the bundle to the GitHub Release at the stable `releases/latest/download/uk-legislation-mcp-server.mcpb` URL behind the README's Claude Desktop install badge.
 
 **Adding an env var touches every surface that lists one:** `src/config/server-config.ts`, `.env.example`, the README Configuration table, `server.json` (registry discovery, `environmentVariables[]` in both package entries), and `manifest.json` (bundle install UX, `mcp_config.env` + `user_config`). `lint:packaging` (run by `devcheck`) verifies the `server.json` / `manifest.json` env var names match, that every `user_config` option is wired into `mcp_config.env` as `"X": "${user_config.X}"` (the host substitutes nothing else — `"${X}"` reaches the server as that literal string), and that an optional string option carries `"default": ""`. A user-supplied value such as `UK_LEGISLATION_CONTACT` also goes into the plugin manifests — `.claude-plugin/plugin.json` `userConfig` + `env`, `.codex-plugin/mcp.json` `env_vars` (see Checklist).
 

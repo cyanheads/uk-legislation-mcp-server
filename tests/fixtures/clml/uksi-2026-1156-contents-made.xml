@@ -1,0 +1,91 @@
+<Legislation xmlns="http://www.legislation.gov.uk/namespaces/legislation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/made" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156" NumberOfProvisions="27" xsi:schemaLocation="http://www.legislation.gov.uk/namespaces/legislation http://www.legislation.gov.uk/schema/legislation.xsd" SchemaVersion="2.0"><ukm:Metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dct="http://purl.org/dc/terms/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ukm="http://www.legislation.gov.uk/namespaces/metadata">
+					<dc:identifier>http://www.legislation.gov.uk/uksi/2026/1156/contents/made</dc:identifier><dc:title>The International Controlled Transaction Reporting Regulations 2026</dc:title><dc:language>en</dc:language><dc:publisher>King's Printer of Acts of Parliament</dc:publisher><dc:modified>2026-11-04</dc:modified><dc:subject scheme="SIheading">CORPORATION TAX</dc:subject>
+					<dc:description>These Regulations make provision in connection with the provision of information in relation to international controlled transactions.</dc:description>
+					<atom:link rel="self" href="http://www.legislation.gov.uk/uksi/2026/1156/contents/made/data.xml" type="application/xml"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/resources" href="http://www.legislation.gov.uk/uksi/2026/1156/resources" title="More Resources"/>
+					
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/memorandum" href="http://www.legislation.gov.uk/uksi/2026/1156/memorandum" title="Explanatory Memorandum"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/memorandum/toc" href="http://www.legislation.gov.uk/uksi/2026/1156/memorandum/contents" title="Explanatory Memorandum Table of Contents"/>
+					
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/act" href="http://www.legislation.gov.uk/uksi/2026/1156/made" title="whole act"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/introduction" href="http://www.legislation.gov.uk/uksi/2026/1156/introduction/made" title="introduction"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/signature" href="http://www.legislation.gov.uk/uksi/2026/1156/signature/made" title="signature"/><atom:link rel="http://www.legislation.gov.uk/def/navigation/note" href="http://www.legislation.gov.uk/uksi/2026/1156/note/made" title="note"/>
+					<atom:link rel="http://www.legislation.gov.uk/def/navigation/body" href="http://www.legislation.gov.uk/uksi/2026/1156/body/made" title="body"/>
+					
+					
+										
+					
+					
+					
+					<atom:link rel="alternate" type="application/akn+xml" href="http://www.legislation.gov.uk/uksi/2026/1156/contents/made/data.akn" title="AKN"/><atom:link rel="alternate" type="application/xhtml+xml" href="http://www.legislation.gov.uk/uksi/2026/1156/contents/made/data.xht" title="HTML snippet"/><atom:link rel="alternate" type="text/html" href="http://www.legislation.gov.uk/uksi/2026/1156/contents/made/data.htm" title="Website (XHTML) Default View"/><atom:link rel="alternate" type="text/csv" href="http://www.legislation.gov.uk/uksi/2026/1156/contents/made/data.csv" title="CSV"/><atom:link rel="alternate" type="application/pdf" href="http://www.legislation.gov.uk/uksi/2026/1156/contents/made/data.pdf" title="PDF"/>
+					<atom:link rel="alternate" type="application/akn+xhtml" href="http://www.legislation.gov.uk/uksi/2026/1156/contents/made/data.html" title="HTML5 snippet"/>
+
+					
+					<atom:link rel="http://purl.org/dc/terms/tableOfContents" hreflang="en" href="http://www.legislation.gov.uk/uksi/2026/1156/contents/made" title="Table of Contents"/>
+					
+					
+					
+					
+					<ukm:SecondaryMetadata><ukm:DocumentClassification>
+<ukm:DocumentCategory Value="secondary"/>
+<ukm:DocumentMainType Value="UnitedKingdomStatutoryInstrument"/>
+<ukm:DocumentStatus Value="final"/>
+<ukm:DocumentMinorType Value="regulation"/>
+</ukm:DocumentClassification><ukm:Year Value="2026"/><ukm:Number Value="1156"/><ukm:Made Date="2026-10-30"/><ukm:Laid Date="2026-11-04" Time="00:00:00" Class="UnitedKingdomParliament"/><ukm:ComingIntoForce>
+<ukm:DateTime Date="2026-11-26" Time="00:00:00"/>
+</ukm:ComingIntoForce><ukm:ISBN Value="9780348288605"/></ukm:SecondaryMetadata>
+					
+
+                    
+									<ukm:Notes><ukm:Note IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/notes"/><ukm:Alternatives><ukm:Alternative URI="http://www.legislation.gov.uk/uksi/2026/1156/pdfs/uksiem_20261156_en_001.pdf" Date="2026-11-04" Title="UK Explanatory Memorandum" Size="497704"/></ukm:Alternatives>       
+								</ukm:Notes> 
+					<ukm:Alternatives><ukm:Alternative URI="http://www.legislation.gov.uk/uksi/2026/1156/pdfs/uksi_20261156_en.pdf" Date="2026-11-04" Size="297395" Print="true"/></ukm:Alternatives>
+					
+					<ukm:Statistics>
+									<ukm:TotalParagraphs Value="27"/>
+									<ukm:BodyParagraphs Value="27"/>
+									<ukm:ScheduleParagraphs Value="0"/>
+									<ukm:AttachmentParagraphs Value="0"/>
+									<ukm:TotalImages Value="0"/>
+								</ukm:Statistics>
+				</ukm:Metadata><Contents>
+<ContentsTitle>The International Controlled Transaction Reporting Regulations 2026</ContentsTitle>
+
+<ContentsPart ContentRef="part-1" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/part/1" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/part/1/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>Part 1</ContentsNumber><ContentsTitle>Introductory</ContentsTitle><ContentsItem ContentRef="regulation-1" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/1" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/1/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>1</ContentsNumber><ContentsTitle>Citation, commencement and application</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-2" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/2" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/2/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>2</ContentsNumber><ContentsTitle>Interpretation</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-3" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/3" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/3/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>3</ContentsNumber><ContentsTitle>Notices</ContentsTitle></ContentsItem></ContentsPart>
+<ContentsPart ContentRef="part-2" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/part/2" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/part/2/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>Part 2</ContentsNumber><ContentsTitle>Reporting requirements in relation to specified international controlled transactions</ContentsTitle><ContentsItem ContentRef="regulation-4" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/4" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/4/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>4</ContentsNumber><ContentsTitle>Requirement to provide specified information</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-5" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/5" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/5/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>5</ContentsNumber><ContentsTitle>Exception to regulation 4 (requirement to provide specified information)</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-6" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/6" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/6/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>6</ContentsNumber><ContentsTitle>Submission deadline</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-7" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/7" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/7/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>7</ContentsNumber><ContentsTitle>Form and manner</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-8" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/8" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/8/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>8</ContentsNumber><ContentsTitle>Commissioners’ directions</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-9" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/9" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/9/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>9</ContentsNumber><ContentsTitle>Consistency with the relevant return and accuracy</ContentsTitle></ContentsItem></ContentsPart>
+<ContentsPart ContentRef="part-3" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/part/3" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/part/3/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>Part 3</ContentsNumber><ContentsTitle>Amended specified information</ContentsTitle><ContentsItem ContentRef="regulation-10" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/10" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/10/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>10</ContentsNumber><ContentsTitle>Requirement to amend the specified information</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-11" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/11" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/11/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>11</ContentsNumber><ContentsTitle>Exception to regulation 10 (requirement to amend specified information)</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-12" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/12" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/12/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>12</ContentsNumber><ContentsTitle>Amendment procedure</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-13" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/13" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/13/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>13</ContentsNumber><ContentsTitle>Amendment deadline</ContentsTitle></ContentsItem></ContentsPart>
+<ContentsPart ContentRef="part-4" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/part/4" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/part/4/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>Part 4</ContentsNumber><ContentsTitle>Specification of international controlled transaction, reporting entity, and information and exceptions</ContentsTitle><ContentsItem ContentRef="regulation-14" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/14" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/14/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>14</ContentsNumber><ContentsTitle>Specification of specified international controlled transaction</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-15" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/15" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/15/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>15</ContentsNumber><ContentsTitle>Exception to regulation 14 (specification of specified international transaction)</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-16" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/16" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/16/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>16</ContentsNumber><ContentsTitle>Specification of a reporting entity where a transaction meets the transfer pricing condition</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-17" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/17" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/17/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>17</ContentsNumber><ContentsTitle>Specification of a reporting entity where a transaction meets the permanent establishment condition</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-18" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/18" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/18/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>18</ContentsNumber><ContentsTitle>Specification of description of information to be provided</ContentsTitle></ContentsItem></ContentsPart>
+<ContentsPart ContentRef="part-5" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/part/5" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/part/5/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>Part 5</ContentsNumber><ContentsTitle>Penalties, appeals and enforcement</ContentsTitle><ContentsItem ContentRef="regulation-19" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/19" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/19/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>19</ContentsNumber><ContentsTitle>Penalties for failure to provide specified information</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-20" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/20" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/20/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>20</ContentsNumber><ContentsTitle>Daily default penalty</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-21" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/21" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/21/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>21</ContentsNumber><ContentsTitle>Penalties for inaccurate specified information</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-22" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/22" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/22/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>22</ContentsNumber><ContentsTitle>Matters to be disregarded in relation to liability to penalties</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-23" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/23" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/23/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>23</ContentsNumber><ContentsTitle>Assessment of penalties</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-24" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/24" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/24/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>24</ContentsNumber><ContentsTitle>Right to appeal against penalty</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-25" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/25" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/25/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>25</ContentsNumber><ContentsTitle>Procedure on appeal against penalty</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-26" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/26" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/26/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>26</ContentsNumber><ContentsTitle>Application for increased daily default penalty</ContentsTitle></ContentsItem><ContentsItem ContentRef="regulation-27" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/regulation/27" DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/regulation/27/made" RestrictExtent="E+W+S+N.I."><ContentsNumber>27</ContentsNumber><ContentsTitle>Payment and enforcement of penalties</ContentsTitle></ContentsItem></ContentsPart>
+
+
+
+</Contents><Secondary><SecondaryPrelims DocumentURI="http://www.legislation.gov.uk/uksi/2026/1156/introduction/made" IdURI="http://www.legislation.gov.uk/id/uksi/2026/1156/introduction">
+<Number>2026 No. 1156</Number>
+<SubjectInformation>
+<Subject>
+<Title>CORPORATION TAX</Title>
+</Subject>
+</SubjectInformation>
+<Title>The International Controlled Transaction Reporting Regulations 2026</Title>
+<MadeDate>
+<Text>Made</Text>
+<DateText>30th October 2026</DateText>
+</MadeDate>
+<LaidDate>
+<Text>Laid before the House of Commons</Text>
+<DateText>4th November 2026</DateText>
+</LaidDate>
+<ComingIntoForce>
+<Text>Coming into force</Text>
+<DateText>26th November 2026</DateText>
+</ComingIntoForce>
+<SecondaryPreamble>
+<EnactingText>
+<Para>
+<Text>The Commissioners for His Majesty’s Revenue and Customs make these Regulations in exercise of the powers conferred by section 48(1) and (2) of the Finance Act 2026<FootnoteRef Ref="f00001"/>.</Text>
+</Para>
+</EnactingText>
+</SecondaryPreamble>
+</SecondaryPrelims></Secondary><Footnotes><Footnote id="f00001">
+<FootnoteText>
+<Para>
+<Text><Citation URI="http://www.legislation.gov.uk/id/ukpga/2026/11" id="c00001" Year="2026" Number="11" Class="UnitedKingdomPublicGeneralAct">2026 c. 11</Citation>.</Text>
+</Para>
+</FootnoteText>
+</Footnote></Footnotes></Legislation>

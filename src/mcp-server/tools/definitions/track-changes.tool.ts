@@ -15,10 +15,21 @@ import {
 } from '@/services/legislation/legislation-service.js';
 import { isCalendarDate, parseItemInput } from '@/services/legislation/provision-path.js';
 import { attributionLines, inline, uri } from './_markdown.js';
-import { AttributionSchema, blankAsUnset, CursorInput, DateInput, ItemInput } from './_schemas.js';
+import {
+  AttributionSchema,
+  blankAsUnset,
+  CursorInput,
+  clampLimit,
+  DateInput,
+  ItemInput,
+  limitField,
+  withClamp,
+} from './_schemas.js';
 
 const CONTENT_TYPES = ['legislation', 'changes', 'draft', 'associated-documents'] as const;
 const MAX_WINDOW_DAYS = 31;
+/** Events a call returns at most: four 20-event Publication Log pages, its request budget. */
+const LIMIT_CAP = 80;
 
 function daysBetween(start: string, end: string): number {
   return Math.round(
@@ -56,13 +67,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
     event: blankAsUnset(z.enum(['published', 'withdrawn']).optional()).describe(
       'Only published or only withdrawn events. Omit for both.',
     ),
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(80)
-      .default(40)
-      .describe('Most events returned by this call (1–80).'),
+    limit: limitField(LIMIT_CAP, 40, 'Most events returned by this call'),
     cursor: blankAsUnset(CursorInput.optional()).describe(
       'next_cursor from the previous call, passed with the other inputs unchanged; omit to start from end_date.',
     ),
@@ -198,7 +203,9 @@ export const trackChangesTool = tool('uklaw_track_changes', {
     notice: z
       .string()
       .optional()
-      .describe('Guidance when the window is quiet or the list continues.'),
+      .describe(
+        'Guidance when the window is quiet or the list continues, opening with a note when limit was above the cap.',
+      ),
     truncated: z.boolean().optional().describe('True when the list was capped at limit.'),
     shown: z.number().optional().describe('Events returned.'),
     cap: z.number().optional().describe('The limit applied.'),
@@ -277,6 +284,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
   ],
 
   async handler(input, ctx) {
+    const served = clampLimit('uklaw_track_changes', input.limit, LIMIT_CAP, ctx);
     const endDate = input.end_date ?? input.start_date;
     for (const date of [input.start_date, endDate]) {
       if (!isCalendarDate(date)) {
@@ -326,7 +334,8 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       item?.path ?? '',
       input.new_only,
       input.event ?? '',
-      input.limit,
+      // The applied limit: a cursor issued at or below the cap keeps its key, and a clamped call continues at any limit above it.
+      served.limit,
     ].join('|');
     const service = getLegislationService();
     const today = service.today();
@@ -367,7 +376,7 @@ export const trackChangesTool = tool('uklaw_track_changes', {
         ...(item ? { item } : {}),
         newOnly: input.new_only,
         ...(input.event ? { event: input.event } : {}),
-        limit: input.limit,
+        limit: served.limit,
         ...(position ? { position } : {}),
       },
       ctx,
@@ -380,12 +389,18 @@ export const trackChangesTool = tool('uklaw_track_changes', {
       : undefined;
     if (input.start_date > today) {
       ctx.enrich.notice(
-        `The window starts after today (${today}, UK date): the Publication Log holds no events for future dates, so nothing was requested. Pass a start_date on or before ${today}.`,
+        withClamp(
+          served,
+          `The window starts after today (${today}, UK date): the Publication Log holds no events for future dates, so nothing was requested. Pass a start_date on or before ${today}.`,
+        ),
       );
     } else if (outcome.events.length === 0 && outcome.hasMore && item && outcome.readBackTo) {
       // Every event read so far is newer than the window: progress, not a quiet window (Design Decision 68).
       ctx.enrich.notice(
-        `No events yet: the log of ${item.path} is read newest first, and this call reached ${outcome.readBackTo}, after the window's end (${endDate}); call again with cursor set to next_cursor to read further back toward ${input.start_date}.`,
+        withClamp(
+          served,
+          `No events yet: the log of ${item.path} is read newest first, and this call reached ${outcome.readBackTo}, after the window's end (${endDate}); call again with cursor set to next_cursor to read further back toward ${input.start_date}.`,
+        ),
       );
     } else if (outcome.events.length === 0) {
       /**
@@ -416,17 +431,25 @@ export const trackChangesTool = tool('uklaw_track_changes', {
         );
       }
       if (item && !windowEnd) fragments.push('Confirm the item with uklaw_lookup_citation.');
-      ctx.enrich.notice(fragments.join(' '));
+      ctx.enrich.notice(withClamp(served, fragments.join(' ')));
     } else if (outcome.capped) {
       ctx.enrich.truncated({
         shown: outcome.events.length,
-        cap: input.limit,
-        guidance: 'More events remain in the window: call again with cursor set to next_cursor.',
+        cap: served.limit,
+        guidance: withClamp(
+          served,
+          'More events remain in the window: call again with cursor set to next_cursor.',
+        ),
       });
     } else if (outcome.hasMore) {
       ctx.enrich.notice(
-        "This call's request budget ended before the window did: call again with cursor set to next_cursor.",
+        withClamp(
+          served,
+          "This call's request budget ended before the window did: call again with cursor set to next_cursor.",
+        ),
       );
+    } else if (served.clamp) {
+      ctx.enrich.notice(served.clamp);
     }
 
     return {

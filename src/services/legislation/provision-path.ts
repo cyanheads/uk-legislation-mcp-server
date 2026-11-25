@@ -167,25 +167,52 @@ const SHORTHAND: ReadonlyMap<string, string> = new Map([
   ['chapter', 'chapter'],
 ]);
 
-/** A value may be dotted (`r. 3.4`), as procedure rules number theirs. */
+/**
+ * One shorthand component, read at `lastIndex` (sticky): a keyword, an optional
+ * dot, a value, its bracketed sub-levels, and the spaces or commas before the
+ * next component (`Sch. 2, para. 3`). A value is digit-led and may be dotted
+ * (`45A`, `r. 3.4`, as procedure rules number theirs), one or two capitals then
+ * digits and optional capitals (`A6`, `ZA1`, `A1A`), or a roman numeral and
+ * optional capitals after it (`IV`, `XA`, `VIIA`). The capital-led form is
+ * tried before the roman one, so `C1` is not read as roman `C`. Those two
+ * forms take capitals only: legislation.gov.uk serves `section/A6`, not
+ * `section/a6`.
+ */
 const SHORTHAND_PART =
-  /^\s*([A-Za-z]+)\.?\s*(\d+[A-Za-z]*(?:\.\d+[A-Za-z]*)*|[IVXLC]+)((?:\s*\(\s*[0-9A-Za-z]+\s*\))*)\s*/;
+  /\s*([A-Za-z]+)\.?\s*(\d+[A-Za-z]*(?:\.\d+[A-Za-z]*)*|[A-Z]{1,2}\d+[A-Z]*|[IVXLC][A-Z]*)((?:\s*\(\s*[0-9A-Za-z]+\s*\))*)[\s,]*/y;
+
+const SUB_LEVEL = /\(\s*([0-9A-Za-z]+)\s*\)/g;
+
+/**
+ * Reads shorthand from `start` to the end of `text`: the provision path, or
+ * undefined unless every character from `start` parses. `failed` holds the
+ * offsets reads of the same text passed through on their way to a failure; a
+ * read reaching one fails there, so a search over many start offsets reads each
+ * component once.
+ */
+function readShorthand(text: string, start: number, failed: Set<number>): string | undefined {
+  const out: string[] = [];
+  const visited: number[] = [];
+  let at = start;
+  while (at < text.length) {
+    visited.push(at);
+    SHORTHAND_PART.lastIndex = at;
+    const match = failed.has(at) ? null : SHORTHAND_PART.exec(text);
+    const keyword = match ? SHORTHAND.get(match[1]?.toLowerCase() ?? '') : undefined;
+    if (!match || !keyword) {
+      for (const offset of visited) failed.add(offset);
+      return;
+    }
+    out.push(keyword, match[2] as string);
+    for (const sub of (match[3] ?? '').matchAll(SUB_LEVEL)) out.push(sub[1] as string);
+    at = SHORTHAND_PART.lastIndex;
+  }
+  return out.length > 0 ? out.join('/') : undefined;
+}
 
 /** Parses a shorthand provision (`s. 45(2)(f)`, `Sch. 2 para. 3`, `r. 3.4`); undefined unless the whole string parses. */
 function parseShorthand(raw: string): string | undefined {
-  let rest = raw.trim();
-  const out: string[] = [];
-  while (rest.length > 0) {
-    const match = SHORTHAND_PART.exec(rest);
-    if (!match) return;
-    const keyword = SHORTHAND.get(match[1]?.toLowerCase() ?? '');
-    if (!keyword) return;
-    out.push(keyword, match[2] as string);
-    for (const sub of (match[3] ?? '').matchAll(/\(\s*([0-9A-Za-z]+)\s*\)/g))
-      out.push(sub[1] as string);
-    rest = rest.slice(match[0].length);
-  }
-  return out.length > 0 ? out.join('/') : undefined;
+  return readShorthand(raw.trim(), 0, new Set());
 }
 
 /**
@@ -194,7 +221,8 @@ function parseShorthand(raw: string): string | undefined {
  * neither form parses.
  */
 export function normalizeProvision(raw: string): string | undefined {
-  const value = raw.trim().replace(/^\/+|\/+$/g, '');
+  // The lookbehind starts the trailing match only where a run of slashes starts, keeping it linear.
+  const value = raw.trim().replace(/^\/+|(?<!\/)\/+$/g, '');
   if (value.length === 0) return;
   if (value.includes('/')) return validateProvisionPath(value.split('/').filter(Boolean));
   const single = value.toLowerCase();
@@ -202,11 +230,20 @@ export function normalizeProvision(raw: string): string | undefined {
   return parseShorthand(value);
 }
 
-/** Where a provision tail may start: a shorthand keyword, then a number or roman numeral. */
+/**
+ * Where a provision tail may start: a shorthand keyword, then a value's first
+ * characters (a digit, one or two letters and a digit, or a word starting with
+ * a roman numeral's letter). A superset of the values `SHORTHAND_PART` reads;
+ * the read from each candidate decides.
+ */
 const TAIL_START = new RegExp(
-  String.raw`(?:^|[\s,])((?:${[...SHORTHAND.keys()].join('|')})\.?\s*(?:\d|[IVXLC]+\b))`,
+  // A roman-led word is matched once, so the scan is linear in its length.
+  String.raw`(?:^|[\s,])((?:${[...SHORTHAND.keys()].join('|')})\.?\s*(?:\d|[A-Z]{1,2}\d|[IVXLC][A-Z]*\b))`,
   'gi',
 );
+
+// Spaces and commas closing a citation's head; the lookbehind starts a match only where a run starts, keeping it linear.
+const TRAILING_SEPARATORS = /(?<![\s,])[\s,]+$/;
 
 /**
  * Finds a provision shorthand tail at the end of a citation: the earliest
@@ -214,27 +251,48 @@ const TAIL_START = new RegExp(
  * Returns the head (citation without the tail) and the provision path.
  */
 export function splitProvisionTail(citation: string): { head: string; provision?: string } {
+  const failed = new Set<number>();
   for (const match of citation.matchAll(TAIL_START)) {
     const start = (match.index ?? 0) + match[0].length - (match[1]?.length ?? 0);
-    const provision = parseShorthand(citation.slice(start));
+    const provision = readShorthand(citation, start, failed);
     if (provision) {
-      return { head: citation.slice(0, start).replace(/[\s,]+$/, ''), provision };
+      return { head: citation.slice(0, start).replace(TRAILING_SEPARATORS, ''), provision };
     }
   }
   return { head: citation.trim() };
 }
 
+const BEFORE_OF = /^(.+?)\s+of\s+(?:the\s+)?(?=\S)/i;
+const BEFORE_TO = /^(.+?)\s+to\s+(?:the\s+)?(?=\S)/i;
+
+/** Splits off shorthand that parses completely before `joiner`'s word; undefined when none does. */
+function splitBefore(
+  citation: string,
+  joiner: RegExp,
+): { head: string; provision: string } | undefined {
+  const match = joiner.exec(citation);
+  const provision = match ? parseShorthand(match[1] as string) : undefined;
+  return match && provision ? { head: citation.slice(match[0].length), provision } : undefined;
+}
+
 /**
- * Finds a provision written before its citation (`section 45 of the Data
- * Protection Act 2018`): shorthand that parses completely, then `of` and an
- * optional `the`. Returns the citation after it as the head.
+ * Finds a provision written before its citation: shorthand that parses
+ * completely, then `of` and an optional `the` (`section 45 of the Data
+ * Protection Act 2018`), or a Schedule, then `to` (`Schedule 2 to the Data
+ * Protection Act 2018`), as drafting writes them. A provision `of` a Schedule
+ * `to` its item nests under the Schedule (`paragraph 3 of Schedule 2 to the …`
+ * → `schedule/2/paragraph/3`). Only a Schedule splits before `to`, so a range
+ * (`section 1 to 5 of the …`) and a title holding "to" stay whole. Takes the
+ * citation with its whitespace collapsed, as `parseCitation` passes it, and
+ * returns the citation after the provision as the head.
  */
 export function splitLeadingProvision(citation: string): { head: string; provision?: string } {
-  const match = /^(.+?)\s+of\s+(?:the\s+)?(?=\S)/i.exec(citation);
-  const provision = match ? parseShorthand(match[1] as string) : undefined;
-  return match && provision
-    ? { head: citation.slice(match[0].length), provision }
-    : { head: citation };
+  const of = splitBefore(citation, BEFORE_OF);
+  const to = splitBefore(of?.head ?? citation, BEFORE_TO);
+  if (to?.provision.startsWith('schedule/')) {
+    return { head: to.head, provision: of ? `${to.provision}/${of.provision}` : to.provision };
+  }
+  return of ?? { head: citation };
 }
 
 /** Maps a version input to the path segment the item's type uses (undefined for current). */

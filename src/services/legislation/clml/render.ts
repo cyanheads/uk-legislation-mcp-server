@@ -221,12 +221,15 @@ class Renderer {
       this.lines.push({ indent, text: trimmed, ...(heading ? { heading } : {}) });
   }
 
+  /**
+   * `Match="false"` says only that the element is not valid at the version served: its text
+   * window may have ended as well as not yet begun, so only `Status` earns "prospective".
+   */
   private statusPrefix(node: XmlElement): string {
     const status = attr(node, 'Status');
     if (status === 'Repealed') return '*(repealed)* ';
-    if (status === 'Prospective' || attr(node, 'Match') === 'false') {
-      return '*(prospective — not in force at this version)* ';
-    }
+    if (status === 'Prospective') return '*(prospective — not in force at this version)* ';
+    if (attr(node, 'Match') === 'false') return '*(not in force at this version)* ';
     return '';
   }
 

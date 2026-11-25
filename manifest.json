@@ -19,7 +19,8 @@
         "NODE_ENV": "production",
         "UK_LEGISLATION_CONTACT": "${user_config.UK_LEGISLATION_CONTACT}",
         "UK_LEGISLATION_MIN_REQUEST_GAP_MS": "${user_config.UK_LEGISLATION_MIN_REQUEST_GAP_MS}",
-        "UK_LEGISLATION_CACHE_MAX_MB": "${user_config.UK_LEGISLATION_CACHE_MAX_MB}"
+        "UK_LEGISLATION_CACHE_MAX_MB": "${user_config.UK_LEGISLATION_CACHE_MAX_MB}",
+        "UK_LEGISLATION_CLAMP_LIMITS": "${user_config.UK_LEGISLATION_CLAMP_LIMITS}"
       }
     }
   },
@@ -52,6 +53,13 @@
       "default": 64,
       "min": 8,
       "max": 1024
+    },
+    "UK_LEGISLATION_CLAMP_LIMITS": {
+      "type": "boolean",
+      "title": "Clamp over-cap limits",
+      "description": "On: a limit above a tool's cap is served at the cap, with a notice. Off: a larger limit is rejected.",
+      "required": false,
+      "default": true
     }
   }
 }

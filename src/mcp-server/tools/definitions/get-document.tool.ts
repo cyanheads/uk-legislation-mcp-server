@@ -1,13 +1,15 @@
 /**
  * @fileoverview uklaw_get_document — reads one item or provision as current,
  * enacted/made, or dated text with its editorial status, annotations, the
- * unapplied effects touching it, available versions, and attribution.
+ * unapplied effects touching it, available versions, the item's made, laid
+ * and in-force dates, links to its associated documents, and attribution.
  * Oversized reads return an outline to narrow from.
  * @module mcp-server/tools/definitions/get-document
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { ASSOCIATED_DOCUMENT_KINDS } from '@/services/legislation/clml/metadata.js';
 import {
   getLegislationService,
   unappliedArgs,
@@ -35,7 +37,7 @@ const MAX_OUTLINE_INDENT = 6;
 export const getDocumentTool = tool('uklaw_get_document', {
   title: 'Read UK legislation text',
   description:
-    'Read one item or one provision of UK legislation from legislation.gov.uk — as it stands now (revised), as enacted/made, or as it stood on a date — in Markdown, with its editorial status, annotations (the applied amendment history), the unapplied effects touching it, the versions available, and attribution. Provision-level reads are the main path; an item-level read returns the whole text only for small items and otherwise an outline of provision paths to read next. With match_text (item level), returns the provisions whose text matches. Revised text is an editorial consolidation that can lag: read editorial.caveat and unapplied_effects before relying on it, and use uklaw_get_amendments for every recorded effect on an item, applied or not.',
+    'Read one item or one provision of UK legislation from legislation.gov.uk — as it stands now (revised), as enacted/made, or as it stood on a date — in Markdown, with its editorial status, annotations (the applied amendment history), the unapplied effects touching it, the versions available, the item’s made, laid and coming-into-force dates, links to its explanatory notes or memorandum and other associated documents, and attribution. Provision-level reads are the main path; an item-level read returns the whole text only for small items and otherwise an outline of provision paths to read next. With match_text (item level), returns the provisions whose text matches. Revised text is an editorial consolidation that can lag: read editorial.caveat and unapplied_effects before relying on it, and use uklaw_get_amendments for every recorded effect on an item, applied or not.',
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   auth: ['tool:uklaw_get_document:read'],
   input: z.object({
@@ -109,6 +111,33 @@ export const getDocumentTool = tool('uklaw_get_document', {
           .describe(
             'Territorial extent of the whole item at the version served, e.g. E+W+S+N.I.; absent when not recorded (enacted and made text records none).',
           ),
+        made_date: z
+          .string()
+          .optional()
+          .describe('Date enacted or made (YYYY-MM-DD); absent when not recorded, as on a draft.'),
+        laid: z
+          .array(
+            z
+              .object({
+                date: z.string().describe('Date laid (YYYY-MM-DD).'),
+                legislature: z
+                  .string()
+                  .describe(
+                    'Legislature it was laid before, as legislation.gov.uk names it, e.g. UnitedKingdomParliament or ScottishParliament.',
+                  ),
+              })
+              .describe('One laying.'),
+          )
+          .optional()
+          .describe(
+            'When and before which legislature the item was laid, in document order; absent when none is recorded (Acts, and many instruments).',
+          ),
+        coming_into_force: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "Coming-into-force dates (YYYY-MM-DD) the item's metadata records, in document order; on a draft, the date it proposes. Absent when none is recorded. A provision's own commencement is in its I annotations and the effects, not here.",
+          ),
       })
       .describe('The item read.'),
     provision: z
@@ -116,7 +145,32 @@ export const getDocumentTool = tool('uklaw_get_document', {
         path: z.string().describe('Provision path, e.g. section/45/2/f.'),
         id_uri: z.string().describe('Identifier URI of the provision.'),
         label: z.string().describe('Human label, e.g. "Section 45(2)(f)".'),
-        heading: z.string().optional().describe('Heading of the provision, when it has one.'),
+        heading: z
+          .string()
+          .optional()
+          .describe(
+            "Heading of the provision: its title (a section's heading, a Part's or Schedule's title), or a cross-heading's number when that is all it carries; absent when it has none.",
+          ),
+        enclosing: z
+          .array(
+            z
+              .object({
+                path: z
+                  .string()
+                  .describe('Provision path of the element, e.g. part/3 — pass it as provision.'),
+                label: z.string().describe('Human label, e.g. "Part 3 Chapter 3".'),
+                heading: z
+                  .string()
+                  .optional()
+                  .describe(
+                    'Heading of the element, by the same rule as provision.heading; absent when it has none.',
+                  ),
+              })
+              .describe('One enclosing element.'),
+          )
+          .describe(
+            "The elements enclosing the provision, outermost first to its parent: Part, Chapter, cross-heading, Schedule or EU division, and for a sub-provision its section and the levels between. Headings are as the version served gives them, and can carry meaning the provision's own text lacks (a commencement date, a cross-heading that is a paragraph's only heading). Empty when none encloses it (a regulation or Schedule at the top level of its item).",
+          ),
         status: z
           .string()
           .optional()
@@ -272,6 +326,38 @@ export const getDocumentTool = tool('uklaw_get_document', {
       .describe(
         'How to read a provision from the outline, naming one to start with; past the outline’s end, its entry count.',
       ),
+    associated_documents: z
+      .array(
+        z
+          .object({
+            kind: z
+              .enum(ASSOCIATED_DOCUMENT_KINDS)
+              .describe(
+                'notes: an Explanatory Notes, Explanatory Memorandum or Policy Note PDF, as title says; notes_correction_slip: a correction to those notes; correction_slip: a correction to the legislation itself; the rest name the document family.',
+              ),
+            title: z
+              .string()
+              .optional()
+              .describe(
+                'Title as legislation.gov.uk records it, e.g. UK Explanatory Memorandum; absent when none.',
+              ),
+            date: z
+              .string()
+              .optional()
+              .describe('Publication date (YYYY-MM-DD); absent when not recorded.'),
+            language: z
+              .string()
+              .optional()
+              .describe(
+                'Language as legislation.gov.uk words it, Welsh or Mixed (not an en/cy code); absent when not recorded, as for English.',
+              ),
+            uri: z.string().describe('URL of the document, usually a PDF.'),
+          })
+          .describe('One associated document.'),
+      )
+      .describe(
+        'Documents legislation.gov.uk publishes with the item — explanatory notes or memorandum, policy note, correction slips, impact assessments, transposition notes, tables of origins and destinations, and others — in document order, linked, never fetched by this server; empty when none.',
+      ),
     links: z
       .object({
         web: z.string().describe('legislation.gov.uk page for the version read.'),
@@ -280,7 +366,15 @@ export const getDocumentTool = tool('uklaw_get_document', {
         pdf: z
           .string()
           .optional()
-          .describe('Original PDF, when held (linked, never fetched by this server).'),
+          .describe(
+            'Original PDF in the language served, else the first listed, when held (linked, never fetched by this server).',
+          ),
+        notes: z
+          .string()
+          .optional()
+          .describe(
+            'legislation.gov.uk page of the explanatory notes (Acts), explanatory memorandum (UK and Northern Ireland instruments, drafts) or policy note (Scottish instruments); on a provision read of an Act it can name that provision’s notes. Absent when none.',
+          ),
       })
       .describe('Links to the document.'),
     attribution: AttributionSchema,
@@ -477,9 +571,19 @@ export const getDocumentTool = tool('uklaw_get_document', {
 
   format: (result) => {
     const item = result.item;
+    const dates = [
+      item.made_date ? `made/enacted ${inline(item.made_date)}` : undefined,
+      item.laid
+        ? `laid ${item.laid.map((l) => `${inline(l.date)} (${inline(l.legislature)})`).join(', ')}`
+        : undefined,
+      item.coming_into_force
+        ? `coming into force ${item.coming_into_force.map(inline).join(', ')}${result.editorial.document_status === 'draft' ? ' (proposed)' : ''}`
+        : undefined,
+    ].filter(Boolean);
     const lines = [
       `## ${inline(item.title)}${item.title_cy ? ` / ${inline(item.title_cy)}` : ''}`,
       `**Item:** \`${uri(item.path)}\` · ${item.type} (${inline(item.type_label)})${item.category ? ` · category ${inline(item.category)}` : ''} · year ${item.year ?? 'unknown'} · number ${inline(item.number ?? 'unknown')} · extent ${inline(item.extent ?? 'not recorded')} · ${uri(item.id_uri)}`,
+      ...(dates.length > 0 ? [`**Dates:** ${dates.join(' · ')}`] : []),
     ];
     const p = result.provision;
     if (p) {
@@ -489,6 +593,17 @@ export const getDocumentTool = tool('uklaw_get_document', {
         `**Provision:** ${inline(p.label)} (\`${uri(p.path)}\`)${p.heading ? ` — ${inline(p.heading)}` : ''} · ${uri(p.id_uri)}`,
         `**Status:** ${inline(p.status ?? 'none marked')} · extent ${inline(p.extent ?? 'not recorded')} · valid from ${inline(p.valid_from ?? 'an unrecorded date')} to ${inline(p.valid_to ?? openEnd)}`,
       );
+      if (p.enclosing.length === 0) lines.push('**Enclosing:** none');
+      else
+        lines.push(
+          '**Enclosing (outermost first):**',
+          ...p.enclosing.map(
+            (e) =>
+              `- ${inline(e.label)} (\`${uri(e.path)}\`)${e.heading ? ` — ${inline(e.heading)}` : ''}`,
+          ),
+          // A blank line ends the list, so the next line cannot continue its last item.
+          '',
+        );
     }
     const v = result.version;
     lines.push(
@@ -544,10 +659,18 @@ export const getDocumentTool = tool('uklaw_get_document', {
         `Not listed on an item outline; call uklaw_get_amendments with ${unappliedArgs(item.path, item.year, 'item', (p) => `\`${uri(p)}\``)} for them.`,
       );
     }
+    const docs = result.associated_documents;
+    lines.push('', `### Associated documents (${docs.length})`);
+    if (docs.length === 0) lines.push('None recorded for this item.');
+    for (const d of docs) {
+      lines.push(
+        `- **${d.kind}**${d.title ? ` — ${inline(d.title)}` : ''}${d.date ? ` · ${inline(d.date)}` : ''}${d.language ? ` · language ${inline(d.language)}` : ''} · ${uri(d.uri)}`,
+      );
+    }
     const l = result.links;
     lines.push(
       '',
-      `**Links:** web ${uri(l.web)} · xml ${uri(l.xml)}${l.akn ? ` · akn ${uri(l.akn)}` : ''}${l.pdf ? ` · pdf ${uri(l.pdf)}` : ''}`,
+      `**Links:** web ${uri(l.web)} · xml ${uri(l.xml)}${l.akn ? ` · akn ${uri(l.akn)}` : ''}${l.pdf ? ` · pdf ${uri(l.pdf)}` : ''}${l.notes ? ` · notes ${uri(l.notes)}` : ''}`,
       '',
       attributionLines(result.attribution),
     );

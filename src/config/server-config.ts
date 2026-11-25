@@ -29,6 +29,12 @@ const ServerConfigSchema = z.object({
     .max(1024)
     .default(64)
     .describe('Response cache size bound, in MB'),
+  clampLimits: z
+    .stringbool()
+    .default(true)
+    .describe(
+      'Serve a limit above the cap at the cap, with a notice; false advertises each cap as the maximum and rejects a larger limit',
+    ),
 });
 
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
@@ -41,6 +47,7 @@ export function getServerConfig(): ServerConfig {
     contact: 'UK_LEGISLATION_CONTACT',
     minRequestGapMs: 'UK_LEGISLATION_MIN_REQUEST_GAP_MS',
     cacheMaxMb: 'UK_LEGISLATION_CACHE_MAX_MB',
+    clampLimits: 'UK_LEGISLATION_CLAMP_LIMITS',
   });
   return _config;
 }

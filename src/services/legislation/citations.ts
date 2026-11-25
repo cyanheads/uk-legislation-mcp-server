@@ -1,9 +1,11 @@
 /**
  * @fileoverview Citation grammar for `uklaw_lookup_citation` — numbered UK,
  * devolved, and EU-origin citations, legislation.gov.uk URIs, and short
- * titles, each with an optional provision tail or leading "section N of" —
- * plus the bounded text scan that reads candidates out of a 300 (Multiple
- * Choices) page.
+ * titles, each with an optional provision: a shorthand tail (`s. 45(2)(f)`,
+ * `Sch. B1 para. 14`, its components optionally separated by commas), a
+ * leading "section N of", or a leading "Schedule N to" (with any "paragraph N
+ * of" before it nested under the Schedule) — plus the bounded text scan that
+ * reads candidates out of a 300 (Multiple Choices) page.
  * @module services/legislation/citations
  */
 
@@ -127,8 +129,14 @@ const DEFINED_NAMES: ReadonlyMap<string, { type: string; year: number; number: s
   ['uk gdpr', { type: 'eur', year: 2016, number: '679' }],
 ]);
 
-/** A title followed by its UK Act chapter number: `Human Rights Act 1998 (c. 42)`. */
-const TITLE_CHAPTER = /^(.*?)[\s,]*\(\s*c\.?\s*(\d+)\s*\)$/i;
+/** A UK Act chapter number closing a title: `Human Rights Act 1998 (c. 42)`. */
+const CHAPTER_SUFFIX = /\(\s*c\.?\s*(\d+)\s*\)$/i;
+
+// Punctuation closing a head or title; the lookbehind starts a match only where a run starts, keeping it linear.
+const TRAILING_PUNCTUATION = /(?<![\s,;:.])[\s,;:.]+$/;
+
+/** A four-digit year written as its own word. */
+const YEAR = /\b\d{4}\b/g;
 
 /** Parses a citation, URI, or short title. */
 export function parseCitation(raw: string): ParsedCitation {
@@ -137,7 +145,7 @@ export function parseCitation(raw: string): ParsedCitation {
 
   const leading = splitLeadingProvision(input);
   const { head, provision } = leading.provision ? leading : splitProvisionTail(input);
-  const cleanHead = head.replace(/[\s,;:.]+$/, '');
+  const cleanHead = head.replace(TRAILING_PUNCTUATION, '');
 
   const isUrl = /^(?:https?:\/\/)?(?:www\.)?legislation\.gov\.uk\//i.test(cleanHead);
   if (isUrl || /^[a-z]+\/\S+$/.test(cleanHead)) {
@@ -165,14 +173,16 @@ export function parseCitation(raw: string): ParsedCitation {
   if (defined) return { kind: 'numbered', ...defined, ...tail };
 
   if (!/[A-Za-z]/.test(cleanHead)) return { kind: 'unparsed' };
-  const withChapter = TITLE_CHAPTER.exec(cleanHead);
-  const chapterTitle = withChapter?.[1]?.replace(/[\s,;:.]+$/, '');
+  const withChapter = CHAPTER_SUFFIX.exec(cleanHead);
+  const chapterTitle = withChapter
+    ? cleanHead.slice(0, withChapter.index).replace(TRAILING_PUNCTUATION, '')
+    : undefined;
   const [title, chapter] =
     chapterTitle && /[A-Za-z]/.test(chapterTitle)
-      ? [chapterTitle, String(Number(withChapter?.[2]))]
+      ? [chapterTitle, String(Number(withChapter?.[1]))]
       : [cleanHead, undefined];
-  const yearMatch = /\b(\d{4})\b(?!.*\b\d{4}\b)/.exec(title);
-  const year = yearMatch ? Number(yearMatch[1]) : undefined;
+  const lastYear = title.match(YEAR)?.at(-1);
+  const year = lastYear !== undefined ? Number(lastYear) : undefined;
   return {
     kind: 'title',
     title,

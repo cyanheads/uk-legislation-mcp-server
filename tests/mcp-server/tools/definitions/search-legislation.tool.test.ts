@@ -10,7 +10,8 @@
 import type { z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createMockContext, runToolContract } from '@cyanheads/mcp-ts-core/testing';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setStrictLimits } from '@/mcp-server/tools/definitions/_schemas.js';
 import { searchLegislationTool } from '@/mcp-server/tools/definitions/search-legislation.tool.js';
 import {
   ATTRIBUTION_LINES,
@@ -33,6 +34,14 @@ import {
 } from '../../../helpers/upstream.js';
 
 type SearchInput = z.input<typeof searchLegislationTool.input>;
+
+const clamped = vi.hoisted(() => ({ add: vi.fn() }));
+
+// `createCounter` is wrapped so the clamp counter's increments can be read; nothing else is replaced.
+vi.mock('@cyanheads/mcp-ts-core/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@cyanheads/mcp-ts-core/utils')>();
+  return { ...actual, createCounter: () => ({ add: clamped.add }) };
+});
 
 /** Every value `types` accepts. */
 const TYPE_VALUES = [...TYPE_GROUPS, ...TYPE_CODES];
@@ -284,7 +293,8 @@ describe('errors', () => {
     { year: 2101 },
     { year_from: 12345 },
     { limit: 0 },
-    { limit: 51 },
+    { limit: -1 },
+    { limit: 1.5 },
     { page: 0 },
     { types: ['statutes'] },
     { extent: ['northern-ireland'] },
@@ -365,6 +375,120 @@ describe('errors', () => {
       data: { reason: 'upstream_refused', retryAfter: 3_600 },
     });
     expect(contentText(result)).toContain('upstream_refused');
+  });
+});
+
+describe('limit cap and clamp', () => {
+  const TEXT_1000 = '/all/data.feed?text=processor&results-count=1000';
+  const TITLE_1000 = '/ukpga/2018/data.feed?title=data&results-count=1000';
+  const NEXT_PAGE = 'More results exist: call again with page 2.';
+
+  it('requests 1,000 results for limit 1000, with no clamp sentence, on both surfaces', async () => {
+    const up = createUpstream(routes([TEXT_1000, feed('search-text-processor.feed')]));
+    const result = await runToolContract(searchLegislationTool, { text: 'processor', limit: 1000 });
+    expect(up.paths()).toEqual([TEXT_1000]);
+    expect(result.structuredContent).toMatchObject({ limit: 1000, cap: 1000, notice: NEXT_PAGE });
+    expect(contentText(result)).toContain('(limit 1000, has_more: true)');
+  });
+
+  it('serves limit 1001 at 1,000, the clamp sentence joined to the next-page notice, on both surfaces', async () => {
+    const up = createUpstream(routes([TEXT_1000, feed('search-text-processor.feed')]));
+    const result = await runToolContract(searchLegislationTool, { text: 'processor', limit: 1001 });
+    expect(up.paths()).toEqual([TEXT_1000]);
+    const notice = `limit 1001 is above the cap; 1000 applied. ${NEXT_PAGE}`;
+    expect(result.structuredContent).toMatchObject({
+      limit: 1000,
+      truncated: true,
+      cap: 1000,
+      notice,
+    });
+    const text = contentText(result);
+    expect(text).toContain('(limit 1000, has_more: true)');
+    expect(text).toContain(notice);
+  });
+
+  it('serves limit 1e20 at 1,000 with the clamp sentence alone when no other notice applies, on both surfaces', async () => {
+    const up = createUpstream(routes([TITLE_1000, feed('search-ukpga-2018-title-data.feed')]));
+    const result = await runToolContract(searchLegislationTool, {
+      title: 'data',
+      types: ['ukpga'],
+      year: 2018,
+      limit: 1e20,
+    });
+    expect(up.paths()).toEqual([TITLE_1000]);
+    const notice = 'limit 100000000000000000000 is above the cap; 1000 applied.';
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured).toMatchObject({ limit: 1000, has_more: false, notice });
+    expect(structured).not.toHaveProperty('truncated');
+    expect(contentText(result)).toContain(notice);
+  });
+
+  it.each([
+    [
+      'a zero-hit page',
+      { types: ['ukpga'], year: 2018, extent: ['scotland'], extent_match: 'exact' },
+      '/ukpga/2018/=scotland/data.feed?results-count=1000',
+      feed('search-zero-hits.feed'),
+      'limit 1001 is above the cap; 1000 applied. No legislation matched.',
+    ],
+    [
+      'a page past the end',
+      { title: 'data protection', page: 9 },
+      '/all/data.feed?title=data%20protection&results-count=1000&page=9',
+      redirect(307, '/search?title=data%20protection'),
+      `limit 1001 is above the cap; 1000 applied. ${PAST_END_9}`,
+    ],
+  ] as [string, SearchInput, string, Response, string][])(
+    'serves limit 1001 on %s with the clamp sentence first in its notice, on both surfaces',
+    async (_name, input, path, response, opening) => {
+      const up = createUpstream(routes([path, response]));
+      const result = await runToolContract(searchLegislationTool, { ...input, limit: 1001 });
+      expect(up.paths()).toEqual([path]);
+      const notice = (result.structuredContent as { notice: string }).notice;
+      expect(notice.startsWith(opening)).toBe(true);
+      expect(contentText(result)).toContain(opening);
+    },
+  );
+
+  it('counts a clamped call under uklaw_search_legislation', async () => {
+    createUpstream(routes([TEXT_1000, feed('search-text-processor.feed')]));
+    clamped.add.mockClear();
+    await search({ text: 'processor', limit: 1001 });
+    expect(clamped.add).toHaveBeenCalledExactlyOnceWith(1, {
+      'mcp.tool.name': 'uklaw_search_legislation',
+    });
+  });
+
+  describe('strict (UK_LEGISLATION_CLAMP_LIMITS=false)', () => {
+    beforeEach(() => setStrictLimits(true));
+    afterEach(() => setStrictLimits(false));
+
+    it('advertises maximum 1000', () => {
+      const schema = searchLegislationTool.input['~standard'].jsonSchema.input({
+        target: 'draft-2020-12',
+      }) as { properties: { limit: Record<string, unknown> } };
+      expect(schema.properties.limit).toMatchObject({ maximum: 1000, minimum: 1, default: 20 });
+    });
+
+    it('serves limit 1000', async () => {
+      const up = createUpstream(routes([TEXT_1000, feed('search-text-processor.feed')]));
+      const result = await runToolContract(searchLegislationTool, {
+        text: 'processor',
+        limit: 1000,
+      });
+      expect(result.isError).toBeFalsy();
+      expect(up.paths()).toEqual([TEXT_1000]);
+    });
+
+    it('rejects limit 1001 at the schema naming the maximum, before any request', async () => {
+      const up = createUpstream([]);
+      const error = errorOf(await runToolContract(searchLegislationTool, { limit: 1001 }));
+      expect(error.data?.reason).toBe('invalid_arguments');
+      expect(error.message).toBe(
+        'Input validation error: Invalid arguments for tool uklaw_search_legislation: limit: Too big: expected number to be <=1000',
+      );
+      expect(up.paths()).toEqual([]);
+    });
   });
 });
 

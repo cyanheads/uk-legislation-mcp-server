@@ -1,6 +1,6 @@
 # uk-legislation-mcp-server - Directory Structure
 
-Generated on: 2026-10-29 10:18:34
+Generated on: 2026-11-25 10:10:09
 
 ```text
 uk-legislation-mcp-server/
@@ -166,6 +166,7 @@ uk-legislation-mcp-server/
 │   │       │   ├── effects.ts
 │   │       │   ├── metadata.ts
 │   │       │   ├── outline.ts
+│   │       │   ├── provision-heading.ts
 │   │       │   └── render.ts
 │   │       ├── attribution.ts
 │   │       ├── citations.ts
@@ -186,15 +187,21 @@ uk-legislation-mcp-server/
 │   ├── fixtures/
 │   │   ├── clml/
 │   │   │   ├── anaw-2016-1-section-1-welsh.xml
+│   │   │   ├── anaw-2016-1-section-7-1.xml
 │   │   │   ├── apni-1954-33-section-1-2006-01-01.xml
 │   │   │   ├── eur-2016-679-article-28.xml
+│   │   │   ├── ssi-2026-1-contents-made.xml
+│   │   │   ├── ukdsi-2026-9780348288018-contents.xml
 │   │   │   ├── ukla-Eliz2-4-5-1-contents-enacted.xml
 │   │   │   ├── ukpga-1972-68-contents-1991-02-01.xml
 │   │   │   ├── ukpga-1972-68-section-2-1991-02-01.xml
+│   │   │   ├── ukpga-1989-41-part-XA-crossheading-regulations.xml
 │   │   │   ├── ukpga-1998-29-section-1.xml
 │   │   │   ├── ukpga-2006-46-section-29.xml
 │   │   │   ├── ukpga-2018-12-contents-text-processor.xml
 │   │   │   ├── ukpga-2018-12-contents.xml
+│   │   │   ├── ukpga-2018-12-schedule-1-paragraph-2-2.xml
+│   │   │   ├── ukpga-2018-12-section-45-2-f.xml
 │   │   │   ├── ukpga-2018-12-section-45-2018-05-24.xml
 │   │   │   ├── ukpga-2018-12-section-45-2019-01-01.xml
 │   │   │   ├── ukpga-2018-12-section-45-enacted.xml
@@ -214,12 +221,15 @@ uk-legislation-mcp-server/
 │   │   │   ├── uksi-2019-419-contents-2020-12-31.xml
 │   │   │   ├── uksi-2019-419-contents.xml
 │   │   │   ├── uksi-2019-419-regulation-5-2019-03-01.xml
+│   │   │   ├── uksi-2026-1156-contents-made.xml
+│   │   │   ├── uksi-2026-82-regulation-3-b-made.xml
 │   │   │   ├── wsi-2002-808-contents.xml
 │   │   │   ├── wsi-2024-1337-article-1-made.xml
 │   │   │   ├── wsi-2024-1337-contents-made.xml
 │   │   │   └── wsi-2024-1337-made.xml
 │   │   ├── feeds/
 │   │   │   ├── changes-affected-ukpga-1925-20.feed
+│   │   │   ├── changes-affected-ukpga-1986-45-affecting-ukpga-2020-12-page-5.feed
 │   │   │   ├── changes-affected-ukpga-2018-12-affecting-ukpga-2025-18.feed
 │   │   │   ├── changes-affected-ukpga-2018-12.feed
 │   │   │   ├── changes-affecting-uksi-2026.feed
@@ -280,6 +290,7 @@ uk-legislation-mcp-server/
 │   │   └── tools/
 │   │       └── definitions/
 │   │           ├── _markdown.test.ts
+│   │           ├── _schemas.test.ts
 │   │           ├── get-amendments.tool.test.ts
 │   │           ├── get-document.tool.test.ts
 │   │           ├── index.test.ts
@@ -295,6 +306,7 @@ uk-legislation-mcp-server/
 │   │       │   ├── effects.test.ts
 │   │       │   ├── metadata.test.ts
 │   │       │   ├── outline.test.ts
+│   │       │   ├── provision-heading.test.ts
 │   │       │   └── render.test.ts
 │   │       ├── atom.test.ts
 │   │       ├── citations.test.ts
@@ -321,6 +333,7 @@ uk-legislation-mcp-server/
 ├── bun.lock
 ├── bunfig.toml
 ├── CHANGELOG.md
+├── CITATION.cff
 ├── CLAUDE.md
 ├── devcheck.config.json
 ├── Dockerfile

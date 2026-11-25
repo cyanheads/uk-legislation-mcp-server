@@ -12,7 +12,8 @@ import type { z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import MarkdownIt from 'markdown-it';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setStrictLimits } from '@/mcp-server/tools/definitions/_schemas.js';
 import { getAmendmentsTool } from '@/mcp-server/tools/definitions/get-amendments.tool.js';
 import { ATTRIBUTION_LINES } from '@/services/legislation/reference-data.js';
 import {
@@ -31,6 +32,14 @@ import {
 } from '../../../helpers/upstream.js';
 
 type AmendmentsInput = z.input<typeof getAmendmentsTool.input>;
+
+const clamped = vi.hoisted(() => ({ add: vi.fn() }));
+
+// `createCounter` is wrapped so the clamp counter's increments can be read; nothing else is replaced.
+vi.mock('@cyanheads/mcp-ts-core/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@cyanheads/mcp-ts-core/utils')>();
+  return { ...actual, createCounter: () => ({ add: clamped.add }) };
+});
 
 async function amendments(input: AmendmentsInput) {
   const ctx = createMockContext({ errors: getAmendmentsTool.errors });
@@ -74,6 +83,8 @@ const scanRoutes = (): Route[] =>
     [`${SCAN}&page=4`, feed('changes-unapplied-scan-page-4.feed')],
   );
 const PAGED = '/changes/unapplied/affected/ukpga/2018/12/data.feed?results-count=20';
+/** next_cursor 0.2.1 minted for the first page of `ukpga/2018/12` unapplied at limit 20. */
+const CURSOR_0_2_1 = 'eyJrIjoiOGRmZjgwMjciLCJwIjoyfQ';
 
 describe('listing effects', () => {
   it('lists one page of effects with total, has_more and a cursor', async () => {
@@ -643,6 +654,7 @@ describe('errors', () => {
     [{ item: 'ukpga/2018/12/foo' }, 'invalid_item'],
     [{ item: 'ukpga/2018/12', counterpart: 'foo/bar' }, 'invalid_item'],
     [{ item: 'ukpga/2018/12', provision: 'foo 3' }, 'invalid_provision'],
+    [{ item: 'ukpga/1986/45', provision: 's. a6' }, 'invalid_provision'],
     [{ item: 'ukpga/2018', provision: 's. 45' }, 'provision_needs_full_item'],
     [{ item: 'ukpga/2018/12', cursor: 'bm90LWpzb24' }, 'invalid_cursor'],
   ] as [AmendmentsInput, string][])('%j fails %s before any request', async (input, reason) => {
@@ -844,6 +856,20 @@ describe('errors', () => {
     }
   });
 
+  it('resumes a cursor 0.2.1 minted at limit 20, reading the next page', async () => {
+    const up = createUpstream(
+      routes(
+        [PAGED, feed('changes-unapplied-scan-page-1.feed')],
+        [`${PAGED}&page=2`, feed('changes-unapplied-scan-page-2.feed')],
+      ),
+    );
+    const base = { item: 'ukpga/2018/12', status: 'unapplied', limit: 20 } as const;
+    expect((await amendments(base)).output.next_cursor).toBe(CURSOR_0_2_1);
+    const { output } = await amendments({ ...base, cursor: CURSOR_0_2_1 });
+    expect(up.paths()).toEqual([PAGED, `${PAGED}&page=2`]);
+    expect(output.effects).toHaveLength(6);
+  });
+
   it('rejects a cursor holding a position no call over its query produces, before any request', async () => {
     createUpstream([
       ...routes([AFFECTED, feed('changes-affected-ukpga-2018-12.feed')]),
@@ -917,12 +943,204 @@ describe('errors', () => {
     { item: 'ukpga/2018/12', direction: 'both' },
     { item: 'ukpga/2018/12', status: 'pending' },
     { item: 'ukpga/2018/12', limit: 0 },
-    { item: 'ukpga/2018/12', limit: 101 },
+    { item: 'ukpga/2018/12', limit: -1 },
+    { item: 'ukpga/2018/12', limit: 1.5 },
   ])('rejects %j at the schema', async (input) => {
     createUpstream([]);
     const error = errorOf(await runToolContract(getAmendmentsTool, input as AmendmentsInput));
     expect(error.code).toBe(JsonRpcErrorCode.InvalidParams);
     expect(error.data?.reason).toBe('invalid_arguments');
+  });
+});
+
+describe('limit cap and clamp', () => {
+  const AFFECTED_500 = '/changes/affected/ukpga/2018/12/data.feed?results-count=500';
+  const MORE = 'More effects remain: call again with cursor set to next_cursor.';
+
+  it('requests 500 effects for limit 500, with no clamp sentence, on both surfaces', async () => {
+    const up = createUpstream(routes([AFFECTED_500, feed('changes-affected-ukpga-2018-12.feed')]));
+    const result = await runToolContract(getAmendmentsTool, { item: 'ukpga/2018/12', limit: 500 });
+    expect(up.paths()).toEqual([AFFECTED_500]);
+    expect(result.structuredContent).toMatchObject({ cap: 500, notice: MORE });
+    expect(contentText(result)).toContain('**cap:** 500');
+  });
+
+  it('serves limit 501 at 500, the clamp sentence joined to the capped-page notice, on both surfaces', async () => {
+    const up = createUpstream(routes([AFFECTED_500, feed('changes-affected-ukpga-2018-12.feed')]));
+    const result = await runToolContract(getAmendmentsTool, { item: 'ukpga/2018/12', limit: 501 });
+    expect(up.paths()).toEqual([AFFECTED_500]);
+    const notice = `limit 501 is above the cap; 500 applied. ${MORE}`;
+    expect(result.structuredContent).toMatchObject({ truncated: true, cap: 500, notice });
+    const text = contentText(result);
+    expect(text).toContain('**cap:** 500');
+    expect(text).toContain(notice);
+  });
+
+  it('serves an over-cap limit on a final page with the clamp sentence alone, on both surfaces', async () => {
+    createUpstream(routes([SCAN, feed('changes-unapplied-scan-page-4.feed')]));
+    const result = await runToolContract(getAmendmentsTool, {
+      item: 'ukpga/2018/12',
+      status: 'unapplied',
+      limit: 5000,
+    });
+    const notice = 'limit 5000 is above the cap; 500 applied.';
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(structured).toMatchObject({ has_more: false, notice });
+    expect(structured).not.toHaveProperty('truncated');
+    expect(contentText(result)).toContain(notice);
+  });
+
+  it('serves an over-cap limit on an empty feed with the clamp sentence first in its notice, on both surfaces', async () => {
+    const path = '/changes/unapplied/affected/uksi/1980/2049/data.feed?results-count=500';
+    createUpstream(routes([path, feed('changes-empty.feed')]));
+    const result = await runToolContract(getAmendmentsTool, {
+      item: 'uksi/1980/2049',
+      status: 'unapplied',
+      limit: 501,
+    });
+    const opening = 'limit 501 is above the cap; 500 applied. No effects matched.';
+    expect((result.structuredContent as { notice: string }).notice.startsWith(opening)).toBe(true);
+    expect(contentText(result)).toContain(opening);
+  });
+
+  it.each([
+    [
+      'with more to scan',
+      { provision: 'section/26', limit: 1 },
+      'limit 501 is above the cap; 500 applied. No further matches in the 23 effects scanned this call; call again with cursor set to next_cursor to scan further.',
+    ],
+    [
+      'at the end of the feed',
+      { provision: 'section/45' },
+      'limit 501 is above the cap; 500 applied. No further matches: this call scanned the last 4 of 309 effects, so the scan is complete.',
+    ],
+  ] as [string, Partial<AmendmentsInput>, string][])(
+    'opens the notice of a provision-scan continuation that finds no further matches %s with the clamp sentence, on both surfaces',
+    async (_arm, first, opening) => {
+      createUpstream(scanRoutes());
+      const base = { item: 'ukpga/2018/12', status: 'unapplied' as const, ...first };
+      const cursor = (await amendments(base)).output.next_cursor as string;
+      const result = await runToolContract(getAmendmentsTool, { ...base, limit: 501, cursor });
+      const structured = result.structuredContent as { effects: unknown[]; notice: string };
+      expect(structured.effects).toEqual([]);
+      expect(structured.notice.startsWith(opening)).toBe(true);
+      expect(contentText(result)).toContain(opening);
+    },
+  );
+
+  it('counts a clamped call under uklaw_get_amendments', async () => {
+    createUpstream(routes([AFFECTED_500, feed('changes-affected-ukpga-2018-12.feed')]));
+    clamped.add.mockClear();
+    await amendments({ item: 'ukpga/2018/12', limit: 501 });
+    expect(clamped.add).toHaveBeenCalledExactlyOnceWith(1, {
+      'mcp.tool.name': 'uklaw_get_amendments',
+    });
+  });
+
+  it('keys a clamped call’s cursor on the applied 500, so it continues at the cap or any limit above it', async () => {
+    const up = createUpstream(
+      routes(
+        [AFFECTED_500, feed('changes-affected-ukpga-2018-12.feed')],
+        [`${AFFECTED_500}&page=2`, feed('changes-affected-ukpga-2018-12.feed')],
+      ),
+    );
+    const { output } = await amendments({ item: 'ukpga/2018/12', limit: 501 });
+    for (const limit of [9999, 500]) {
+      const next = await amendments({
+        item: 'ukpga/2018/12',
+        limit,
+        cursor: output.next_cursor as string,
+      });
+      expect(next.output.effects.length).toBeGreaterThan(0);
+    }
+    // The second continuation reads page 2 from the response cache.
+    expect(up.paths()).toEqual([AFFECTED_500, `${AFFECTED_500}&page=2`]);
+  });
+
+  it('holds a clamped plain page’s cursor offset below the applied 500, before any request', async () => {
+    createUpstream(routes([AFFECTED_500, feed('changes-affected-ukpga-2018-12.feed')]));
+    const input = { item: 'ukpga/2018/12', limit: 501 };
+    const cursor = (await amendments(input)).output.next_cursor as string;
+    const up = createUpstream([]);
+    await expect(
+      failure({ ...input, cursor: forgeCursor(cursor, { o: 500 }) }),
+    ).resolves.toMatchObject({ data: { reason: 'invalid_cursor' } });
+    expect(up.paths()).toEqual([]);
+  });
+
+  it.each([
+    [
+      500,
+      'Scanned 24 of 309 effects this call; call again with cursor set to next_cursor to scan further.',
+    ],
+    [
+      501,
+      'limit 501 is above the cap; 500 applied. Scanned 24 of 309 effects this call; call again with cursor set to next_cursor to scan further.',
+    ],
+  ])(
+    'a provision scan at limit %d still reads three 500-effect pages and returns its matches with next_cursor, on both surfaces',
+    async (limit, notice) => {
+      const up = createUpstream(scanRoutes());
+      const result = await runToolContract(getAmendmentsTool, {
+        item: 'ukpga/2018/12',
+        provision: 'section/45',
+        status: 'unapplied',
+        limit,
+      });
+      expect(up.paths()).toEqual([SCAN, `${SCAN}&page=2`, `${SCAN}&page=3`]);
+      const structured = result.structuredContent as z.output<typeof getAmendmentsTool.output> & {
+        notice: string;
+      };
+      expect(structured).toMatchObject({
+        has_more: true,
+        next_cursor: expect.any(String),
+        scan: { effects_scanned: 24, pages_scanned: 3, total_effects: 309 },
+        notice,
+      });
+      expect(structured.effects.length).toBeLessThanOrEqual(500);
+      expect(structured.effects.map((e) => e.affected.provisions_label).slice(0, 3)).toEqual([
+        's. 45(2)(f)',
+        's. 45(5)(c)(d)',
+        's. 45(7)(b)',
+      ]);
+      expect(contentText(result)).toContain(notice);
+    },
+  );
+
+  describe('strict (UK_LEGISLATION_CLAMP_LIMITS=false)', () => {
+    beforeEach(() => setStrictLimits(true));
+    afterEach(() => setStrictLimits(false));
+
+    it('advertises maximum 500', () => {
+      const schema = getAmendmentsTool.input['~standard'].jsonSchema.input({
+        target: 'draft-2020-12',
+      }) as { properties: { limit: Record<string, unknown> } };
+      expect(schema.properties.limit).toMatchObject({ maximum: 500, minimum: 1, default: 20 });
+    });
+
+    it('serves limit 500', async () => {
+      const up = createUpstream(
+        routes([AFFECTED_500, feed('changes-affected-ukpga-2018-12.feed')]),
+      );
+      const result = await runToolContract(getAmendmentsTool, {
+        item: 'ukpga/2018/12',
+        limit: 500,
+      });
+      expect(result.isError).toBeFalsy();
+      expect(up.paths()).toEqual([AFFECTED_500]);
+    });
+
+    it('rejects limit 501 at the schema naming the maximum, before any request', async () => {
+      const up = createUpstream([]);
+      const error = errorOf(
+        await runToolContract(getAmendmentsTool, { item: 'ukpga/2018/12', limit: 501 }),
+      );
+      expect(error.data?.reason).toBe('invalid_arguments');
+      expect(error.message).toBe(
+        'Input validation error: Invalid arguments for tool uklaw_get_amendments: limit: Too big: expected number to be <=500',
+      );
+      expect(up.paths()).toEqual([]);
+    });
   });
 });
 

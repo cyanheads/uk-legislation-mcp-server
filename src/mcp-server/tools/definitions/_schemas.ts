@@ -1,12 +1,14 @@
 /**
  * @fileoverview Schema building blocks shared by the tool definitions: the
  * blank-as-unset wrapper for optional string inputs, the date pattern, the
- * free-text, item, provision and cursor input shapes, and the effect record and attribution
- * output shapes.
+ * free-text, item, provision and cursor input shapes, the `limit` count field
+ * with the clamp that serves an over-cap value at the cap, and the effect
+ * record and attribution output shapes.
  * @module mcp-server/tools/definitions/_schemas
  */
 
-import { z } from '@cyanheads/mcp-ts-core';
+import { type Context, z } from '@cyanheads/mcp-ts-core';
+import { ATTR_MCP_TOOL_NAME, createCounter } from '@cyanheads/mcp-ts-core/utils';
 
 /**
  * Treats a blank or whitespace-only string as unset before validation runs.
@@ -83,6 +85,87 @@ export const ProvisionInput = z
     PROVISION_PATTERN,
     'Pass a provision path such as section/45/2/f or schedule/2/paragraph/3, or shorthand such as s. 45(2)(f) or Sch. 2 para. 3; uklaw_list_reference topic provision_paths lists the forms.',
   );
+
+/**
+ * Strict `limit` mode, off until `setup()` reads `UK_LEGISLATION_CLAMP_LIMITS`.
+ * Every definition emits its input schema when its module is imported, before
+ * `createApp()` loads `.env` under Node, so nothing here may read config.
+ */
+let strictLimits = false;
+
+/** Set once from `setup()`: true advertises `maximum` at each cap and rejects a `limit` above it. */
+export function setStrictLimits(on: boolean): void {
+  strictLimits = on;
+}
+
+/**
+ * A count input: an integer from 1, advertised with its default and minimum.
+ * The handler serves a larger value at `cap` ({@link clampLimit}); in strict
+ * mode the schema advertises `maximum` and rejects it instead. Not `.int()`,
+ * which advertises and enforces the safe-integer maximum, so a value such as
+ * 1e20 would never reach the clamp.
+ */
+export const limitField = (cap: number, fallback: number, what: string) =>
+  z
+    .number()
+    .min(1)
+    .check((ctx) => {
+      if (!Number.isInteger(ctx.value)) {
+        ctx.issues.push({ code: 'invalid_type', expected: 'int', input: ctx.value });
+      } else if (strictLimits && ctx.value > cap) {
+        ctx.issues.push({
+          code: 'too_big',
+          origin: 'number',
+          maximum: cap,
+          inclusive: true,
+          input: ctx.value,
+        });
+      }
+    })
+    .meta({
+      type: 'integer',
+      // Read on each schema emission, so a tools/list after setup() carries the mode it set.
+      get maximum() {
+        return strictLimits ? cap : undefined;
+      },
+    })
+    .default(fallback)
+    .describe(`${what}; default ${fallback}, at most ${cap.toLocaleString('en-GB')}.`);
+
+const limitsClamped = createCounter(
+  'uklaw.limit.clamped',
+  'Tool calls whose limit was above the cap',
+  '{calls}',
+);
+
+/** The `limit` a call is served at. */
+export interface ServedLimit {
+  /** The sentence the call's notice carries when `limit` is the cap below the request; absent otherwise. */
+  clamp?: string;
+  /** The requested limit, or the cap when more was asked for: every site that reads `limit` takes this. */
+  limit: number;
+}
+
+/** Serves a requested `limit` at `cap` when it asks for more, with one log line and one count per clamped call. */
+export function clampLimit(
+  tool: string,
+  requested: number,
+  cap: number,
+  ctx: Context,
+): ServedLimit {
+  if (requested <= cap) return { limit: requested };
+  ctx.log.info('limit above the cap', { requested, applied: cap });
+  limitsClamped.add(1, { [ATTR_MCP_TOOL_NAME]: tool });
+  return { limit: cap, clamp: `limit ${requested} is above the cap; ${cap} applied.` };
+}
+
+/**
+ * A branch's notice with the clamp sentence in front of it. `ctx.enrich.notice()`
+ * and `truncated()` guidance are last-wins, so a call sends one composed string.
+ */
+export function withClamp(served: ServedLimit, notice: string): string {
+  return served.clamp ? `${served.clamp} ${notice}` : notice;
+}
 
 /** An opaque continuation cursor from a previous `next_cursor`. */
 export const CursorInput = z

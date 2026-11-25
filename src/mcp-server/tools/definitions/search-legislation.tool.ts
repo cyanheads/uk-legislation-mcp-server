@@ -12,10 +12,20 @@ import { getLegislationService } from '@/services/legislation/legislation-servic
 import { isCalendarDate } from '@/services/legislation/provision-path.js';
 import { EXTENTS, TYPE_CODES, TYPE_GROUPS } from '@/services/legislation/reference-data.js';
 import { attributionLines, blockquote, cell, inline, uri } from './_markdown.js';
-import { AttributionSchema, blankAsUnset, DateInput, TextInput } from './_schemas.js';
+import {
+  AttributionSchema,
+  blankAsUnset,
+  clampLimit,
+  DateInput,
+  limitField,
+  TextInput,
+  withClamp,
+} from './_schemas.js';
 
 const TYPE_VALUES = [...TYPE_GROUPS, ...TYPE_CODES] as [string, ...string[]];
 const YEAR = z.number().int().min(1267).max(2100);
+/** Results a page returns at most: a 1,000-result page stays under about 1 MB on each surface. */
+const LIMIT_CAP = 1000;
 
 export const searchLegislationTool = tool('uklaw_search_legislation', {
   title: 'Search UK legislation',
@@ -59,7 +69,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
     as_of: blankAsUnset(DateInput.optional()).describe(
       'Point in time YYYY-MM-DD: only legislation as it stood on that date (items not yet enacted or made are excluded). Omit for current law. Cannot combine with extent.',
     ),
-    limit: z.number().int().min(1).max(50).default(20).describe('Results per page (1–50).'),
+    limit: limitField(LIMIT_CAP, 20, 'Results per page'),
     page: z
       .number()
       .int()
@@ -179,7 +189,9 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
     notice: z
       .string()
       .optional()
-      .describe('Guidance when nothing matched, or how to fetch the next page.'),
+      .describe(
+        'Guidance when nothing matched, or how to fetch the next page, opening with a note when limit was above the cap.',
+      ),
     total: z
       .number()
       .optional()
@@ -242,6 +254,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
   ],
 
   async handler(input, ctx) {
+    const served = clampLimit('uklaw_search_legislation', input.limit, LIMIT_CAP, ctx);
     if (
       input.year !== undefined &&
       (input.year_from !== undefined || input.year_to !== undefined)
@@ -282,7 +295,7 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
         ...(input.as_of ? { asOf: input.as_of } : {}),
         ...(input.title ? { title: input.title } : {}),
         ...(input.text ? { text: input.text } : {}),
-        limit: input.limit,
+        limit: served.limit,
         page: input.page,
       },
       ctx,
@@ -292,7 +305,10 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
     /** Only a query reported as matching nothing gets filter advice; any other empty later page is past the end. */
     if (outcome.results.length === 0 && input.page > 1 && outcome.total !== 0) {
       ctx.enrich.notice(
-        `Page ${input.page} is past the last page of results; call again with page 1 or a lower page.`,
+        withClamp(
+          served,
+          `Page ${input.page} is past the last page of results; call again with page 1 or a lower page.`,
+        ),
       );
     } else if (outcome.results.length === 0) {
       const fragments: string[] = ['No legislation matched.'];
@@ -317,19 +333,21 @@ export const searchLegislationTool = tool('uklaw_search_legislation', {
         fragments.push(
           'as_of limits results to legislation as it stood on that date; drop it to search current law.',
         );
-      ctx.enrich.notice(fragments.join(' '));
+      ctx.enrich.notice(withClamp(served, fragments.join(' ')));
     } else if (outcome.hasMore) {
       ctx.enrich.truncated({
         shown: outcome.results.length,
-        cap: input.limit,
-        guidance: `More results exist: call again with page ${input.page + 1}.`,
+        cap: served.limit,
+        guidance: withClamp(served, `More results exist: call again with page ${input.page + 1}.`),
       });
+    } else if (served.clamp) {
+      ctx.enrich.notice(served.clamp);
     }
 
     return {
       results: outcome.results,
       page: input.page,
-      limit: input.limit,
+      limit: served.limit,
       has_more: outcome.hasMore,
       ...(outcome.facets ? { facets: outcome.facets } : {}),
       scope: {

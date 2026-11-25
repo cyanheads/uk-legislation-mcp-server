@@ -31,6 +31,7 @@ import {
 } from './clml/effects.js';
 import { type DocumentMetadata, readMetadata } from './clml/metadata.js';
 import { fragmentOutline, type OutlineEntry, tocOutline } from './clml/outline.js';
+import { provisionHeading } from './clml/provision-heading.js';
 import { type Annotation, cutRendered, type RenderResult, renderNodes } from './clml/render.js';
 import { type CursorPosition, MAX_PAGE } from './cursor.js';
 import {
@@ -69,7 +70,6 @@ import {
   findPath,
   legislationPath,
   parseXml,
-  textOf,
   toHttps,
   type XmlElement,
 } from './xml.js';
@@ -134,6 +134,8 @@ export interface DocumentQuery {
 /** The found arm of a document read, shaped as the tool's output. */
 export interface DocumentOutput {
   annotations?: Annotation[];
+  /** Documents published with the item, linked from its metadata on every read. */
+  associated_documents: DocumentMetadata['associatedDocuments'];
   attribution: string[];
   editorial: {
     caveat: string;
@@ -144,9 +146,12 @@ export interface DocumentOutput {
   };
   item: {
     category?: string;
+    coming_into_force?: string[];
     /** Root `RestrictExtent`: the item's extent at the version served. */
     extent?: string;
     id_uri: string;
+    laid?: NonNullable<DocumentMetadata['laid']>;
+    made_date?: string;
     number?: string;
     path: string;
     title: string;
@@ -157,10 +162,12 @@ export interface DocumentOutput {
   };
   kind: 'full' | 'outline' | 'pdf_only';
   language: string;
-  links: { akn?: string; pdf?: string; web: string; xml: string };
+  links: { akn?: string; notes?: string; pdf?: string; web: string; xml: string };
   outline?: OutlineEntry[];
   outline_notice?: string;
   provision?: {
+    /** The elements enclosing the provision that the fragment names, outermost first; outside the size budget. */
+    enclosing: { heading?: string; label: string; path: string }[];
     extent?: string;
     heading?: string;
     id_uri: string;
@@ -828,6 +835,9 @@ export class LegislationService {
         ...(md.year !== undefined ? { year: md.year } : {}),
         ...(number ? { number } : {}),
         ...(md.restrictExtent ? { extent: md.restrictExtent } : {}),
+        ...(md.madeDate ? { made_date: md.madeDate } : {}),
+        ...(md.laid ? { laid: md.laid } : {}),
+        ...(md.comingIntoForce ? { coming_into_force: md.comingIntoForce } : {}),
       },
       version: {
         requested: query.asOf ?? query.version,
@@ -853,11 +863,13 @@ export class LegislationService {
         ),
       },
       ...(shown ? { unapplied_effects: shown } : {}),
+      associated_documents: md.associatedDocuments,
       links: {
         web,
         xml: `${web}/data.xml`,
         ...(md.aknUri ? { akn: md.aknUri } : {}),
         ...(md.pdfUri ? { pdf: md.pdfUri } : {}),
+        ...(md.notesUri ? { notes: md.notesUri } : {}),
       },
       attribution: buildAttribution({
         types: [item.type],
@@ -1042,10 +1054,16 @@ export class LegislationService {
       const p = legislationPath(attr(el, 'IdURI'));
       return p?.startsWith(`${item}/`) ? p : undefined;
     };
-    const enclosing = (path?.slice(0, -1) ?? []).flatMap((el) => {
+    /** The elements enclosing the provision the fragment names with an `IdURI`, body excluded (Design Decision 85). */
+    const chain = path?.slice(0, -1) ?? [];
+    const enclosed = chain.flatMap((el, i) => {
       const p = pathOf(el);
-      return p && p !== `${item}/body` ? [p] : [];
+      if (!p || p === `${item}/body`) return [];
+      const rel = p.slice(item.length + 1);
+      const heading = provisionHeading(el, i === 0 ? body : chain[i - 1]);
+      return [{ path: rel, label: provisionLabel(rel), ...(heading ? { heading } : {}) }];
     });
+    const enclosing = enclosed.map((e) => `${item}/${e.path}`);
     const inside = renderAs
       ? [
           ...new Set(
@@ -1076,11 +1094,7 @@ export class LegislationService {
         `${n} more unapplied effect${n === 1 ? '' : 's'} (${unlisted.filter((e) => e.outstanding).length} outstanding) touch${n === 1 ? 'es' : ''} provisions inside ${provisionLabel(provision)}; the outline does not list them, and editorial.outstanding_effects counts the outstanding ones. Read a provision from the outline to list those on it, or call uklaw_get_amendments with ${unappliedArgs(query.item.path, md.year, 'provision')}, for the item's full list.`,
       );
     }
-    const heading = textOf(
-      (target?.name === 'P1' && parent?.name === 'P1group' ? child(parent, 'Title') : undefined) ??
-        child(target, 'Title') ??
-        child(child(target, 'TitleBlock'), 'Title'),
-    );
+    const heading = target ? provisionHeading(target, parent) : undefined;
     const status = attr(target, 'Status') ?? (grouped ? attr(parent, 'Status') : undefined);
     const extent = inherited('RestrictExtent');
     const output: DocumentOutput = {
@@ -1090,6 +1104,7 @@ export class LegislationService {
         id_uri: idUriFor(fullPath),
         label: provisionLabel(provision),
         ...(heading ? { heading } : {}),
+        enclosing: enclosed,
         ...(status ? { status } : {}),
         ...(extent ? { extent } : {}),
         ...(validFrom ? { valid_from: validFrom } : {}),

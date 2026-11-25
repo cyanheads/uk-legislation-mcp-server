@@ -745,7 +745,7 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
       key: 'shorthand',
       label: 'Shorthand table',
       description:
-        'Case-insensitive: s./section → section, reg. → regulation, art./Article → article, r. → rule, Sch. → schedule, para. → paragraph, Pt./Part → part, Ch./Chapter → chapter; bracketed sub-levels become segments, and a dotted number stays one value (r. 3.4 → rule/3.4). Anything else is rejected.',
+        'Keywords are case-insensitive: s./section → section, reg. → regulation, art./Article → article, r. → rule, Sch. → schedule, para. → paragraph, Pt./Part → part, Ch./Chapter → chapter. A number may start with one or two capitals (s. A6 → section/A6, Sch. B1 para. 14 → schedule/B1/paragraph/14, Sch. ZA1, Sch. A1A) or be a roman numeral with a capital suffix (Pt XA → part/XA); those capitals are kept as written, as legislation.gov.uk serves them. Bracketed sub-levels become segments, and a dotted number stays one value (r. 3.4 → rule/3.4). Anything else is rejected.',
     },
   ],
   citation_formats: [
@@ -802,7 +802,7 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
       key: 'provision tail',
       label: 'Provision',
       description:
-        'Any form above may end with a provision: s. 45(2)(f), section 45, reg. 5, art. 28(3), r. 7, r. 3.4, Sch. 2 para. 3, Pt 3. Or it may start with one followed by "of" or "of the": section 45 of the Data Protection Act 2018.',
+        'Any form above may end with a provision: s. 45(2)(f), section 45, reg. 5, art. 28(3), r. 7, r. 3.4, Sch. 2 para. 3, Sch. B1 para. 14, Pt 3, Pt XA, its parts optionally separated by commas (Data Protection Act 2018, Sch. 2, para. 3). Or it may start with one followed by "of" or "of the" (section 45 of the Data Protection Act 2018), or with a Schedule followed by "to" or "to the" (Schedule 2 to the Data Protection Act 2018); a provision "of" a Schedule "to" an item reads as part of that Schedule (paragraph 3 of Schedule 2 to the Data Protection Act 2018 → schedule/2/paragraph/3).',
     },
     {
       key: 'short title',
@@ -897,7 +897,8 @@ const REFERENCE: Record<ReferenceTopic, ReferenceEntry[]> = {
     {
       key: 'out_of_scope',
       label: 'Out of scope',
-      description: 'Explanatory notes, impact assessments and the SPARQL endpoint.',
+      description:
+        'Reading explanatory notes, impact assessments and other associated documents (uklaw_get_document links them in associated_documents and links.notes), and the SPARQL endpoint.',
     },
   ],
   attribution: [

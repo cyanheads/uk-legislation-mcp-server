@@ -36,7 +36,7 @@ The UK statute book from [legislation.gov.uk](https://www.legislation.gov.uk/): 
 | Tool | Description |
 |:---|:---|
 | `uklaw_search_legislation` | Search by full text or title, or list by type and year, filtered by extent and point in time |
-| `uklaw_get_document` | Read an item or provision as revised, as enacted or made, or on a date, with its editorial status and unapplied effects |
+| `uklaw_get_document` | Read an item or provision as revised, as enacted or made, or on a date, with its editorial status, unapplied effects, dates and associated documents |
 | `uklaw_get_amendments` | List the effects (amendments, repeals, commencements, modifications) recorded against an item or made by it |
 | `uklaw_track_changes` | Read the legislation.gov.uk Publication Log for a window of up to 31 days |
 | `uklaw_lookup_citation` | Resolve a citation, short title, or legislation.gov.uk URI to the canonical item and provision |
@@ -54,7 +54,7 @@ The skill is served over MCP through the Agent Skills extension (`io.modelcontex
 
 ### `uklaw_search_legislation` <sub>tool</sub>
 
-- `text` (full text: AND/OR, "quoted phrases", stemming) and/or `title` (every word must occur), or neither to list by type and year; `limit` 1–50 (default 20) with `page`
+- `text` (full text: AND/OR, "quoted phrases", stemming) and/or `title` (every word must occur), or neither to list by type and year; `limit` default 20, at most 1,000 (a larger value returns 1,000 with a notice), with `page`
 - Filters: `types` (codes such as `ukpga`, `uksi`, `eur`, or the groups `all`, `primary`, `secondary`, `eu-origin`, `draft`; default `all`, which excludes drafts), `year` or `year_from` / `year_to` (1267–2100), `extent` (`england`, `wales`, `scotland`, `ni`) with `extent_match` (`applicable` or `exact`), and `as_of` (`YYYY-MM-DD`); `extent` and `as_of` cannot be combined
 - Each result carries the `item` path to pass to `uklaw_get_document`; `has_more` flags another page, and title searches and listings add `facets` (type counts and the newest 25 years)
 
@@ -65,13 +65,15 @@ The skill is served over MCP through the Agent Skills extension (`io.modelcontex
 - `item` is a full path (`ukpga/2018/12`, `uksi/2019/419`, `eur/2016/679`, regnal `ukpga/Eliz2/3-4/19`) or a legislation.gov.uk URI; `provision` a path (`section/45/2/f`, `schedule/2/paragraph/3`) or shorthand (`s. 45(2)(f)`, `Sch. 2 para. 3`); `version` `current` (default), `enacted` (or `made`, `adopted`, `created`), or a `YYYY-MM-DD` date; `language` `en` or `cy`
 - `kind` is `full` (Markdown `text` with its `annotations`), `outline` (provision paths to read next, 100 per call from `outline_offset`), or `pdf_only` (`links.pdf`); text over 20,000 characters, or an item with more than 25 leaf provisions, comes back as an outline (a provision with no smaller provisions to list is returned whole up to 40,000 characters and cut past that, with a notice linking the full text), and `match_text` lists an item's provisions that contain a term
 - `editorial` (`document_status`, `outstanding_effects`, `caveat`) and `unapplied_effects` (the first 20, at item or provision level; a provision read also lists the effects on its enclosing provisions and, on full text, the provisions inside it, and says when it could not check them) show how far the revised text can be relied on; `version.available` lists the versions to pass as `version`
+- A provision read also returns `provision.enclosing`: the Part, Chapter, cross-heading, Schedule and (for a sub-provision) the section above it, outermost first, each with its `path`, `label` and `heading` as the version served gives them
+- `item` adds `made_date`, `laid` (`[{ date, legislature }]`) and `coming_into_force` (on a draft, the date it proposes); `associated_documents` lists the explanatory notes or memorandum, policy note, correction slips, impact assessments and other documents legislation.gov.uk publishes with the item (`kind`, `title`, `date`, `language`, `uri`), and `links.notes` its notes page, all linked and never fetched; `links.pdf` is the PDF in the language served
 
 ---
 
 ### `uklaw_get_amendments` <sub>tool</sub>
 
 - `item` full or partial (`uksi`, `ukpga/2018`); `direction` `affected` (default: changes made to it) or `affecting` (changes it makes); filters `counterpart` (the other item, full or partial), `status` (`all`, `unapplied`, `applied`; default `all`), and `provision` (needs a full item; scans up to 1,500 effects per call)
-- `limit` 1–100 (default 20), continued with `next_cursor`; each effect names both sides with their provisions, `in_force` dates, `applied` / `outstanding`, and `notes`; `total` counts effects before the provision filter, and `scan` reports its coverage
+- `limit` default 20, at most 500, continued with `next_cursor`; each effect names both sides with their provisions, `in_force` dates, `applied` / `outstanding`, and `notes`; `total` counts effects before the provision filter, and `scan` reports its coverage
 - Pre-1963 Acts are queried by calendar year (`ukpga/1925/20`) and drafts are not indexed: both fail as `regnal_item` / `draft_item`, with the route to take instead
 
 ---
@@ -79,7 +81,7 @@ The skill is served over MCP through the Agent Skills extension (`io.modelcontex
 ### `uklaw_track_changes` <sub>tool</sub>
 
 - `start_date` (required) and `end_date` (defaults to `start_date`), a window of at most 31 days; filters `content_type` (`legislation`, `changes`, `draft`, `associated-documents`), `direction` (with `changes` only), `category` (`primary`, `secondary`, `eu-origin`; with `legislation` or `associated-documents` only), `item`, `new_only`, and `event` (`published`, `withdrawn`)
-- `limit` 1–80 (default 40), continued with `next_cursor`; `mode` is `day_walk` (days newest first, up to 4 upstream requests per call) or `item_log` (a full `item` path reads that item's own log and reports `read_back_to`)
+- `limit` default 40, at most 80, continued with `next_cursor`; `mode` is `day_walk` (days newest first, up to 4 upstream requests per call) or `item_log` (a full `item` path reads that item's own log and reports `read_back_to`)
 - A `changes` event carries no effect detail: `uklaw_get_amendments` on its item has it
 
 ---
@@ -102,7 +104,7 @@ The skill is served over MCP through the Agent Skills extension (`io.modelcontex
 | legislation.gov.uk URI | `https://www.legislation.gov.uk/ukpga/2018/12/section/45` | Split into item, provision, and version |
 | Short title | `Data Protection Act 2018`, `Human Rights Act 1998 (c. 42)` | Resolved by title and year; a trailing chapter resolves the Act by number when the title does not |
 
-Any form can end with a provision (`s. 45(2)(f)`, `section 45`, `reg. 5`, `art. 28(3)`, `r. 7`, `r. 3.4`, `Sch. 2 para. 3`, `Pt 3`) or start with one followed by "of" or "of the": `section 45 of the Data Protection Act 2018`. `uklaw_list_reference` topic `citation_formats` returns the same list.
+Any form can end with a provision (`s. 45(2)(f)`, `section 45`, `reg. 5`, `art. 28(3)`, `r. 7`, `r. 3.4`, `Sch. 2 para. 3`, `Sch. B1 para. 14`, `Pt 3`, `Pt XA`, parts optionally separated by commas), start with one followed by "of" or "of the" (`section 45 of the Data Protection Act 2018`), or start with a Schedule followed by "to" or "to the" (`Schedule 2 to the Data Protection Act 2018`, `paragraph 3 of Schedule 2 to the Data Protection Act 2018`). `uklaw_list_reference` topic `citation_formats` returns the same list.
 
 ---
 
@@ -176,6 +178,7 @@ No API key or account is needed. The legislation.gov.uk [fair use policy](https:
 | `UK_LEGISLATION_CONTACT` | Email or URL appended to the User-Agent so legislation.gov.uk can reach the operator. Set it on shared deployments. | none |
 | `UK_LEGISLATION_MIN_REQUEST_GAP_MS` | Minimum gap between upstream request starts, in ms, across the process; `250` at least. A longer robots.txt crawl delay for this server's User-Agent raises it. Replicas sharing one User-Agent divide the fair use limit, so use at least 250 ms × replica count. | `1000` |
 | `UK_LEGISLATION_CACHE_MAX_MB` | Response cache size bound, in MB (`8`–`1024`). | `64` |
+| `UK_LEGISLATION_CLAMP_LIMITS` | `true` serves a `limit` above a tool's cap at the cap, with a notice naming the requested and applied values; `false` advertises each cap as the schema `maximum` and rejects a larger `limit`. | `true` |
 | `MCP_TRANSPORT_TYPE` | Transport: `stdio` or `http`. | `stdio` |
 | `MCP_HTTP_PORT` | HTTP server port. | `3010` |
 | `MCP_HTTP_HOST` | HTTP server host. | `127.0.0.1` |
@@ -191,7 +194,7 @@ See [`.env.example`](./.env.example) for the full list of optional overrides.
 
 ### Local development
 
-Requires [Bun v1.4.0](https://bun.sh/) or higher (or Node.js v24+).
+Requires [Bun v1.4.4](https://bun.sh/) or higher (or Node.js v24+).
 
 - **Clone and install:**
 

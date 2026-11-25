@@ -9,6 +9,7 @@
 
 import { provisionFromUri, provisionLabel } from '../provision-path.js';
 import { attr, child, elements, textOf, type XmlElement } from '../xml.js';
+import { provisionHeading } from './provision-heading.js';
 import { renderNodes } from './render.js';
 
 /** One outline entry. */
@@ -113,23 +114,30 @@ export function tocOutline(
   return { entries, leafCount, total };
 }
 
+/** A child provision of a fragment, what renders it, and the element it sits in. */
+interface ChildProvision {
+  container: XmlElement;
+  node: XmlElement;
+  renderAs: XmlElement;
+}
+
 /**
  * The nearest descendants of `target` carrying a `DocumentURI` — the
  * fragment's child provisions. A numbered provision wrapped in its heading
  * group is returned with the group so its heading renders with it.
  */
-function childProvisions(target: XmlElement): { node: XmlElement; renderAs: XmlElement }[] {
-  const out: { node: XmlElement; renderAs: XmlElement }[] = [];
+function childProvisions(target: XmlElement): ChildProvision[] {
+  const out: ChildProvision[] = [];
   const walk = (node: XmlElement): void => {
     for (const el of elements(node)) {
       if (attr(el, 'DocumentURI')) {
-        out.push({ node: el, renderAs: el });
+        out.push({ node: el, renderAs: el, container: node });
         continue;
       }
       if (el.name === 'P1group') {
         const p1s = elements(el).filter((c) => attr(c, 'DocumentURI'));
         if (p1s.length === 1 && p1s[0]) {
-          out.push({ node: p1s[0], renderAs: el });
+          out.push({ node: p1s[0], renderAs: el, container: el });
           continue;
         }
       }
@@ -157,9 +165,9 @@ export function fragmentOutline(
   });
   const entries = listed
     .slice(window.offset, window.offset + window.max)
-    .map(({ node, renderAs, provision }) => {
-      const heading =
-        textOf(child(renderAs, 'Title')) || textOf(child(child(node, 'TitleBlock'), 'Title'));
+    .map(({ container, node, renderAs, provision }) => {
+      // The rule a read of the entry uses, so the outline and the read agree.
+      const heading = provisionHeading(node, container);
       const status = attr(node, 'Status') ?? attr(renderAs, 'Status');
       return {
         provision,

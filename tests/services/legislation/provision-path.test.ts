@@ -138,6 +138,8 @@ describe('normalizeProvision', () => {
     ['r. 44.3A', 'rule/44.3A'],
     ['Sch. 2 para. 3(1)', 'schedule/2/paragraph/3/1'],
     ['Sch 2 para 3', 'schedule/2/paragraph/3'],
+    ['Sch. 2 , para. 3', 'schedule/2/paragraph/3'],
+    ['Sch. 2,, para. 3', 'schedule/2/paragraph/3'],
     ['Pt 3', 'part/3'],
     ['Part 3 Chapter 2', 'part/3/chapter/2'],
     ['Pt. 3 Ch. 2', 'part/3/chapter/2'],
@@ -149,7 +151,33 @@ describe('normalizeProvision', () => {
     ['part/3/chapter/1/crossheading/scope', 'part/3/chapter/1/crossheading/scope'],
     ['introduction', 'introduction'],
     ['INTRODUCTION', 'introduction'],
+    ['Sch. 2A', 'schedule/2A'],
+    ['s. 24ZA', 'section/24ZA'],
+    ['Sch. 4ZZA', 'schedule/4ZZA'],
+    ['Pt II Ch. I', 'part/II/chapter/I'],
   ])('%s → %s', (input, expected) => {
+    expect(normalizeProvision(input)).toBe(expected);
+  });
+
+  it.each([
+    ['s. A6', 'section/A6'],
+    ['s.A6', 'section/A6'],
+    ['s. A6(1)(a)', 'section/A6/1/a'],
+    ['Pt A1', 'part/A1'],
+    ['Sch. ZA1', 'schedule/ZA1'],
+    ['Sch. AA1', 'schedule/AA1'],
+    ['Sch. A1A', 'schedule/A1A'],
+    ['Sch. B1 para. 14', 'schedule/B1/paragraph/14'],
+    ['Schedule B1 paragraph 14(1)', 'schedule/B1/paragraph/14/1'],
+    ['Sch. 2 para. A1', 'schedule/2/paragraph/A1'],
+    ['Pt IX Ch. A1', 'part/IX/chapter/A1'],
+    ['Sch. C1', 'schedule/C1'],
+    ['Pt I1', 'part/I1'],
+    ['Pt XA', 'part/XA'],
+    ['Ch. VA', 'chapter/VA'],
+    ['Ch. VIIA', 'chapter/VIIA'],
+    ['Pt IX Ch. IA', 'part/IX/chapter/IA'],
+  ])('reads the letter-prefixed or suffixed value of %s → %s', (input, expected) => {
     expect(normalizeProvision(input)).toBe(expected);
   });
 
@@ -167,6 +195,10 @@ describe('normalizeProvision', () => {
     'r. 3..4',
     'constructor 1',
     's. 1 constructor 2',
+    's. a6',
+    'sch b1 para 14',
+    'sA6',
+    'SchB1',
   ])('rejects %j', (input) => {
     expect(normalizeProvision(input)).toBeUndefined();
   });

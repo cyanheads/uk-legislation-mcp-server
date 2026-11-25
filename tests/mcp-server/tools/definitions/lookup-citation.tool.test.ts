@@ -336,6 +336,73 @@ describe('written citation forms', () => {
     expect(up.unhandled).toEqual([]);
   });
 
+  it('requests the path of a letter-prefixed Schedule in a provision tail, on both surfaces', async () => {
+    const TITLE_IA = '/id?title=Insolvency%20Act%201986';
+    const NUMBER_IA = '/ukpga/1986/data.feed?number=45';
+    const SCH_B1_14 = '/ukpga/1986/45/schedule/B1/paragraph/14/data.xml';
+    const up = createUpstream(
+      routes(
+        [TITLE_IA, redirect(301, '/id/ukpga/1986/45')],
+        [NUMBER_IA, feed('search-zero-hits.feed')],
+        [SCH_B1_14, ok('<Legislation/>')],
+      ),
+    );
+    const result = await runToolContract(lookupCitationTool, {
+      citation: 'Insolvency Act 1986 Sch. B1 para. 14',
+    });
+    expect(result.structuredContent).toMatchObject({
+      found: true,
+      parsed: {
+        kind: 'title',
+        title: 'Insolvency Act 1986',
+        year: '1986',
+        provision: 'schedule/B1/paragraph/14',
+      },
+      item: 'ukpga/1986/45',
+      provision_path: 'schedule/B1/paragraph/14',
+      provision_uri: 'https://www.legislation.gov.uk/id/ukpga/1986/45/schedule/B1/paragraph/14',
+      provision_found: true,
+    });
+    const text = contentText(result);
+    expect(text).toContain(
+      '**Parsed:** kind title, year 1986, title "Insolvency Act 1986", provision schedule/B1/paragraph/14',
+    );
+    expect(text).toContain('- Provision: `schedule/B1/paragraph/14`');
+    expect(up.paths()).toEqual([TITLE_IA, NUMBER_IA, SCH_B1_14]);
+    expect(up.unhandled).toEqual([]);
+  });
+
+  it('nests a provision "of" a Schedule "to" its item under that Schedule, on both surfaces', async () => {
+    const SCH2_3 = '/ukpga/2018/12/schedule/2/paragraph/3/data.xml';
+    const up = createUpstream([
+      { path: TITLE_DPA, respond: redirect(301, '/id/ukpga/2018/12') },
+      dpaNumber(),
+      { path: SCH2_3, respond: ok('<Legislation/>') },
+    ]);
+    const result = await runToolContract(lookupCitationTool, {
+      citation: 'paragraph 3 of Schedule 2 to the Data Protection Act 2018',
+    });
+    expect(result.structuredContent).toMatchObject({
+      found: true,
+      parsed: {
+        kind: 'title',
+        title: 'Data Protection Act 2018',
+        year: '2018',
+        provision: 'schedule/2/paragraph/3',
+      },
+      item: 'ukpga/2018/12',
+      provision_path: 'schedule/2/paragraph/3',
+      provision_found: true,
+    });
+    const text = contentText(result);
+    expect(text).toContain(
+      '**Parsed:** kind title, year 2018, title "Data Protection Act 2018", provision schedule/2/paragraph/3',
+    );
+    expect(text).toContain('- Provision: `schedule/2/paragraph/3`');
+    expect(up.paths()).toEqual([TITLE_DPA, NUMBER_DPA, SCH2_3]);
+    expect(up.unhandled).toEqual([]);
+  });
+
   it('resolves the UK GDPR through the listing feed of Regulation (EU) 2016/679, on both surfaces', async () => {
     const up = createUpstream([
       { path: NUMBER_GDPR, respond: feed('number-eur-2016-679.feed') },

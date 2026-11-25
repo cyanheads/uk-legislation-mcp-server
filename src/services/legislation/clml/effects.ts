@@ -114,7 +114,12 @@ export function parseEffect(effect: XmlElement): EffectRecord {
   };
 }
 
-const NUMBERED = /^(\d+)([a-z]*)$/;
+/**
+ * A number with optional letters on either side (lower-cased): `45`, `45a`,
+ * `a30`, `za1`, `a1a`. A prefix numbers an insertion before the first
+ * provision, so `a30` and `30a` are different provisions.
+ */
+const NUMBERED = /^([a-z]{0,3})(\d+)([a-z]*)$/;
 /** Paragraph letters (a, ma, aa) and roman numerals (i, xviii); longer words name a kind, not a position. */
 const ORDINAL_LETTERS = /^(?:[a-z]{1,3}|[ivxlcdm]+)$/;
 const ROMAN = /^[ivxlcdm]+$/;
@@ -140,12 +145,30 @@ function romanValue(numeral: string): number {
 /**
  * Alphabetical, the order insertions keep: (ma) sits between (m) and (n), 45AA
  * between 45A and 45B. A `z` followed by more letters sorts first, as
- * legislation numbers an insertion before the first (45ZA precedes 45A).
+ * legislation numbers an insertion before the first (45ZA precedes 45A, ZA1
+ * precedes A1).
  */
 function letterOrder(a: string, b: string): number {
   const x = a.replace(/z(?=[a-z])/g, '`');
   const y = b.replace(/z(?=[a-z])/g, '`');
   return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/**
+ * Prefixed numbers come first, by prefix in letter order, as the Insolvency Act
+ * 1986 lists Schedules ZA1, ZA2, A1, B1, 1 and sections A1 to A55 before 1; then
+ * by number, then by suffix.
+ */
+function compareNumbered(
+  [, prefixX = '', numberX, suffixX = '']: RegExpExecArray,
+  [, prefixY = '', numberY, suffixY = '']: RegExpExecArray,
+): number {
+  if (prefixX !== prefixY) {
+    if (!prefixX) return 1;
+    if (!prefixY) return -1;
+    return letterOrder(prefixX, prefixY);
+  }
+  return Number(numberX) - Number(numberY) || letterOrder(suffixX, suffixY);
 }
 
 /** Natural order of two path segments; undefined when they are of different kinds. */
@@ -154,7 +177,7 @@ function compareSegments(a: string, b: string, roman: boolean): number | undefin
   const y = b.toLowerCase();
   const nx = NUMBERED.exec(x);
   const ny = NUMBERED.exec(y);
-  if (nx && ny) return Number(nx[1]) - Number(ny[1]) || letterOrder(nx[2] ?? '', ny[2] ?? '');
+  if (nx && ny) return compareNumbered(nx, ny);
   if (!ORDINAL_LETTERS.test(x) || !ORDINAL_LETTERS.test(y)) return;
   if (roman && ROMAN.test(x) && ROMAN.test(y)) return romanValue(x) - romanValue(y);
   return letterOrder(x, y);

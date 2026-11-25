@@ -6,9 +6,11 @@
  * match_text), an oversized provision with no smaller children returned whole
  * up to the ceiling and cut past it, whole small items reached through an
  * unrevised 307, PDF-only items, the not-found disambiguation, every declared
- * error reason, degraded
- * answers when a later request cannot start, oversized and malformed bodies
- * refused, and both result surfaces.
+ * error reason, the elements enclosing a provision with their headings, item
+ * metadata (made, laid and in-force dates, associated documents, the notes
+ * page, the PDF in the language served), degraded answers when a later
+ * request cannot start, oversized and malformed bodies refused, and both
+ * result surfaces.
  * @module tests/mcp-server/tools/definitions/get-document.tool.test
  */
 
@@ -453,6 +455,29 @@ describe('provision reads', () => {
     expect(output.text).toMatch(/^\*\(repealed\)\*/);
   });
 
+  it('marks a provision whose text window has ended not in force, never prospective, on both surfaces', async () => {
+    createUpstream(
+      routes(
+        [
+          '/ukpga/1989/41/part/XA/crossheading/regulations/data.xml',
+          clml('ukpga-1989-41-part-XA-crossheading-regulations.xml'),
+        ],
+        [unappliedFeed('ukpga/1989/41'), noneUnapplied],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/1989/41',
+      provision: 'part/XA/crossheading/regulations',
+    });
+    const s = result.structuredContent as { provision: Record<string, unknown>; text: string };
+    expect(s.provision).toMatchObject({ valid_from: '2001-03-16', valid_to: '2011-04-01' });
+    expect(s.provision).not.toHaveProperty('status');
+    expect(s.text.split('\n')[0]).toBe('## *(not in force at this version)* Regulations');
+    const text = contentText(result);
+    expect(text).toContain('## *(not in force at this version)* Regulations');
+    for (const surface of [s.text, text]) expect(surface).not.toContain('prospective');
+  });
+
   it.each([
     ['draft', 'draft', /^Draft legislation: not made law\./],
     [undefined, 'unknown', /did not report an editorial status .* treat the text as unverified/],
@@ -568,6 +593,422 @@ describe('provision reads', () => {
     expect(result.structuredContent).toMatchObject({ language: 'en' });
     expect(result.structuredContent).not.toHaveProperty('notice');
     expect(contentText(result)).toContain('language en');
+  });
+});
+
+describe('enclosing elements and headings', () => {
+  /** Every recorded provision fragment: [fixture, input, fragment path, feed item, its heading]. */
+  const recorded: [string, DocumentInput, string, string, string][] = [
+    [
+      'ukpga-2018-12-section-45.xml',
+      { item: 'ukpga/2018/12', provision: 'section/45' },
+      S45,
+      'ukpga/2018/12',
+      'Right of access by the data subject',
+    ],
+    [
+      'ukpga-2018-12-section-45-enacted.xml',
+      { item: 'ukpga/2018/12', provision: 'section/45', version: 'enacted' },
+      '/ukpga/2018/12/section/45/enacted/data.xml',
+      'ukpga/2018/12',
+      'Right of access by the data subject',
+    ],
+    [
+      'ukpga-2018-12-section-45-2019-01-01.xml',
+      { item: 'ukpga/2018/12', provision: 'section/45', version: '2019-01-01' },
+      '/ukpga/2018/12/section/45/2019-01-01/data.xml',
+      'ukpga/2018/12',
+      'Right of access by the data subject',
+    ],
+    [
+      'ukpga-2018-12-section-45-2018-05-24.xml',
+      { item: 'ukpga/2018/12', provision: 'section/45', version: '2018-05-24' },
+      '/ukpga/2018/12/section/45/2018-05-24/data.xml',
+      'ukpga/2018/12',
+      'Right of access by the data subject',
+    ],
+    [
+      'ukpga-2018-12-section-65.xml',
+      { item: 'ukpga/2018/12', provision: 'section/65' },
+      '/ukpga/2018/12/section/65/data.xml',
+      'ukpga/2018/12',
+      'Prior consultation with the Commission',
+    ],
+    [
+      'ukpga-2006-46-section-29.xml',
+      { item: 'ukpga/2006/46', provision: 'section/29' },
+      '/ukpga/2006/46/section/29/data.xml',
+      'ukpga/2006/46',
+      "Resolutions and agreements affecting a company's constitution",
+    ],
+    [
+      'ukpga-1998-29-section-1.xml',
+      { item: 'ukpga/1998/29', provision: 'section/1' },
+      '/ukpga/1998/29/section/1/data.xml',
+      'ukpga/1998/29',
+      'Basic interpretative provisions.',
+    ],
+    [
+      'eur-2016-679-article-28.xml',
+      { item: 'eur/2016/679', provision: 'article/28', version: 'enacted' },
+      '/eur/2016/679/article/28/adopted/data.xml',
+      'eur/2016/679',
+      'Processor',
+    ],
+    [
+      'uksi-1986-1078-regulation-1.xml',
+      { item: 'uksi/1986/1078', provision: 'regulation/1' },
+      '/uksi/1986/1078/regulation/1/data.xml',
+      'uksi/1986/1078',
+      'Commencement and citation',
+    ],
+    [
+      'uksi-1998-3132-rule-77.3.xml',
+      { item: 'uksi/1998/3132', provision: 'rule/77.3' },
+      '/uksi/1998/3132/rule/77.3/data.xml',
+      'uksi/1998/3132',
+      'Applications by third parties to make representations and applications to vary or discharge a SCPO made by the High Court',
+    ],
+    [
+      'uksi-2019-419-regulation-5-2019-03-01.xml',
+      { item: 'uksi/2019/419', provision: 'regulation/5', version: '2019-03-01' },
+      '/uksi/2019/419/regulation/5/2019-03-01/data.xml',
+      'uksi/2019/419',
+      'GDPR merger modifications',
+    ],
+    [
+      'uksi-2019-1434-regulation-2-made.xml',
+      { item: 'uksi/2019/1434', provision: 'regulation/2', version: 'made' },
+      '/uksi/2019/1434/regulation/2/made/data.xml',
+      'uksi/2019/1434',
+      'Provisions coming into force on 2nd December 2019',
+    ],
+    [
+      'wsi-2024-1337-article-1-made.xml',
+      { item: 'wsi/2024/1337', provision: 'article/1', version: 'made' },
+      '/wsi/2024/1337/article/1/made/data.xml',
+      'wsi/2024/1337',
+      'Title and interpretation',
+    ],
+    [
+      'anaw-2016-1-section-1-welsh.xml',
+      { item: 'anaw/2016/1', provision: 'section/1', language: 'cy' },
+      '/anaw/2016/1/section/1/welsh/data.xml',
+      'anaw/2016/1',
+      'Contractau meddiannaeth',
+    ],
+    [
+      'ukpga-Geo5-15-16-20-section-84.xml',
+      { item: 'ukpga/Geo5/15-16/20', provision: 'section/84' },
+      '/ukpga/Geo5/15-16/20/section/84/data.xml',
+      'ukpga/1925/20',
+      'Power to discharge or modify restrictive covenants affecting land.',
+    ],
+    [
+      'ukpga-Geo5-15-16-20-section-205.xml',
+      { item: 'ukpga/Geo5/15-16/20', provision: 'section/205' },
+      '/ukpga/Geo5/15-16/20/section/205/data.xml',
+      'ukpga/1925/20',
+      'General definitions.',
+    ],
+    [
+      'ukpga-Geo5-15-16-20-section-1-1991-02-01.xml',
+      { item: 'ukpga/Geo5/15-16/20', provision: 'section/1', version: '1991-02-01' },
+      '/ukpga/Geo5/15-16/20/section/1/1991-02-01/data.xml',
+      'ukpga/1925/20',
+      'Legal estates and equitable interests.',
+    ],
+    [
+      'apni-1954-33-section-1-2006-01-01.xml',
+      { item: 'apni/1954/33', provision: 'section/1', version: '2006-01-01' },
+      '/apni/1954/33/section/1/2006-01-01/data.xml',
+      'apni/1954/33',
+      'Meaning of certain expressions as used in this Act.',
+    ],
+    [
+      'ukpga-1972-68-section-2-1991-02-01.xml',
+      { item: 'ukpga/1972/68', provision: 'section/2', version: '1991-02-01' },
+      '/ukpga/1972/68/section/2/1991-02-01/data.xml',
+      'ukpga/1972/68',
+      'General implementation of Treaties.',
+    ],
+  ];
+
+  it.each(recorded)(
+    'keeps the provision heading of %s',
+    async (name, input, path, feedItem, heading) => {
+      createUpstream(routes([path, clml(name)], [unappliedFeed(feedItem), noneUnapplied]));
+      const { output } = await read(input);
+      expect(output.provision?.heading).toBe(heading);
+    },
+  );
+
+  type Enclosing = { heading?: string; label: string; path: string };
+  const S45_2_F = '/ukpga/2018/12/section/45/2/f/data.xml';
+  const CPR_FEED = unappliedFeed('uksi/1998/3132');
+  const DPA_PART_3: Enclosing[] = [
+    { path: 'part/3', label: 'Part 3', heading: 'Law enforcement processing' },
+    { path: 'part/3/chapter/3', label: 'Part 3 Chapter 3', heading: 'Rights of the data subject' },
+  ];
+  const crossheading = (heading: string): Enclosing => ({
+    path: 'part/3/chapter/3/crossheading/data-subjects-right-of-access',
+    label: 'Part 3 Chapter 3 Cross-heading data-subjects-right-of-access',
+    heading,
+  });
+  /** What the live section/45/2/f fragment names above the paragraph (recorded 2026-11-24). */
+  const S45_2_F_ENCLOSING: Enclosing[] = [
+    ...DPA_PART_3,
+    crossheading('...'),
+    { path: 'section/45', label: 'Section 45', heading: 'Right of access by the data subject' },
+    { path: 'section/45/2', label: 'Section 45(2)' },
+  ];
+  const PART_77: Enclosing = {
+    path: 'part/77',
+    label: 'Part 77',
+    heading: 'PROVISIONS IN SUPPORT OF CRIMINAL JUSTICE',
+  };
+  const SECTION_1_SCPO = 'SECTION 1 – SERIOUS CRIME PREVENTION ORDERS';
+  /** An entry's content[] line as plain text from a CommonMark parse. */
+  const entryLine = (e: Enclosing) => `${e.label} (${e.path})${e.heading ? ` — ${e.heading}` : ''}`;
+  /** The plain-text lines content[] lists under its enclosing header. */
+  const enclosingLines = (text: string, n: number) => {
+    const lines = markdownLines(text);
+    const header = lines.indexOf('Enclosing (outermost first):');
+    return header < 0 ? [] : lines.slice(header + 1, header + 1 + n);
+  };
+  type Structured = {
+    kind: string;
+    notice?: string;
+    outline?: Record<string, unknown>[];
+    provision: { enclosing?: Enclosing[]; heading?: string };
+    text?: string;
+  };
+
+  it('lists every element enclosing a sub-paragraph, outermost first, on both surfaces', async () => {
+    const up = createUpstream(
+      routes([S45_2_F, clml('ukpga-2018-12-section-45-2-f.xml')], [DPA_FEED, noneUnapplied]),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/2018/12',
+      provision: 'section/45/2/f',
+    });
+    expect(up.paths()).toEqual([S45_2_F, DPA_FEED]);
+    const s = result.structuredContent as Structured;
+    expect(s.provision.enclosing).toEqual(S45_2_F_ENCLOSING);
+    expect(s.provision).not.toHaveProperty('heading');
+    const text = contentText(result);
+    expect(enclosingLines(text, S45_2_F_ENCLOSING.length)).toEqual(
+      S45_2_F_ENCLOSING.map(entryLine),
+    );
+    expect(text.indexOf('Law enforcement processing')).toBeLessThan(text.indexOf('### Text'));
+  });
+
+  it('closes the list before the Kind line, which reads as its own paragraph, never a continuation of the last entry', async () => {
+    createUpstream(
+      routes([S45_2_F, clml('ukpga-2018-12-section-45-2-f.xml')], [DPA_FEED, noneUnapplied]),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/2018/12',
+      provision: 'section/45/2/f',
+    });
+    // Token positions, not markdownLines(): a lazy continuation and a new paragraph flatten to the same lines.
+    const tokens = new MarkdownIt('commonmark').parse(contentText(result), {});
+    const header = tokens.findIndex(
+      (t) => t.type === 'inline' && t.content.includes('**Enclosing (outermost first):**'),
+    );
+    const listClose = tokens.findIndex((t, i) => i > header && t.type === 'bullet_list_close');
+    const kind = tokens.findIndex((t) => t.type === 'inline' && t.content.includes('**Kind:**'));
+    expect(header).toBeGreaterThan(-1);
+    expect(listClose).toBeGreaterThan(header);
+    expect(kind).toBeGreaterThan(listClose);
+    expect(tokens[kind]?.content.startsWith('**Kind:** full')).toBe(true);
+  });
+
+  it.each([
+    ['ukpga-2018-12-section-45.xml', 'current', S45, '...'],
+    [
+      'ukpga-2018-12-section-45-2019-01-01.xml',
+      '2019-01-01',
+      '/ukpga/2018/12/section/45/2019-01-01/data.xml',
+      "Data subject's right of access",
+    ],
+  ])(
+    'carries the Part, Chapter and cross-heading %s names, and keeps the section’s own heading',
+    async (name, version, path, heading) => {
+      createUpstream(routes([path, clml(name)], [DPA_FEED, noneUnapplied]));
+      const { output } = await read({ item: 'ukpga/2018/12', provision: 'section/45', version });
+      expect(output.provision?.enclosing).toEqual([...DPA_PART_3, crossheading(heading)]);
+      expect(output.provision?.heading).toBe('Right of access by the data subject');
+    },
+  );
+
+  it('heads a Schedule by its TitleBlock title and leaves a paragraph with no heading group unheaded', async () => {
+    const path = '/ukpga/2018/12/schedule/1/paragraph/2/2/data.xml';
+    createUpstream(
+      routes([path, clml('ukpga-2018-12-schedule-1-paragraph-2-2.xml')], [DPA_FEED, noneUnapplied]),
+    );
+    const { output } = await read({ item: 'ukpga/2018/12', provision: 'schedule/1/paragraph/2/2' });
+    expect(output.provision?.enclosing).toEqual([
+      {
+        path: 'schedule/1',
+        label: 'Schedule 1',
+        heading: 'Special categories of personal data and criminal convictions etc data',
+      },
+      {
+        path: 'schedule/1/part/1',
+        label: 'Schedule 1 Part 1',
+        heading: 'Conditions relating to employment, health and research etc',
+      },
+      {
+        path: 'schedule/1/part/1/crossheading/health-or-social-care-purposes',
+        label: 'Schedule 1 Part 1 Cross-heading health-or-social-care-purposes',
+        heading: 'Health or social care purposes',
+      },
+      { path: 'schedule/1/paragraph/2', label: 'Schedule 1 paragraph 2' },
+    ]);
+    expect(output.provision).not.toHaveProperty('heading');
+  });
+
+  it('heads an enclosing cross-heading with no title by its number', async () => {
+    createUpstream(
+      routes(
+        ['/uksi/1998/3132/rule/77.3/data.xml', clml('uksi-1998-3132-rule-77.3.xml')],
+        [CPR_FEED, noneUnapplied],
+      ),
+    );
+    const { output } = await read({ item: 'uksi/1998/3132', provision: 'rule/77.3' });
+    expect(output.provision?.enclosing).toEqual([
+      PART_77,
+      { path: 'part/77/crossheading/1', label: 'Part 77 Cross-heading 1', heading: SECTION_1_SCPO },
+    ]);
+  });
+
+  it('heads a read cross-heading with no title by its number, by the same rule', async () => {
+    createUpstream(
+      routes(
+        [
+          '/uksi/1998/3132/part/77/crossheading/1/data.xml',
+          clml('uksi-1998-3132-part-77-crossheading-1.xml'),
+        ],
+        [CPR_FEED, noneUnapplied],
+      ),
+    );
+    const { output } = await read({ item: 'uksi/1998/3132', provision: 'part/77/crossheading/1' });
+    expect(output.kind).toBe('full');
+    expect(output.provision?.heading).toBe(SECTION_1_SCPO);
+    expect(output.provision?.enclosing).toEqual([PART_77]);
+  });
+
+  it('returns an empty list for a provision directly under the body, on both surfaces', async () => {
+    createUpstream(
+      routes(
+        [
+          '/uksi/2019/419/regulation/5/2019-03-01/data.xml',
+          clml('uksi-2019-419-regulation-5-2019-03-01.xml'),
+        ],
+        [unappliedFeed('uksi/2019/419'), noneUnapplied],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'uksi/2019/419',
+      provision: 'regulation/5',
+      version: '2019-03-01',
+    });
+    const s = result.structuredContent as Structured;
+    expect(s.provision.enclosing).toEqual([]);
+    expect(s.provision.heading).toBe('GDPR merger modifications');
+    const lines = markdownLines(contentText(result));
+    expect(lines).toContain('Enclosing: none');
+    expect(lines).not.toContain('Enclosing (outermost first):');
+  });
+
+  it('heads the regulation a sub-provision of an SI as made sits in by its P1group title', async () => {
+    const current = '/uksi/2026/82/regulation/3/b/data.xml';
+    const made = '/uksi/2026/82/regulation/3/b/made/data.xml';
+    const up = createUpstream(
+      routes(
+        [current, redirect(307, made)],
+        [made, clml('uksi-2026-82-regulation-3-b-made.xml')],
+        [unappliedFeed('uksi/2026/82'), noneUnapplied],
+      ),
+    );
+    const { output } = await read({
+      item: 'https://www.legislation.gov.uk/id/uksi/2026/82/regulation/3/b',
+    });
+    expect(up.paths()).toEqual([current, made, unappliedFeed('uksi/2026/82')]);
+    expect(output.provision).not.toHaveProperty('heading');
+    expect(output.provision?.enclosing).toEqual([
+      {
+        path: 'regulation/3',
+        label: 'Regulation 3',
+        heading: 'Provisions of the 2025 Act coming into force on 19th June 2026',
+      },
+    ]);
+  });
+
+  it('carries the list on an oversized container’s outline, never on its entries, on both surfaces', async () => {
+    const xml = inflate(
+      fixture('clml/uksi-1998-3132-part-77-crossheading-1.xml'),
+      'http://www.legislation.gov.uk/id/uksi/1998/3132/rule/77.3',
+      TEXT_BUDGET_CHARS,
+    );
+    createUpstream(
+      routes(
+        ['/uksi/1998/3132/part/77/crossheading/1/data.xml', ok(xml)],
+        [CPR_FEED, noneUnapplied],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'uksi/1998/3132',
+      provision: 'part/77/crossheading/1',
+    });
+    const s = result.structuredContent as Structured;
+    expect(s.kind).toBe('outline');
+    expect(s.provision.enclosing).toEqual([PART_77]);
+    expect(s.provision.heading).toBe(SECTION_1_SCPO);
+    expect(s.outline?.length).toBeGreaterThan(0);
+    for (const entry of s.outline ?? []) expect(entry).not.toHaveProperty('enclosing');
+    const text = contentText(result);
+    expect(enclosingLines(text, 1)).toEqual([entryLine(PART_77)]);
+    expect(markdownLines(text)).toContain(
+      `Provision: Part 77 Cross-heading 1 (part/77/crossheading/1) — ${SECTION_1_SCPO} · https://www.legislation.gov.uk/id/uksi/1998/3132/part/77/crossheading/1`,
+    );
+  });
+
+  it('keeps every entry whole when the text is cut to the ceiling, outside the measured size', async () => {
+    const xml = inflate(
+      fixture('clml/ukpga-2018-12-section-45-2-f.xml'),
+      'http://www.legislation.gov.uk/id/ukpga/2018/12/section/45/2/f',
+      TEXT_CEILING_CHARS,
+    );
+    createUpstream(routes([S45_2_F, ok(xml)], [DPA_FEED, noneUnapplied]));
+    const { output, notice } = await read({ item: 'ukpga/2018/12', provision: 'section/45/2/f' });
+    expect(output.kind).toBe('full');
+    const cut = /so its text is cut to (\d+) characters/.exec(notice ?? '');
+    expect(Number(cut?.[1])).toBe(renderedSize(output));
+    expect(renderedSize(output)).toBeLessThanOrEqual(TEXT_CEILING_CHARS);
+    expect(output.provision?.enclosing).toEqual(S45_2_F_ENCLOSING);
+  });
+
+  it('keeps Markdown-significant characters of a heading on both surfaces', async () => {
+    const heading = 'Law *enforcement* _processing_ [x](y) <b>z</b> `q` # | 1. \\ &';
+    const xml = fixture('clml/ukpga-2018-12-section-45-2-f.xml').replace(
+      '<Title>Law enforcement processing</Title>',
+      '<Title>Law *enforcement* _processing_ [x](y) &lt;b&gt;z&lt;/b&gt; `q` # | 1. \\ &amp;</Title>',
+    );
+    createUpstream(routes([S45_2_F, ok(xml)], [DPA_FEED, noneUnapplied]));
+    const result = await runToolContract(getDocumentTool, {
+      item: 'ukpga/2018/12',
+      provision: 'section/45/2/f',
+    });
+    const s = result.structuredContent as Structured;
+    expect(s.provision.enclosing?.[0]).toEqual({ path: 'part/3', label: 'Part 3', heading });
+    const text = contentText(result);
+    expect(enclosingLines(text, 1)).toEqual([`Part 3 (part/3) — ${heading}`]);
+    const inlineTokens = new MarkdownIt('commonmark')
+      .parse(text, {})
+      .flatMap((t) => t.children ?? []);
+    expect(inlineTokens.filter((t) => t.type === 'html_inline')).toEqual([]);
   });
 });
 
@@ -1626,6 +2067,283 @@ describe('item-level reads', () => {
     expect(output.unapplied_effects).toMatchObject([
       { type: 'revoked', affected: { provisions: [] } },
     ]);
+  });
+});
+
+describe('item metadata: dates, associated documents and links', () => {
+  const SI419 = '/uksi/2019/419/contents/data.xml';
+  const ANAW_S7 = '/anaw/2016/1/section/7/1/data.xml';
+  const ANAW_FEED = unappliedFeed('anaw/2016/1');
+  const SI1156 = {
+    contents: '/uksi/2026/1156/contents/data.xml',
+    made: '/uksi/2026/1156/contents/made/data.xml',
+  };
+
+  it('reports the item identity and links of an item read and a provision read', async () => {
+    createUpstream(routes([SI419, clml('uksi-2019-419-contents.xml')]));
+    const item = (await read({ item: 'uksi/2019/419' })).output;
+    expect(item.item).toMatchObject({
+      path: 'uksi/2019/419',
+      id_uri: 'https://www.legislation.gov.uk/id/uksi/2019/419',
+      title:
+        'The Data Protection, Privacy and Electronic Communications (Amendments etc) (EU Exit) Regulations 2019',
+      type: 'uksi',
+      category: 'secondary',
+      year: 2019,
+      number: '419',
+      extent: 'E+W+S+N.I.',
+    });
+    expect(item.links).toMatchObject({
+      web: 'https://www.legislation.gov.uk/uksi/2019/419',
+      xml: 'https://www.legislation.gov.uk/uksi/2019/419/data.xml',
+      akn: 'https://www.legislation.gov.uk/uksi/2019/419/contents/data.akn',
+      pdf: 'https://www.legislation.gov.uk/uksi/2019/419/pdfs/uksi_20190419_en.pdf',
+    });
+
+    createUpstream(
+      routes(
+        ['/anaw/2016/1/section/1/welsh/data.xml', clml('anaw-2016-1-section-1-welsh.xml')],
+        [ANAW_FEED, noneUnapplied],
+      ),
+    );
+    const welsh = (await read({ item: 'anaw/2016/1', provision: 'section/1', language: 'cy' }))
+      .output;
+    expect(welsh.links).toMatchObject({
+      web: 'https://www.legislation.gov.uk/anaw/2016/1/section/1/welsh',
+      pdf: 'https://www.legislation.gov.uk/anaw/2016/1/pdfs/anaw_20160001_we.pdf',
+    });
+  });
+
+  it('returns a made SI’s made, laid and in-force dates, its Explanatory Memorandum and its page, on both surfaces', async () => {
+    const up = createUpstream(
+      routes(
+        [SI1156.contents, redirect(307, SI1156.made)],
+        [SI1156.made, clml('uksi-2026-1156-contents-made.xml')],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, { item: 'uksi/2026/1156' });
+    expect(result.isError).toBeFalsy();
+    expect(up.paths()).toEqual([SI1156.contents, SI1156.made]);
+    const structured = result.structuredContent as {
+      associated_documents: unknown[];
+      item: Record<string, unknown>;
+      kind: string;
+      links: Record<string, string>;
+    };
+    expect(structured.kind).toBe('outline');
+    expect(structured.item).toMatchObject({
+      made_date: '2026-10-30',
+      laid: [{ date: '2026-11-04', legislature: 'UnitedKingdomParliament' }],
+      coming_into_force: ['2026-11-26'],
+    });
+    expect(structured.associated_documents).toEqual([
+      {
+        kind: 'notes',
+        title: 'UK Explanatory Memorandum',
+        date: '2026-11-04',
+        uri: 'https://www.legislation.gov.uk/uksi/2026/1156/pdfs/uksiem_20261156_en_001.pdf',
+      },
+    ]);
+    expect(structured.links.notes).toBe('https://www.legislation.gov.uk/uksi/2026/1156/memorandum');
+    const lines = markdownLines(contentText(result));
+    expect(lines).toContain(
+      'Dates: made/enacted 2026-10-30 · laid 2026-11-04 (UnitedKingdomParliament) · coming into force 2026-11-26',
+    );
+    expect(lines).toContain(
+      'notes — UK Explanatory Memorandum · 2026-11-04 · https://www.legislation.gov.uk/uksi/2026/1156/pdfs/uksiem_20261156_en_001.pdf',
+    );
+    expect(lines.find((l) => l.startsWith('Links:'))).toContain(
+      ' · notes https://www.legislation.gov.uk/uksi/2026/1156/memorandum',
+    );
+  });
+
+  it('links an English read of a Welsh Act to the English PDF', async () => {
+    createUpstream(
+      routes([ANAW_S7, clml('anaw-2016-1-section-7-1.xml')], [ANAW_FEED, noneUnapplied]),
+    );
+    const { output } = await read({ item: 'anaw/2016/1', provision: 'section/7/1' });
+    expect(output.language).toBe('en');
+    expect(output.links.pdf).toBe(
+      'https://www.legislation.gov.uk/anaw/2016/1/pdfs/anaw_20160001_en.pdf',
+    );
+  });
+
+  it('carries the item metadata on a provision read, the notes page naming the provision’s own notes', async () => {
+    createUpstream(
+      routes([ANAW_S7, clml('anaw-2016-1-section-7-1.xml')], [ANAW_FEED, noneUnapplied]),
+    );
+    const { output } = await read({ item: 'anaw/2016/1', provision: 'section/7/1' });
+    expect(output.provision?.path).toBe('section/7/1');
+    expect(output.item.made_date).toBe('2016-01-18');
+    expect(output.item).not.toHaveProperty('laid');
+    expect(output.item).not.toHaveProperty('coming_into_force');
+    expect(output.associated_documents.map((d) => [d.kind, d.language])).toEqual([
+      ['notes', 'Welsh'],
+      ['notes', 'Mixed'],
+      ['notes', undefined],
+      ['correction_slip', 'Mixed'],
+    ]);
+    expect(output.links.notes).toBe(
+      'https://www.legislation.gov.uk/id/anaw/2016/1/section/7/1/notes',
+    );
+  });
+
+  it('renders each associated document’s language on a Welsh read, whose PDF is the Welsh one', async () => {
+    createUpstream(
+      routes(
+        ['/anaw/2016/1/section/1/welsh/data.xml', clml('anaw-2016-1-section-1-welsh.xml')],
+        [ANAW_FEED, noneUnapplied],
+      ),
+    );
+    const result = await runToolContract(getDocumentTool, {
+      item: 'anaw/2016/1',
+      provision: 'section/1',
+      language: 'cy',
+    });
+    const structured = result.structuredContent as { links: Record<string, string> };
+    expect(structured.links.pdf).toBe(
+      'https://www.legislation.gov.uk/anaw/2016/1/pdfs/anaw_20160001_we.pdf',
+    );
+    const lines = markdownLines(contentText(result));
+    expect(lines).toContain('Associated documents (4)');
+    expect(lines).toContain(
+      'notes — Explanatory Note · 2016-01-26 · language Welsh · https://www.legislation.gov.uk/anaw/2016/1/pdfs/anawen_20160001_we.pdf',
+    );
+    expect(lines).toContain(
+      'notes — Explanatory Note · 2016-01-26 · https://www.legislation.gov.uk/anaw/2016/1/pdfs/anawen_20160001_en.pdf',
+    );
+    expect(lines.find((l) => l.startsWith('Links:'))).toContain(
+      ' · notes https://www.legislation.gov.uk/id/anaw/2016/1/section/1/notes/welsh',
+    );
+  });
+
+  it('carries the dates on a whole-item read', async () => {
+    createUpstream(
+      routes(
+        [SI_1984.contentsMade, clml('uksi-1984-458-contents-made.xml')],
+        [SI_1984.whole, clml('uksi-1984-458-made.xml')],
+      ),
+    );
+    const { output } = await read({ item: 'uksi/1984/458', version: 'made' });
+    expect(output.kind).toBe('full');
+    expect(output.item).toMatchObject({
+      made_date: '1984-03-28',
+      laid: [{ date: '1984-04-02', legislature: 'UnitedKingdomParliament' }],
+      coming_into_force: ['1984-04-23'],
+    });
+    expect(output.associated_documents).toEqual([]);
+    expect(output.links).not.toHaveProperty('notes');
+  });
+
+  it('renders no dates, an empty document list and no notes link for an item that records none, on both surfaces', async () => {
+    const ACT = 'ukla/Eliz2/4-5/1';
+    createUpstream(
+      routes([`/${ACT}/contents/enacted/data.xml`, clml('ukla-Eliz2-4-5-1-contents-enacted.xml')]),
+    );
+    const result = await runToolContract(getDocumentTool, { item: ACT, version: 'enacted' });
+    expect(result.isError).toBeFalsy();
+    const structured = result.structuredContent as {
+      associated_documents: unknown[];
+      item: Record<string, unknown>;
+      kind: string;
+      links: Record<string, string>;
+    };
+    expect(structured.kind).toBe('pdf_only');
+    expect(structured.associated_documents).toEqual([]);
+    for (const absent of ['made_date', 'laid', 'coming_into_force']) {
+      expect(structured.item).not.toHaveProperty(absent);
+    }
+    expect(structured.links).not.toHaveProperty('notes');
+    const text = contentText(result);
+    expect(text).not.toContain('**Dates:**');
+    expect(text).toContain('### Associated documents (0)\nNone recorded for this item.');
+    expect(text).not.toContain(' · notes ');
+  });
+
+  it('marks a draft’s coming-into-force date as proposed and reports no made date', async () => {
+    const DRAFT = 'ukdsi/2026/9780348288018';
+    const up = createUpstream(
+      routes([`/${DRAFT}/contents/data.xml`, clml('ukdsi-2026-9780348288018-contents.xml')]),
+      { pacer: await gatedPacer(1) },
+    );
+    const result = await runToolContract(getDocumentTool, { item: DRAFT });
+    expect(result.isError).toBeFalsy();
+    expect(up.paths()).toEqual([`/${DRAFT}/contents/data.xml`]);
+    const structured = result.structuredContent as {
+      editorial: { document_status: string };
+      item: Record<string, unknown>;
+      links: Record<string, string>;
+    };
+    expect(structured.editorial.document_status).toBe('draft');
+    expect(structured.item).not.toHaveProperty('made_date');
+    expect(structured.item.coming_into_force).toEqual(['2027-03-31']);
+    expect(structured.links.notes).toBe(`https://www.legislation.gov.uk/${DRAFT}/memorandum`);
+    expect(markdownLines(contentText(result))).toContain(
+      'Dates: coming into force 2027-03-31 (proposed)',
+    );
+  });
+
+  it('renders every laying and in-force date, and keeps Markdown and injected breaks in titles and links inside their slot', async () => {
+    const injected = fixture('clml/uksi-2026-1156-contents-made.xml')
+      .replace(
+        '<ukm:Laid Date="2026-11-04" Time="00:00:00" Class="UnitedKingdomParliament"/>',
+        '<ukm:Laid Date="2026-11-04" Time="00:00:00" Class="UnitedKingdomParliament"/><ukm:Laid Date="2026-11-05" Class="ScottishParliament"/>',
+      )
+      .replace(
+        '<ukm:DateTime Date="2026-11-26" Time="00:00:00"/>',
+        '<ukm:DateTime Date="2026-11-26" Time="00:00:00"/><ukm:DateTime Date="2027-01-01"/>',
+      )
+      .replace(
+        'Title="UK Explanatory Memorandum"',
+        'Title="UK *Explanatory* _Memo_ [link](x) &lt;b&gt;bold&lt;/b&gt;&#10;## Heading"',
+      )
+      .replace(
+        'pdfs/uksiem_20261156_en_001.pdf"',
+        'pdfs/uksiem_20261156_en_001.pdf&lt;img src=x&gt;"',
+      )
+      .replace(
+        'href="http://www.legislation.gov.uk/uksi/2026/1156/memorandum"',
+        'href="http://www.legislation.gov.uk/uksi/2026/1156/memorandum&#10;## Notes"',
+      );
+    createUpstream(
+      routes([SI1156.contents, redirect(307, SI1156.made)], [SI1156.made, ok(injected)]),
+    );
+    const result = await runToolContract(getDocumentTool, { item: 'uksi/2026/1156' });
+    expect(result.isError).toBeFalsy();
+    const structured = result.structuredContent as {
+      associated_documents: { title?: string; uri: string }[];
+      item: { coming_into_force?: string[]; laid?: unknown[] };
+      links: { notes?: string };
+    };
+    // structuredContent keeps every value verbatim.
+    expect(structured.item.laid).toEqual([
+      { date: '2026-11-04', legislature: 'UnitedKingdomParliament' },
+      { date: '2026-11-05', legislature: 'ScottishParliament' },
+    ]);
+    expect(structured.item.coming_into_force).toEqual(['2026-11-26', '2027-01-01']);
+    const title = 'UK *Explanatory* _Memo_ [link](x) <b>bold</b>\n## Heading';
+    expect(structured.associated_documents[0]?.title).toBe(title);
+    expect(structured.associated_documents[0]?.uri).toBe(
+      'https://www.legislation.gov.uk/uksi/2026/1156/pdfs/uksiem_20261156_en_001.pdf<img src=x>',
+    );
+    expect(structured.links.notes).toBe(
+      'https://www.legislation.gov.uk/uksi/2026/1156/memorandum\n## Notes',
+    );
+
+    const text = contentText(result);
+    // An inline slot escapes `<` as `\<`, which CommonMark renders as literal text.
+    expect(text).not.toMatch(/(?<!\\)<(b|img)\b/);
+    expect(text.split('\n').filter((line) => /^#+ (Heading|Notes)\b/.test(line))).toEqual([]);
+    const lines = markdownLines(text);
+    expect(lines).toContain(
+      'Dates: made/enacted 2026-10-30 · laid 2026-11-04 (UnitedKingdomParliament), 2026-11-05 (ScottishParliament) · coming into force 2026-11-26, 2027-01-01',
+    );
+    expect(lines).toContain(
+      `notes — ${title.replace('\n', ' ')} · 2026-11-04 · https://www.legislation.gov.uk/uksi/2026/1156/pdfs/uksiem_20261156_en_001.pdf%3Cimg%20src=x%3E`,
+    );
+    expect(text).toContain(
+      ' · notes https://www.legislation.gov.uk/uksi/2026/1156/memorandum%0A##%20Notes',
+    );
   });
 });
 
@@ -3306,6 +4024,7 @@ describe('input validation', () => {
     [{ item: 'ukpga/2018/12/foo/1' }, 'invalid_item'],
     [{ item: 'ukpga/2018/12', provision: 'foo 3' }, 'invalid_provision'],
     [{ item: 'ukpga/2018/12', provision: 'constructor 1' }, 'invalid_provision'],
+    [{ item: 'ukpga/1986/45', provision: 's. a6' }, 'invalid_provision'],
     [{ item: 'ukpga/2018/12/section/45', provision: 'section/46' }, 'invalid_provision'],
     [{ item: 'ukpga/2018/12', version: '2019-02-30' }, 'invalid_version'],
     [{ item: 'ukpga/2018/12/section/45/prospective' }, 'invalid_version'],

@@ -4,14 +4,14 @@ description: Decide with the uklaw_* tools whether a UK provision is in force an
 license: Apache-2.0
 metadata:
   author: cyanheads
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## Scope
 
 The statute book on legislation.gov.uk: original (enacted or made) text, revised text with point-in-time versions, recorded effects, and the Publication Log. Keyless.
 
-- Not held: case law (The National Archives' Find Case Law service), explanatory notes, impact assessments, and Bills. The draft types are draft statutory instruments, which are not law.
+- Not held: case law (The National Archives' Find Case Law service) and Bills. Explanatory notes and memoranda, impact assessments, correction slips and the other documents published with an item are linked from `uklaw_get_document` (`associated_documents`, `links.notes`), never read. The draft types are draft statutory instruments, which are not law.
 - An `eur` item's current text is UK law: the EU instrument as it stood on 31 December 2020 plus later UK amendments (`eur/2016/679` is the UK GDPR). For the text in force in the EU, pair with an EUR-Lex server.
 - "Scottish legislation" (or Welsh, or Northern Ireland) has two readings. Legislation made there is a type filter: Scotland `asp`, `ssi`, `aosp`; Wales `asc`, `anaw`, `mwa`, `wsi`; Northern Ireland `nia`, `mnia`, `apni`, `nisi` (Orders in Council), `nisr`, `nisro`; `uklaw_list_reference` types lists them all, drafts included. UK legislation that forms part of the law there is the extent filter. Ask which the user means when the answers differ.
 
@@ -46,7 +46,7 @@ The statute book on legislation.gov.uk: original (enacted or made) text, revised
 
 **Is a provision in force and current?** Resolve it with `uklaw_lookup_citation` (`provision_found` confirms it exists now), then read it with `uklaw_get_document`. Apply the in-force gate to `provision.status` and the `I` annotations, the lag gate to `unapplied_effects`, and the container gate before answering.
 
-**Commencement of an Act.** Commencements are effects of type "coming into force" whose `in_force` qualification reads "wholly in force", "for specified purposes", or "in force in so far as not already in force", sometimes prefixed by a territory ("for S.", "for W. for specified purposes") that limits where it was commenced; "for specified purposes" leaves the rest uncommenced. List them on the Act with `uklaw_get_amendments` (a commencement order as `counterpart` narrows to one order), or with direction `affecting` on the order to see everything it commenced.
+**Commencement of an Act.** Commencements are effects of type "coming into force" whose `in_force` qualification reads "wholly in force", "for specified purposes", or "in force in so far as not already in force", sometimes prefixed by a territory ("for S.", "for W. for specified purposes") that limits where it was commenced; "for specified purposes" leaves the rest uncommenced. List them on the Act with `uklaw_get_amendments` (a commencement order as `counterpart` narrows to one order), or with direction `affecting` on the order to see everything it commenced. `item.coming_into_force` is the date the metadata records for the instrument as a whole; a provision's commencement is in its `I` annotations and effects, and a commencement regulation's own date can sit in the heading of the element it is in, which `provision.enclosing` carries.
 
 **Text on a date, or a comparison.** Read with the date as `version` and check `version.applied`. `provision.valid_from` and `valid_to` give the provision's own text window, which can differ from the document version's. To compare two dates, read the provision at each; the `F` annotations on the later read cite each amending provision, usually with its effective date in parentheses.
 

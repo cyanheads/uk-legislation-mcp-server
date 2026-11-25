@@ -9,6 +9,7 @@
 import { createApp } from '@cyanheads/mcp-ts-core';
 import { createPacer, type Pacer } from '@cyanheads/mcp-ts-core/utils';
 import { getServerConfig } from './config/server-config.js';
+import { setStrictLimits } from './mcp-server/tools/definitions/_schemas.js';
 import { allToolDefinitions } from './mcp-server/tools/definitions/index.js';
 import { LegislationClient } from './services/legislation/legislation-client.js';
 import {
@@ -36,6 +37,8 @@ await createApp({
 
   async setup(core) {
     const config = getServerConfig();
+    // Here, not at import: the definitions emit their schemas on import, before createApp() loads .env under Node.
+    setStrictLimits(!config.clampLimits);
     const contact = config.contact ? `; ${config.contact}` : '';
     const userAgent = `uk-legislation-mcp-server/${core.config.mcpServerVersion} (+https://github.com/cyanheads/uk-legislation-mcp-server${contact})`;
     const logContext = {
