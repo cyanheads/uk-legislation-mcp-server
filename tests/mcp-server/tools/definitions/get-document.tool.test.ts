@@ -2339,7 +2339,7 @@ describe('item metadata: dates, associated documents and links', () => {
       'Dates: made/enacted 2026-10-30 · laid 2026-11-04 (UnitedKingdomParliament), 2026-11-05 (ScottishParliament) · coming into force 2026-11-26, 2027-01-01',
     );
     expect(lines).toContain(
-      `notes — ${title.replace('\n', ' ')} · 2026-11-04 · https://www.legislation.gov.uk/uksi/2026/1156/pdfs/uksiem_20261156_en_001.pdf%3Cimg%20src=x%3E`,
+      'notes — UK *Explanatory* _Memo_ [link](x) <b>bold</b> ## Heading · 2026-11-04 · https://www.legislation.gov.uk/uksi/2026/1156/pdfs/uksiem_20261156_en_001.pdf%3Cimg%20src=x%3E',
     );
     expect(text).toContain(
       ' · notes https://www.legislation.gov.uk/uksi/2026/1156/memorandum%0A##%20Notes',
